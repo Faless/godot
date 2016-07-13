@@ -1001,19 +1001,29 @@ bool Viewport::has_transparent_background() const {
 	return transparent_bg;
 }
 
-#if 0
 void Viewport::set_world_2d(const Ref<World2D>& p_world_2d) {
 
-	world_2d=p_world_2d;
-	_update_listener_2d();
+	if (world_2d==p_world_2d)
+		return;
 
-	if (is_inside_scene()) {
+	if (is_inside_tree()) {
+		if (world_2d.is_valid())
+			world_2d->_remove_viewport(this);
 		if (current_canvas.is_valid())
 			VisualServer::get_singleton()->viewport_remove_canvas(viewport,current_canvas);
-		current_canvas=find_world_2d()->get_canvas();
-		VisualServer::get_singleton()->viewport_attach_canvas(viewport,current_canvas);
 	}
 
+	world_2d=p_world_2d;
+
+	if (is_inside_tree()) {
+		current_canvas=find_world_2d()->get_canvas();
+		VisualServer::get_singleton()->viewport_attach_canvas(viewport,current_canvas);
+
+		//if (world_2d.is_valid())
+		find_world_2d()->_register_viewport(this,Rect2());
+	}
+
+	_update_listener_2d();
 }
 
 Ref<World2D> Viewport::find_world_2d() const{
@@ -1025,13 +1035,6 @@ Ref<World2D> Viewport::find_world_2d() const{
 	else
 		return Ref<World2D>();
 }
-#endif
-
-Ref<World2D> Viewport::find_world_2d() const{
-
-	return world_2d;
-}
-
 
 void Viewport::_propagate_enter_world(Node *p_node) {
 
@@ -1139,6 +1142,11 @@ void Viewport::set_world(const Ref<World>& p_world) {
 Ref<World> Viewport::get_world() const{
 
 	return world;
+}
+
+Ref<World2D> Viewport::get_world_2d() const{
+
+	return world_2d;
 }
 
 Ref<World> Viewport::find_world() const{
@@ -2590,8 +2598,8 @@ void Viewport::_bind_methods() {
 
 	ObjectTypeDB::bind_method(_MD("set_rect","rect"), &Viewport::set_rect);
 	ObjectTypeDB::bind_method(_MD("get_rect"), &Viewport::get_rect);
-	//ObjectTypeDB::bind_method(_MD("set_world_2d","world_2d:World2D"), &Viewport::set_world_2d);
-	//ObjectTypeDB::bind_method(_MD("get_world_2d:World2D"), &Viewport::get_world_2d);
+	ObjectTypeDB::bind_method(_MD("set_world_2d","world_2d:World2D"), &Viewport::set_world_2d);
+	ObjectTypeDB::bind_method(_MD("get_world_2d:World2D"), &Viewport::get_world_2d);
 	ObjectTypeDB::bind_method(_MD("find_world_2d:World2D"), &Viewport::find_world_2d);
 	ObjectTypeDB::bind_method(_MD("set_world","world:World"), &Viewport::set_world);
 	ObjectTypeDB::bind_method(_MD("get_world:World"), &Viewport::get_world);
@@ -2681,7 +2689,7 @@ void Viewport::_bind_methods() {
 	ADD_PROPERTY( PropertyInfo(Variant::RECT2,"rect"), _SCS("set_rect"), _SCS("get_rect") );
 	ADD_PROPERTY( PropertyInfo(Variant::BOOL,"own_world"), _SCS("set_use_own_world"), _SCS("is_using_own_world") );
 	ADD_PROPERTY( PropertyInfo(Variant::OBJECT,"world",PROPERTY_HINT_RESOURCE_TYPE,"World"), _SCS("set_world"), _SCS("get_world") );
-//	ADD_PROPERTY( PropertyInfo(Variant::OBJECT,"world_2d",PROPERTY_HINT_RESOURCE_TYPE,"World2D"), _SCS("set_world_2d"), _SCS("get_world_2d") );
+	ADD_PROPERTY( PropertyInfo(Variant::OBJECT,"world_2d",PROPERTY_HINT_RESOURCE_TYPE,"World2D"), _SCS("set_world_2d"), _SCS("get_world_2d") );
 	ADD_PROPERTY( PropertyInfo(Variant::BOOL,"transparent_bg"), _SCS("set_transparent_background"), _SCS("has_transparent_background") );
 	ADD_PROPERTY( PropertyInfo(Variant::BOOL,"render_target/enabled"), _SCS("set_as_render_target"), _SCS("is_set_as_render_target") );
 	ADD_PROPERTY( PropertyInfo(Variant::BOOL,"render_target/v_flip"), _SCS("set_render_target_vflip"), _SCS("get_render_target_vflip") );

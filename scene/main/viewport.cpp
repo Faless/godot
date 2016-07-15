@@ -1310,6 +1310,9 @@ void Viewport::render_target_clear() {
 
 void Viewport::set_render_target_filter(bool p_enable) {
 
+	if(!render_target)
+		return;
+
 	render_target_texture->set_flags(p_enable?int(Texture::FLAG_FILTER):int(0));
 
 }

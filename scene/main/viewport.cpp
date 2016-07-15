@@ -359,13 +359,7 @@ void Viewport::_notification(int p_what) {
 			_update_listener_2d();
 			_update_rect();
 
-			if (world_2d.is_valid()) {
-				find_world_2d()->_register_viewport(this,Rect2());
-//best to defer this and not do it here, as it can annoy a lot of setup logic if user
-//adds a node and then moves it, will get enter/exit screen/viewport notifications
-//unnecesarily
-//				update_worlds();
-			}
+			find_world_2d()->_register_viewport(this,Rect2());
 
 			add_to_group("_viewports");
 			if (get_tree()->is_debugging_collisions_hint()) {
@@ -1002,28 +996,28 @@ bool Viewport::has_transparent_background() const {
 }
 
 void Viewport::set_world_2d(const Ref<World2D>& p_world_2d) {
-
 	if (world_2d==p_world_2d)
 		return;
 
 	if (is_inside_tree()) {
-		if (world_2d.is_valid())
-			world_2d->_remove_viewport(this);
-		if (current_canvas.is_valid())
-			VisualServer::get_singleton()->viewport_remove_canvas(viewport,current_canvas);
+		find_world_2d()->_remove_viewport(this);
+		VisualServer::get_singleton()->viewport_remove_canvas(viewport,current_canvas);
 	}
 
-	world_2d=p_world_2d;
+	if (p_world_2d.is_valid())
+		world_2d=p_world_2d;
+	else {
+		WARN_PRINT("Invalid world");
+		world_2d=Ref<World2D>( memnew( World2D ));
+	}
+
+	_update_listener_2d();
 
 	if (is_inside_tree()) {
 		current_canvas=find_world_2d()->get_canvas();
 		VisualServer::get_singleton()->viewport_attach_canvas(viewport,current_canvas);
-
-		//if (world_2d.is_valid())
 		find_world_2d()->_register_viewport(this,Rect2());
 	}
-
-	_update_listener_2d();
 }
 
 Ref<World2D> Viewport::find_world_2d() const{

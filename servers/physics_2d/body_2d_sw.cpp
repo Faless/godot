@@ -578,28 +578,24 @@ void Body2DSW::integrate_velocities(real_t p_step) {
 RK4Deriv2D Body2DSW::integrate_rk4(Matrix32 state, RK4Deriv2D deriv, float p_step, float n_step) {
 
 	RK4Deriv2D out;
-	out.dp = get_linear_velocity();
-	out.dr = get_angular_velocity();
+	Vector2 start_vel = get_linear_velocity();
 
-	// Reset position
-	_set_transform(state);
+	// Update position
+	Matrix32 mat = Matrix32(state);
+	mat.set_origin(mat.get_origin() + deriv.dp * p_step);
 
-	// Set position derivatives as velocities (that's what velocity is!)
-	set_linear_velocity(deriv.dp);
-	set_angular_velocity(deriv.dr);
+	// Update velocity
+	Vector2 vel = start_vel + deriv.dv * p_step;
+	out.dp = vel;
 
-	// Update position according previous step velocity
-	if(p_step) {
-	    integrate_velocities(p_step);
-	}
+	// Set correct position for sample
+	set_state(Physics2DServer::BODY_STATE_TRANSFORM,mat);
 
-	// Set current step velocity
-	set_linear_velocity(out.dp);
-	set_angular_velocity(deriv.dr);
-
-	// Retrieve applied forces at start+dp*step
-	out.dv = integrate_forces(n_step);
+	// Retrieve applied forces
+	out.dv = integrate_forces(p_step);
 	out.da = 0;
+
+	set_linear_velocity(start_vel);
 
 	return out;
 }

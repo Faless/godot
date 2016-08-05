@@ -33,28 +33,13 @@
 #include "vset.h"
 #include "area_2d_sw.h"
 
-struct Body2DStateRK4 {
-	Vector2 position;
-	Vector2 linear_velocity;
-	float rotation;
-	float angular_velocity;
-}
-
-struct Body2DDerivativeRK4 {
-	Vector2 dp;
-	Vector2 dv;
-	float dr;
-	float da;
-}
-
 class Constraint2DSW;
+
 
 class Body2DSW : public CollisionObject2DSW {
 
 
 	Physics2DServer::BodyMode mode;
-
-	Body2DStateRK4 _last_state;
 
 	Vector2 biased_linear_velocity;
 	real_t biased_angular_velocity;
@@ -159,8 +144,6 @@ public:
 
 	void set_force_integration_callback(ObjectID p_id, const StringName& p_method, const Variant &p_udata=Variant());
 
-	_FORCE_INLINE_ Body2DStateRK4 get_state_rk4() {return _last_state;}
-	void update_state_rk4(Body2DStateRK4 state);
 
 	_FORCE_INLINE_ void add_area(Area2DSW *p_area) {
 		int index = areas.find(AreaCMP(p_area));
@@ -296,8 +279,6 @@ public:
 
 	void integrate_forces(real_t p_step);
 	void integrate_velocities(real_t p_step);
-
-	Body2DDerivativeRK4 integrate_rk4(Body2DStateRK4 state, float p_step, Body2DDerivativeRK4 derivative);
 
 	_FORCE_INLINE_ Vector2 get_motion() const {
 

@@ -42,6 +42,7 @@ class Step2DSW {
 public:
 
 	void step(Space2DSW* p_space,float p_delta,int p_iterations);
+	void stepRK4(Space2DSW* p_space,float p_delta,int p_iterations);
 	Step2DSW();
 };
 

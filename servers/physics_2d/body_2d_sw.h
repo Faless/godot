@@ -33,8 +33,17 @@
 #include "vset.h"
 #include "area_2d_sw.h"
 
-class Constraint2DSW;
+struct RK4Deriv2D {
+	// Position and rotation derivative (velocities)
+	Vector2 dp;
+	float dr;
 
+	// Linear and angular velocity derivative (forces)
+	Vector2 dv;
+	float da;
+};
+
+class Constraint2DSW;
 
 class Body2DSW : public CollisionObject2DSW {
 
@@ -143,7 +152,6 @@ public:
 
 
 	void set_force_integration_callback(ObjectID p_id, const StringName& p_method, const Variant &p_udata=Variant());
-
 
 	_FORCE_INLINE_ void add_area(Area2DSW *p_area) {
 		int index = areas.find(AreaCMP(p_area));
@@ -277,8 +285,10 @@ public:
 	_FORCE_INLINE_ real_t get_angular_damp() const { return angular_damp; }
 
 
-	void integrate_forces(real_t p_step);
+	Vector2 integrate_forces(real_t p_step);
 	void integrate_velocities(real_t p_step);
+
+	RK4Deriv2D integrate_rk4(Matrix32 state, RK4Deriv2D deriv, float p_step, float n_step);
 
 	_FORCE_INLINE_ Vector2 get_motion() const {
 

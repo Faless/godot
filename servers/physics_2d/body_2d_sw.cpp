@@ -413,14 +413,20 @@ void Body2DSW::_compute_area_gravity_and_dampenings(const Area2DSW *p_area) {
 	area_angular_damp += p_area->get_angular_damp();
 }
 
-void Body2DSW::integrate_forces(real_t p_step) {
+Vector2 Body2DSW::integrate_forces(real_t p_step) {
+
+	Vector2 force;
 
 	if (mode==Physics2DServer::BODY_MODE_STATIC)
-		return;
+		return force;
 
 	Area2DSW *def_area = get_space()->get_default_area();
 	// Area2DSW *damp_area = def_area;
-	ERR_FAIL_COND(!def_area);
+
+	if(!def_area) {
+		WARN_PRINT("!def_area");
+		return force;
+	}
 
 	int ac = areas.size();
 	bool stopped = false;
@@ -490,7 +496,7 @@ void Body2DSW::integrate_forces(real_t p_step) {
 		if (!omit_force_integration && !first_integration) {
 			//overriden by direct state query
 
-			Vector2 force=gravity*mass;
+			force=gravity*mass;
 			force+=applied_force;
 			real_t torque=applied_torque;
 
@@ -534,6 +540,7 @@ void Body2DSW::integrate_forces(real_t p_step) {
 	def_area=NULL; // clear the area, so it is set in the next frame
 	contact_count=0;
 
+        return force;
 }
 
 void Body2DSW::integrate_velocities(real_t p_step) {
@@ -566,6 +573,35 @@ void Body2DSW::integrate_velocities(real_t p_step) {
 		new_transform=get_transform();
 
 	//_update_inertia_tensor();
+}
+
+RK4Deriv2D Body2DSW::integrate_rk4(Matrix32 state, RK4Deriv2D deriv, float p_step, float n_step) {
+
+	RK4Deriv2D out;
+	out.dp = get_linear_velocity();
+	out.dr = get_angular_velocity();
+
+	// Reset position
+	_set_transform(state);
+
+	// Set position derivatives as velocities (that's what velocity is!)
+	set_linear_velocity(deriv.dp);
+	set_angular_velocity(deriv.dr);
+
+	// Update position according previous step velocity
+	if(p_step) {
+	    integrate_velocities(p_step);
+	}
+
+	// Set current step velocity
+	set_linear_velocity(out.dp);
+	set_angular_velocity(deriv.dr);
+
+	// Retrieve applied forces at start+dp*step
+	out.dv = integrate_forces(n_step);
+	out.da = 0;
+
+	return out;
 }
 
 

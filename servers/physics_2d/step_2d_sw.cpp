@@ -167,7 +167,9 @@ void Step2DSW::stepRK4(Space2DSW* p_space,float p_delta,int p_iterations) {
 		dv = 1.0/6.0 * (k1.dv + 2.0 * (k2.dv + k3.dv) + k4.dv);
 
 		b->self()->set_linear_velocity(k_start.dp + dv * p_delta);
-		start.set_origin(start.get_origin() + dp*p_delta);
+		//b->self()->set_state(Physics2DServer::BODY_STATE_TRANSFORM,start);
+		//start.set_origin(start.get_origin() + dp*p_delta);
+		start.elements[2]+=dp*p_delta;
 		b->self()->set_state(Physics2DServer::BODY_STATE_TRANSFORM,start);
 
 		b=b->next();
@@ -182,6 +184,7 @@ void Step2DSW::stepRK4(Space2DSW* p_space,float p_delta,int p_iterations) {
 		p_space->set_elapsed_time(Space2DSW::ELAPSED_TIME_INTEGRATE_FORCES,profile_endtime-profile_begtime);
 		profile_begtime=profile_endtime;
 	}
+
 
 	/* GENERATE CONSTRAINT ISLANDS */
 
@@ -295,7 +298,7 @@ void Step2DSW::stepRK4(Space2DSW* p_space,float p_delta,int p_iterations) {
 		Constraint2DSW *ci=constraint_island_list;
 		while(ci) {
 			//iterating each island separatedly improves cache efficiency
-			//_solve_island(ci,p_iterations,p_delta);
+			_solve_island(ci,p_iterations,p_delta);
 			ci=ci->get_island_list_next();
 		}
 	}
@@ -304,6 +307,16 @@ void Step2DSW::stepRK4(Space2DSW* p_space,float p_delta,int p_iterations) {
 		profile_endtime=OS::get_singleton()->get_ticks_usec();
 		p_space->set_elapsed_time(Space2DSW::ELAPSED_TIME_SOLVE_CONSTRAINTS,profile_endtime-profile_begtime);
 		profile_begtime=profile_endtime;
+	}
+
+	/* INTEGRATE VELOCITIES */
+
+	b = body_list->first();
+	while(b) {
+
+		const SelfList<Body2DSW>*n=b->next();
+		//b->self()->integrate_velocities(p_delta);
+		b=n;  // in case it shuts itself down
 	}
 
 	/* SLEEP / WAKE UP ISLANDS */

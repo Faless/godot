@@ -44,7 +44,9 @@ public:
 	public:
 		void add(SelfList<T> *p_elem) {
 
-			ERR_FAIL_COND(p_elem->_root);
+			if(p_elem->_root) {
+				ERR_FAIL_COND(p_elem->_root);
+			}
 
 			p_elem->_root=this;
 			p_elem->_next=_first;

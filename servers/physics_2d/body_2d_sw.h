@@ -43,6 +43,14 @@ struct RK4Deriv2D {
 	float da;
 };
 
+struct RK4Forces2D {
+
+	// Linear and angular velocity derivative (forces)
+	Vector2 force;
+	real_t torque;
+};
+
+
 class Constraint2DSW;
 
 class Body2DSW : public CollisionObject2DSW {
@@ -285,9 +293,10 @@ public:
 	_FORCE_INLINE_ real_t get_angular_damp() const { return angular_damp; }
 
 
-	Vector2 integrate_forces(real_t p_step);
+	RK4Forces2D integrate_forces(real_t p_step);
 	void integrate_velocities(real_t p_step, bool rk4=false);
 
+	RK4Deriv2D get_rk4_state(real_t p_delta);
 	RK4Deriv2D integrate_rk4(Matrix32 state, RK4Deriv2D deriv, float p_step, float n_step);
 
 	_FORCE_INLINE_ Vector2 get_motion() const {

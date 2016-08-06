@@ -413,19 +413,19 @@ void Body2DSW::_compute_area_gravity_and_dampenings(const Area2DSW *p_area) {
 	area_angular_damp += p_area->get_angular_damp();
 }
 
-Vector2 Body2DSW::integrate_forces(real_t p_step) {
+RK4Forces2D Body2DSW::integrate_forces(real_t p_step) {
 
-	Vector2 force;
+	RK4Forces2D out;
 
 	if (mode==Physics2DServer::BODY_MODE_STATIC)
-		return force;
+		return out;
 
 	Area2DSW *def_area = get_space()->get_default_area();
 	// Area2DSW *damp_area = def_area;
 
 	if(!def_area) {
 		WARN_PRINT("!def_area");
-		return force;
+		return out;
 	}
 
 	int ac = areas.size();
@@ -496,7 +496,7 @@ Vector2 Body2DSW::integrate_forces(real_t p_step) {
 		if (!omit_force_integration && !first_integration) {
 			//overriden by direct state query
 
-			force=gravity*mass;
+			Vector2 force=gravity*mass;
 			force+=applied_force;
 			real_t torque=applied_torque;
 
@@ -515,6 +515,9 @@ Vector2 Body2DSW::integrate_forces(real_t p_step) {
 
 			linear_velocity+=_inv_mass * force * p_step;
 			angular_velocity+=_inv_inertia * torque * p_step;
+
+			out.force = force;
+			out.torque = torque;
 		}
 
 		if (continuous_cd_mode!=Physics2DServer::CCD_MODE_DISABLED) {
@@ -540,7 +543,7 @@ Vector2 Body2DSW::integrate_forces(real_t p_step) {
 	def_area=NULL; // clear the area, so it is set in the next frame
 	contact_count=0;
 
-        return force;
+        return out;
 }
 
 void Body2DSW::integrate_velocities(real_t p_step, bool rk4) {
@@ -575,6 +578,20 @@ void Body2DSW::integrate_velocities(real_t p_step, bool rk4) {
 	//_update_inertia_tensor();
 }
 
+RK4Deriv2D Body2DSW::get_rk4_state(real_t p_delta) {
+	RK4Deriv2D state;
+
+	real_t adamp = 1.0 - p_delta * area_angular_damp;
+	real_t vdamp = 1.0 - p_delta * area_linear_damp;
+
+	state.dv = Vector2(0,0);
+	state.da = 0.0;
+	state.dp = linear_velocity * vdamp;
+	state.dr = angular_velocity * adamp;
+
+	return state;
+}
+
 RK4Deriv2D Body2DSW::integrate_rk4(Matrix32 state, RK4Deriv2D deriv, float p_step, float n_step) {
 
 	RK4Deriv2D out;
@@ -601,8 +618,9 @@ RK4Deriv2D Body2DSW::integrate_rk4(Matrix32 state, RK4Deriv2D deriv, float p_ste
 	out.dr += deriv.da * p_step;
 
 	// Retrieve applied forces at start+dp*step
-	out.dv = integrate_forces(0.0);
-	out.da = 0;
+	RK4Forces2D forces = integrate_forces(0.0);
+	out.dv = forces.force;
+	out.da = forces.torque;
 
 	return out;
 }

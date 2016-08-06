@@ -286,7 +286,7 @@ public:
 
 
 	Vector2 integrate_forces(real_t p_step);
-	void integrate_velocities(real_t p_step);
+	void integrate_velocities(real_t p_step, bool rk4=false);
 
 	RK4Deriv2D integrate_rk4(Matrix32 state, RK4Deriv2D deriv, float p_step, float n_step);
 

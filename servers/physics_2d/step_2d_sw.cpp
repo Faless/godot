@@ -170,8 +170,10 @@ void Step2DSW::stepRK4(Space2DSW* p_space,float p_delta,int p_iterations) {
 
 		b->self()->set_linear_velocity(b->self()->get_linear_velocity() + dv * p_delta);
 		//b->self()->set_state(Physics2DServer::BODY_STATE_TRANSFORM,start);
-		start.set_origin(start.get_origin() + dp*p_delta);
-		b->self()->set_state(Physics2DServer::BODY_STATE_TRANSFORM,start);
+		//start.set_origin(start.get_origin() + dp*p_delta);
+		Vector2 pos = start.get_origin() + dp*p_delta;
+		real_t angle = start.get_rotation();
+		b->self()->set_state(Physics2DServer::BODY_STATE_TRANSFORM,Matrix32(angle,pos));
 		b=b->next();
 		active_count++;
 	}

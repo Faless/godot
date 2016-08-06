@@ -581,21 +581,19 @@ RK4Deriv2D Body2DSW::integrate_rk4(Matrix32 state, RK4Deriv2D deriv, float p_ste
 	Vector2 start_vel = get_linear_velocity();
 
 	// Update position
-	Matrix32 mat = Matrix32(state);
-	mat.set_origin(mat.get_origin() + deriv.dp * p_step);
+	Vector2 pos = state.get_origin() + deriv.dp * p_step;
+	real_t angle = state.get_rotation();
 
 	// Update velocity
 	Vector2 vel = start_vel + deriv.dv * p_step;
 	out.dp = vel;
 
 	// Set correct position for sample
-	set_state(Physics2DServer::BODY_STATE_TRANSFORM,mat);
+	set_state(Physics2DServer::BODY_STATE_TRANSFORM,Matrix32(angle,pos));
 
 	// Retrieve applied forces
-	out.dv = integrate_forces(p_step);
+	out.dv = integrate_forces(0.0);
 	out.da = 0;
-
-	set_linear_velocity(start_vel);
 
 	return out;
 }

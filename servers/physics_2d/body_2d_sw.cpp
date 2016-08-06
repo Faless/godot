@@ -543,12 +543,12 @@ Vector2 Body2DSW::integrate_forces(real_t p_step) {
         return force;
 }
 
-void Body2DSW::integrate_velocities(real_t p_step) {
+void Body2DSW::integrate_velocities(real_t p_step, bool rk4) {
 
 	if (mode==Physics2DServer::BODY_MODE_STATIC)
 		return;
 
-	if (fi_callback)
+	if (!rk4 && fi_callback)
 		get_space()->body_add_to_state_query_list(&direct_state_query_list);
 
 	if (mode==Physics2DServer::BODY_MODE_KINEMATIC) {
@@ -582,7 +582,7 @@ RK4Deriv2D Body2DSW::integrate_rk4(Matrix32 state, RK4Deriv2D deriv, float p_ste
 	out.dr = get_angular_velocity();
 
 	// Reset position
-	_set_transform(state);
+	set_state(Physics2DServer::BODY_STATE_TRANSFORM,state);
 
 	// Set position derivatives as velocities (that's what velocity is!)
 	set_linear_velocity(deriv.dp);
@@ -590,15 +590,18 @@ RK4Deriv2D Body2DSW::integrate_rk4(Matrix32 state, RK4Deriv2D deriv, float p_ste
 
 	// Update position according previous step velocity
 	if(p_step) {
-	    integrate_velocities(p_step);
+	    integrate_velocities(p_step, true);
 	}
 
 	// Set current step velocity
 	set_linear_velocity(out.dp);
 	set_angular_velocity(deriv.dr);
 
+	out.dp += deriv.dv * p_step;
+	out.dr += deriv.da * p_step;
+
 	// Retrieve applied forces at start+dp*step
-	out.dv = integrate_forces(n_step);
+	out.dv = integrate_forces(0.0);
 	out.da = 0;
 
 	return out;

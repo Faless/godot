@@ -156,15 +156,18 @@ void Step2DSW::stepRK4(Space2DSW* p_space,float p_delta,int p_iterations) {
 	while(b) {
 		start = b->self()->get_transform();
 
+		k_start.dv = Vector2(0,0);
+		k_start.da = 0.0;
 		k_start.dp = b->self()->get_linear_velocity();
 		k_start.dr = b->self()->get_angular_velocity();
+
 		k1 = b->self()->integrate_rk4(start, k_start, 0.0, p_delta*0.5);
 		k2 = b->self()->integrate_rk4(start, k1, p_delta*0.5, p_delta*0.5);
 		k3 = b->self()->integrate_rk4(start, k2, p_delta*0.5, p_delta);
 		k4 = b->self()->integrate_rk4(start, k3, p_delta, 0.0);
 
 		dp = 1.0/6.0 * (k1.dp + 2.0 * (k2.dp + k3.dp) + k4.dp);
-		dv = 1.0/6.0 * (k1.dv + 2.0 * (k2.dv + k3.dv) + k4.dv );
+		dv = 1.0/6.0 * (k1.dv + 2.0 * (k2.dv + k3.dv) + k4.dv);
 
 		b->self()->set_linear_velocity(k_start.dp + dv * p_delta);
 		start.set_origin(start.get_origin() + dp*p_delta);
@@ -184,7 +187,6 @@ void Step2DSW::stepRK4(Space2DSW* p_space,float p_delta,int p_iterations) {
 	}
 
 	/* GENERATE CONSTRAINT ISLANDS */
-#if 0
 	Body2DSW *island_list=NULL;
 	Constraint2DSW *constraint_island_list=NULL;
 	b = body_list->first();
@@ -312,7 +314,7 @@ void Step2DSW::stepRK4(Space2DSW* p_space,float p_delta,int p_iterations) {
 	while(b) {
 
 		const SelfList<Body2DSW>*n=b->next();
-		b->self()->integrate_velocities(p_delta);
+		b->self()->integrate_velocities(0.0);
 		b=n;  // in case it shuts itself down
 	}
 
@@ -332,7 +334,7 @@ void Step2DSW::stepRK4(Space2DSW* p_space,float p_delta,int p_iterations) {
 		p_space->set_elapsed_time(Space2DSW::ELAPSED_TIME_INTEGRATE_VELOCITIES,profile_endtime-profile_begtime);
 		//profile_begtime=profile_endtime;
 	}
-#endif
+
 	p_space->update();
 	p_space->unlock();
 	_step++;

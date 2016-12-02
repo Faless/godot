@@ -361,9 +361,15 @@ ShaderGLES2::Version* ShaderGLES2::get_current_version() {
 	}
 #endif
 
+	Vector<int> lengths;
+	for (int i = 0; i < strings.size(); ++i) {
+		// Workaround for VirtualBox OpenGL driver bug,
+		// -1 means that string is NULL-terminated
+		lengths.push_back(-1);
+	}
 
 	v.vert_id = glCreateShader(GL_VERTEX_SHADER);
-	glShaderSource(v.vert_id,strings.size(),&strings[0],NULL);
+	glShaderSource(v.vert_id,strings.size(),&strings[0],&lengths[0]);
 	glCompileShader(v.vert_id);
 	
 	GLint status;
@@ -456,8 +462,14 @@ ShaderGLES2::Version* ShaderGLES2::get_current_version() {
 	}
 #endif
 
+	for (int i = lengths.size(); i < strings.size(); ++i) {
+		// Workaround for VirtualBox OpenGL driver bug,
+		// -1 means that string is NULL-terminated
+		lengths.push_back(-1);
+	}
+
 	v.frag_id = glCreateShader(GL_FRAGMENT_SHADER);
-	glShaderSource(v.frag_id,strings.size(),&strings[0],NULL);
+	glShaderSource(v.frag_id,strings.size(),&strings[0],&lengths[0]);
 	glCompileShader(v.frag_id);
 	
 	glGetShaderiv(v.frag_id,GL_COMPILE_STATUS,&status);			

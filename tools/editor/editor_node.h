@@ -148,6 +148,7 @@ private:
 		EDIT_REDO,
 		EDIT_REVERT,
 		TOOLS_ORPHAN_RESOURCES,
+		HELP_SHOW_DIALOG,
 		RESOURCE_NEW,
 		RESOURCE_LOAD,
 		RESOURCE_SAVE,
@@ -250,6 +251,7 @@ private:
 	MenuButton *import_menu;
 	MenuButton *tool_menu;
 	ToolButton *export_button;
+	ToolButton *help_button;
 	ToolButton *prev_scene;
 	MenuButton *object_menu;
 	MenuButton *settings_menu;

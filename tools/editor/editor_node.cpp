@@ -2304,6 +2304,10 @@ void EditorNode::_menu_option_confirm(int p_option,bool p_confirmed) {
 			file_export->popup_centered_ratio();*/
 		} break;
 
+		case HELP_SHOW_DIALOG: {
+			WARN_PRINT("Help requested");
+		} break;
+
 		case FILE_EXPORT_MESH_LIBRARY: {
 
 			if (!editor_data.get_edited_scene_root()) {
@@ -5867,6 +5871,13 @@ EditorNode::EditorNode() {
 	export_button->connect("pressed",this,"_menu_option",varray(FILE_EXPORT_PROJECT));
 	export_button->set_focus_mode(Control::FOCUS_NONE);
 	left_menu_hb->add_child(export_button);
+
+	help_button = memnew( ToolButton );
+	help_button->set_tooltip(TTR("Access tutorials and documentation, search the class reference."));
+	help_button->set_text(TTR("Help"));
+	help_button->connect("pressed",this,"_menu_option",varray(HELP_SHOW_DIALOG));
+	help_button->set_focus_mode(Control::FOCUS_NONE);
+	left_menu_hb->add_child(help_button);
 
 	menu_hb->add_spacer();
 

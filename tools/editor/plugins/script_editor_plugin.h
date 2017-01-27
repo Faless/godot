@@ -166,7 +166,6 @@ class ScriptEditor : public VBoxContainer {
 	Button *help_search;
 	Button *site_search;
 	Button *class_search;
-	EditorHelpSearch *help_search_dialog;
 
 	ItemList *script_list;
 	HSplitContainer *script_split;

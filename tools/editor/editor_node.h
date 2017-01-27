@@ -76,6 +76,7 @@
 #include "editor_reimport_dialog.h"
 #include "tools/editor/editor_plugin.h"
 #include "tools/editor/editor_name_dialog.h"
+#include "tools/editor/editor_help.h"
 
 #include "fileserver/editor_file_server.h"
 #include "editor_resource_preview.h"
@@ -252,6 +253,7 @@ private:
 	MenuButton *tool_menu;
 	ToolButton *export_button;
 	ToolButton *help_button;
+	EditorHelpSearch *help_dialog;
 	ToolButton *prev_scene;
 	MenuButton *object_menu;
 	MenuButton *settings_menu;
@@ -583,6 +585,8 @@ private:
 
 	void _toggle_distraction_free_mode();
 
+	void _open_doc(String p_string);
+
 	enum {
 		MAX_INIT_CALLBACKS=128,
 		MAX_BUILD_CALLBACKS=128
@@ -759,6 +763,8 @@ public:
 
 	ToolButton *get_pause_button() { return pause_button; }
 
+	void show_help_dialog() { help_dialog->popup(); }
+	void show_help_dialog(String p_text) { help_dialog->popup(p_text); }
 
 	ToolButton* add_bottom_panel_item(String p_text,Control *p_item);
 	bool are_bottom_panels_hidden() const;

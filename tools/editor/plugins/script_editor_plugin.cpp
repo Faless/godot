@@ -797,7 +797,7 @@ void ScriptEditor::_menu_option(int p_option) {
 		} break;
 		case SEARCH_HELP: {
 
-			help_search_dialog->popup();
+			EditorNode::get_singleton()->show_help_dialog();
 		} break;
 		case SEARCH_CLASSES: {
 
@@ -2015,7 +2015,7 @@ void ScriptEditor::set_live_auto_reload_running_scripts(bool p_enabled) {
 }
 
 void ScriptEditor::_help_search(String p_text) {
-	help_search_dialog->popup(p_text);
+	EditorNode::get_singleton()->show_help_dialog(p_text);
 }
 
 void ScriptEditor::_open_script_request(const String& p_path) {
@@ -2070,7 +2070,7 @@ void ScriptEditor::_bind_methods() {
 	ClassDB::bind_method("_script_split_dragged",&ScriptEditor::_script_split_dragged);
 	ClassDB::bind_method("_help_class_open",&ScriptEditor::_help_class_open);
 	ClassDB::bind_method("_help_class_goto",&ScriptEditor::_help_class_goto);
-	ClassDB::bind_method("_request_help",&ScriptEditor::_help_class_open);
+	ClassDB::bind_method("_request_help",&ScriptEditor::_help_class_goto);
 	ClassDB::bind_method("_history_forward",&ScriptEditor::_history_forward);
 	ClassDB::bind_method("_history_back",&ScriptEditor::_history_back);
 	ClassDB::bind_method("_live_auto_reload_running_scripts",&ScriptEditor::_live_auto_reload_running_scripts);
@@ -2294,11 +2294,6 @@ ScriptEditor::ScriptEditor(EditorNode *p_editor) {
 	add_child(autosave_timer);
 
 	grab_focus_block=false;
-
-	help_search_dialog = memnew( EditorHelpSearch );
-	add_child(help_search_dialog);
-	help_search_dialog->connect("go_to_help",this,"_help_class_goto");
-
 
 	help_index = memnew( EditorHelpIndex );
 	add_child(help_index);

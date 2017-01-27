@@ -2305,7 +2305,7 @@ void EditorNode::_menu_option_confirm(int p_option,bool p_confirmed) {
 		} break;
 
 		case HELP_SHOW_DIALOG: {
-			WARN_PRINT("Help requested");
+			show_help_dialog();
 		} break;
 
 		case FILE_EXPORT_MESH_LIBRARY: {
@@ -2592,7 +2592,7 @@ void EditorNode::_menu_option_confirm(int p_option,bool p_confirmed) {
 
 			if (current) {
 				_editor_select(EDITOR_SCRIPT);
-				emit_signal("request_help",current->get_class());
+				emit_signal("request_help","class_name:" + current->get_class());
 			}
 
 
@@ -4890,6 +4890,10 @@ void EditorNode::_clear_search_box() {
 	property_editor->update_tree();
 }
 
+void EditorNode::_open_doc(String p_string) {
+	emit_signal("request_help", p_string);
+}
+
 ToolButton *EditorNode::add_bottom_panel_item(String p_text,Control *p_item) {
 
 	ToolButton *tb = memnew( ToolButton );
@@ -5352,6 +5356,7 @@ void EditorNode::_bind_methods() {
 	ClassDB::bind_method("_clear_undo_history",&EditorNode::_clear_undo_history);
 	ClassDB::bind_method("_dropped_files",&EditorNode::_dropped_files);
 	ClassDB::bind_method("_toggle_distraction_free_mode",&EditorNode::_toggle_distraction_free_mode);
+	ClassDB::bind_method("_open_doc",&EditorNode::_open_doc);
 
 
 
@@ -5878,6 +5883,10 @@ EditorNode::EditorNode() {
 	help_button->connect("pressed",this,"_menu_option",varray(HELP_SHOW_DIALOG));
 	help_button->set_focus_mode(Control::FOCUS_NONE);
 	left_menu_hb->add_child(help_button);
+
+	help_dialog = memnew( EditorHelpSearch );
+	gui_base->add_child(help_dialog);
+	help_dialog->connect("go_to_help",this,"_open_doc");
 
 	menu_hb->add_spacer();
 

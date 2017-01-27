@@ -49,6 +49,11 @@ class EditorHelpSearch : public ConfirmationDialog {
 
 	GDCLASS(EditorHelpSearch,ConfirmationDialog )
 
+	enum HelpPane {
+		PANE_CLASS,
+		PANE_FULL,
+	};
+
 	EditorNode *editor;
 	LineEdit *search_box;
 	Tree *search_options;
@@ -63,7 +68,7 @@ class EditorHelpSearch : public ConfirmationDialog {
 
 	void _sbox_input(const InputEvent& p_ie);
 
-	void _confirmed();
+	void _confirmed(int p_name);
 	void _text_changed(const String& p_newtext);
 
 

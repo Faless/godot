@@ -101,7 +101,7 @@ void EditorHelpSearch::_add_type(const String& p_type,HashMap<String,TreeItem*>&
 	}
 
 	TreeItem *item = class_list->create_item(parent);
-	item->set_metadata(0,p_type);
+	item->set_metadata(0,"class_name:" + p_type);
 	item->set_tooltip(0,EditorHelp::get_doc_data()->class_list[p_type].brief_description);
 	item->set_text(0,p_type);
 
@@ -359,9 +359,20 @@ void EditorHelpSearch::_update_search() {
 
 }
 
-void EditorHelpSearch::_confirmed() {
+void EditorHelpSearch::_confirmed(int p_pane) {
 
-	TreeItem *ti = search_options->get_selected();
+	TreeItem *ti;
+	switch(p_pane) {
+
+		case PANE_CLASS: {
+			ti = class_list->get_selected();
+		} break;
+
+		case PANE_FULL: {
+			ti = search_options->get_selected();
+		} break;
+	}
+
 	if (!ti)
 		return;
 
@@ -376,7 +387,7 @@ void EditorHelpSearch::_notification(int p_what) {
 
 	if (p_what==NOTIFICATION_ENTER_TREE) {
 
-		connect("confirmed",this,"_confirmed");
+		connect("confirmed",this,"_confirmed",varray(PANE_FULL));
 		_update_search();
 	}
 
@@ -438,7 +449,7 @@ EditorHelpSearch::EditorHelpSearch() {
 	ch_vbc->add_margin_child(TTR("Class List:")+" ", class_list, true);
 	class_list->set_v_size_flags(SIZE_EXPAND_FILL);
 
-	//class_list->connect("item_activated",this,"_tree_item_selected");
+	class_list->connect("item_activated",this,"_confirmed",varray(PANE_CLASS));
 
 	// Full Reference
 	VBoxContainer *fh_vbc = memnew( VBoxContainer );
@@ -452,7 +463,7 @@ EditorHelpSearch::EditorHelpSearch() {
 	get_ok()->set_disabled(true);
 	register_text_enter(search_box);
 	set_hide_on_ok(false);
-	search_options->connect("item_activated",this,"_confirmed");
+	search_options->connect("item_activated",this,"_confirmed",varray(PANE_FULL));
 	set_title(TTR("Search Help"));
 
 	//search_options->set_hide_root(true);

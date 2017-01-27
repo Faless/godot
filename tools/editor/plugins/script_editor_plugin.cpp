@@ -810,10 +810,10 @@ void ScriptEditor::_menu_option(int p_option) {
 				}
 			}
 
-			help_index->popup();
+			EditorNode::get_singleton()->show_help_dialog();
 
-			if (current!="") {
-				help_index->call_deferred("select_class",current);
+			if (current!="") { // Where is this used? I never saw this working, disable for now
+				//help_index->call_deferred("select_class",current);
 			}
 		} break;
 		case SEARCH_WEBSITE: {
@@ -2294,10 +2294,6 @@ ScriptEditor::ScriptEditor(EditorNode *p_editor) {
 	add_child(autosave_timer);
 
 	grab_focus_block=false;
-
-	help_index = memnew( EditorHelpIndex );
-	add_child(help_index);
-	help_index->connect("open_class",this,"_help_class_open");
 
 	history_pos=-1;
 	//debugger_gui->hide();

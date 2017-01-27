@@ -75,7 +75,104 @@ void EditorHelpSearch::_sbox_input(const InputEvent& p_ie) {
 
 }
 
+void EditorHelpSearch::_add_type(const String& p_type,HashMap<String,TreeItem*>& p_types,TreeItem *p_root) {
+
+	if (p_types.has(p_type))
+		return;
+	/*
+	if (!ClassDB::is_type(p_type,base) || p_type==base)
+		return;
+	*/
+
+	String inherits=EditorHelp::get_doc_data()->class_list[p_type].inherits;
+
+	TreeItem *parent=p_root;
+
+
+	if (inherits.length()) {
+
+		if (!p_types.has(inherits)) {
+
+			_add_type(inherits,p_types,p_root);
+		}
+
+		if (p_types.has(inherits) )
+			parent=p_types[inherits];
+	}
+
+	TreeItem *item = class_list->create_item(parent);
+	item->set_metadata(0,p_type);
+	item->set_tooltip(0,EditorHelp::get_doc_data()->class_list[p_type].brief_description);
+	item->set_text(0,p_type);
+
+
+	if (has_icon(p_type,"EditorIcons")) {
+
+		item->set_icon(0, get_icon(p_type,"EditorIcons"));
+	}
+
+	p_types[p_type]=item;
+}
+
+
+void EditorHelpSearch::_update_class_list() {
+
+	class_list->clear();
+	tree_item_map.clear();
+	TreeItem *root = class_list->create_item();
+	class_list->set_hide_root(true);
+
+	String filter = search_box->get_text().strip_edges();
+	String to_select = "";
+
+	for(Map<String,DocData::ClassDoc>::Element *E=EditorHelp::get_doc_data()->class_list.front();E;E=E->next()) {
+
+		if (filter == "") {
+			_add_type(E->key(),tree_item_map,root);
+		} else {
+
+			bool found = false;
+			String type = E->key();
+
+			while(type != "") {
+				if (filter.is_subsequence_ofi(type)) {
+
+					if (to_select.empty()) {
+						to_select = type;
+					}
+
+					found=true;
+					break;
+				}
+
+				type = EditorHelp::get_doc_data()->class_list[type].inherits;
+			}
+
+			if (found) {
+				_add_type(E->key(),tree_item_map,root);
+			}
+		}
+	}
+
+	if (tree_item_map.has(filter)) {
+		select_class(filter);
+	} else if (to_select != "") {
+		select_class(to_select);
+	}
+}
+
+void EditorHelpSearch::select_class(const String& p_class) {
+
+	if (!tree_item_map.has(p_class))
+		return;
+	tree_item_map[p_class]->select(0);
+	class_list->ensure_cursor_is_visible();
+}
+
 void EditorHelpSearch::_update_search() {
+
+	// Update class hierarchy tree
+	_update_class_list();
 
 	search_options->clear();
 	search_options->set_hide_root(true);
@@ -313,6 +410,7 @@ EditorHelpSearch::EditorHelpSearch() {
 	VBoxContainer *vbc = memnew( VBoxContainer );
 	add_child(vbc);
 
+	// Search box
 	HBoxContainer *sb_hb = memnew( HBoxContainer);
 	search_box = memnew( LineEdit );
 	sb_hb->add_child(search_box);
@@ -323,8 +421,33 @@ EditorHelpSearch::EditorHelpSearch() {
 	vbc->add_margin_child(TTR("Search:"),sb_hb);
 	search_box->connect("text_changed",this,"_text_changed");
 	search_box->connect("gui_input",this,"_sbox_input");
+
+	// Trees container
+	HBoxContainer *tree_hb = memnew( HBoxContainer );
+	tree_hb->set_h_size_flags(SIZE_EXPAND_FILL);
+	tree_hb->set_v_size_flags(SIZE_EXPAND_FILL);
+	vbc->add_child(tree_hb);
+
+	// Class hierarchy Tree
+	VBoxContainer *ch_vbc = memnew( VBoxContainer );
+	ch_vbc->set_h_size_flags(SIZE_EXPAND_FILL);
+	ch_vbc->set_v_size_flags(SIZE_EXPAND_FILL);
+	tree_hb->add_child(ch_vbc);
+
+	class_list = memnew( Tree );
+	ch_vbc->add_margin_child(TTR("Class List:")+" ", class_list, true);
+	class_list->set_v_size_flags(SIZE_EXPAND_FILL);
+
+	//class_list->connect("item_activated",this,"_tree_item_selected");
+
+	// Full Reference
+	VBoxContainer *fh_vbc = memnew( VBoxContainer );
+	fh_vbc->set_h_size_flags(SIZE_EXPAND_FILL);
+	fh_vbc->set_v_size_flags(SIZE_EXPAND_FILL);
+	tree_hb->add_child(fh_vbc);
+
 	search_options = memnew( Tree );
-	vbc->add_margin_child(TTR("Matches:"),search_options,true);
+	fh_vbc->add_margin_child(TTR("Matches:"),search_options,true);
 	get_ok()->set_text(TTR("Open"));
 	get_ok()->set_disabled(true);
 	register_text_enter(search_box);
@@ -343,6 +466,7 @@ EditorHelpSearch::EditorHelpSearch() {
 
 
 
+#if 0
 void EditorHelpIndex::add_type(const String& p_type,HashMap<String,TreeItem*>& p_types,TreeItem *p_root) {
 
 	if (p_types.has(p_type))
@@ -527,6 +651,7 @@ EditorHelpIndex::EditorHelpIndex() {
 	get_ok()->set_text(TTR("Open"));
 	set_title(TTR("Search Classes"));
 }
+#endif
 
 
 

@@ -201,8 +201,6 @@ class ScriptEditor : public VBoxContainer {
 	int history_pos;
 
 
-	EditorHelpIndex *help_index;
-
 	void _tab_changed(int p_which);
 	void _menu_option(int p_optin);
 

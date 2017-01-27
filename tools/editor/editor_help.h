@@ -52,8 +52,13 @@ class EditorHelpSearch : public ConfirmationDialog {
 	EditorNode *editor;
 	LineEdit *search_box;
 	Tree *search_options;
+	Tree *class_list;
+	HashMap<String,TreeItem*> tree_item_map;
 	String base_type;
 
+	void select_class(const String& p_class);
+	void _add_type(const String& p_type,HashMap<String,TreeItem*>& p_types,TreeItem *p_root);
+	void _update_class_list();
 	void _update_search();
 
 	void _sbox_input(const InputEvent& p_ie);

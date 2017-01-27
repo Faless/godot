@@ -76,7 +76,6 @@
 #include "editor_reimport_dialog.h"
 #include "tools/editor/editor_plugin.h"
 #include "tools/editor/editor_name_dialog.h"
-#include "tools/editor/editor_help.h"
 
 #include "fileserver/editor_file_server.h"
 #include "editor_resource_preview.h"
@@ -99,6 +98,7 @@ typedef void (*EditorPluginInitializeCallback)();
 typedef void (*EditorBuildCallback)();
 
 class EditorPluginList;
+class EditorHelpSearch;
 
 class EditorNode : public Node {
 
@@ -728,6 +728,8 @@ public:
 
 	void show_warning(const String& p_text,const String& p_title="Warning!");
 
+	void show_help_dialog();
+	void show_help_dialog(String p_text);
 
 	Error export_platform(const String& p_platform, const String& p_path, bool p_debug,const String& p_password,bool p_quit_after=false);
 
@@ -762,9 +764,6 @@ public:
 	bool is_exiting() const { return exiting; }
 
 	ToolButton *get_pause_button() { return pause_button; }
-
-	void show_help_dialog() { help_dialog->popup(); }
-	void show_help_dialog(String p_text) { help_dialog->popup(p_text); }
 
 	ToolButton* add_bottom_panel_item(String p_text,Control *p_item);
 	bool are_bottom_panels_hidden() const;

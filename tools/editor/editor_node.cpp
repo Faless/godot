@@ -117,6 +117,7 @@
 #include "editor_initialize_ssl.h"
 #include "editor_audio_buses.h"
 #include "script_editor_debugger.h"
+#include "editor_help.h"
 
 EditorNode *EditorNode::singleton=NULL;
 
@@ -649,7 +650,6 @@ void EditorNode::save_resource_as(const Ref<Resource>& p_resource,const String& 
 	file->popup_centered_ratio();
 	file->set_title(TTR("Save Resource As.."));
 }
-
 
 void EditorNode::_menu_option(int p_option) {
 
@@ -4275,6 +4275,15 @@ void EditorNode::show_warning(const String& p_text, const String &p_title) {
 	warning->set_text(p_text);
 	warning->set_title(p_title);
 	warning->popup_centered_minsize();
+}
+
+void EditorNode::show_help_dialog() {
+
+	help_dialog->popup();
+}
+void EditorNode::show_help_dialog(String p_text) {
+
+	help_dialog->popup(p_text);
 }
 
 void EditorNode::_dock_select_input(const InputEvent& p_input) {

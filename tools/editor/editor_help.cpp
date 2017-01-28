@@ -426,9 +426,6 @@ EditorHelpSearch::EditorHelpSearch() {
 	search_box = memnew( LineEdit );
 	sb_hb->add_child(search_box);
 	search_box->set_h_size_flags(SIZE_EXPAND_FILL);
-	Button *sb = memnew( Button(TTR("Search")));
-	sb->connect("pressed",this,"_update_search");
-	sb_hb->add_child(sb);
 	vbc->add_margin_child(TTR("Search:"),sb_hb);
 	search_box->connect("text_changed",this,"_text_changed");
 	search_box->connect("gui_input",this,"_sbox_input");
@@ -447,8 +444,6 @@ EditorHelpSearch::EditorHelpSearch() {
 
 	class_list = memnew( Tree );
 	ch_vbc->add_margin_child(TTR("Class List:")+" ", class_list, true);
-	class_list->set_v_size_flags(SIZE_EXPAND_FILL);
-
 	class_list->connect("item_activated",this,"_confirmed",varray(PANE_CLASS));
 
 	// Full Reference
@@ -459,12 +454,20 @@ EditorHelpSearch::EditorHelpSearch() {
 
 	search_options = memnew( Tree );
 	fh_vbc->add_margin_child(TTR("Matches:"),search_options,true);
+	search_options->connect("item_activated",this,"_confirmed",varray(PANE_FULL));
+
+	// Focus settings
+	class_list->set_focus_neighbour(MARGIN_RIGHT,search_options->get_path());
+	class_list->set_focus_neighbour(MARGIN_TOP,search_box->get_path());
+	search_options->set_focus_neighbour(MARGIN_LEFT,class_list->get_path());
+	search_options->set_focus_neighbour(MARGIN_TOP,search_box->get_path());
+
+	// Window options
+	set_title(TTR("Search Help"));
 	get_ok()->set_text(TTR("Open"));
 	get_ok()->set_disabled(true);
 	register_text_enter(search_box);
 	set_hide_on_ok(false);
-	search_options->connect("item_activated",this,"_confirmed",varray(PANE_FULL));
-	set_title(TTR("Search Help"));
 
 	//search_options->set_hide_root(true);
 

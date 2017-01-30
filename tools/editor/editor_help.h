@@ -51,7 +51,8 @@ class EditorHelpSearch : public ConfirmationDialog {
 
 	enum HelpPane {
 		PANE_CLASS,
-		PANE_FULL,
+		PANE_REFERENCE,
+		PANE_SELECTED,
 	};
 
 	EditorNode *editor;
@@ -59,6 +60,7 @@ class EditorHelpSearch : public ConfirmationDialog {
 	Tree *search_options;
 	Tree *class_list;
 	HashMap<String,TreeItem*> tree_item_map;
+	HelpPane selected_pane;
 	String base_type;
 
 	void select_class(const String& p_class);

@@ -362,14 +362,22 @@ void EditorHelpSearch::_update_search() {
 void EditorHelpSearch::_confirmed(int p_pane) {
 
 	TreeItem *ti;
-	switch(p_pane) {
+	HelpPane pane = p_pane;
+	if (pane==PANE_SELECTED)
+		pane = selected_pane;
+
+	switch(pane) {
 
 		case PANE_CLASS: {
 			ti = class_list->get_selected();
 		} break;
 
-		case PANE_FULL: {
+		case PANE_REFERENCE: {
 			ti = search_options->get_selected();
+		} break;
+
+		default: {
+
 		} break;
 	}
 
@@ -387,7 +395,7 @@ void EditorHelpSearch::_notification(int p_what) {
 
 	if (p_what==NOTIFICATION_ENTER_TREE) {
 
-		connect("confirmed",this,"_confirmed",varray(PANE_FULL));
+		connect("confirmed",this,"_confirmed",varray(PANE_SELECTED));
 		_update_search();
 	}
 
@@ -454,7 +462,7 @@ EditorHelpSearch::EditorHelpSearch() {
 
 	search_options = memnew( Tree );
 	fh_vbc->add_margin_child(TTR("Matches:"),search_options,true);
-	search_options->connect("item_activated",this,"_confirmed",varray(PANE_FULL));
+	search_options->connect("item_activated",this,"_confirmed",varray(PANE_REFERENCE));
 
 	// Focus settings
 	class_list->set_focus_neighbour(MARGIN_RIGHT,search_options->get_path());

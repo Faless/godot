@@ -355,7 +355,7 @@ void EditorHelpSearch::_update_search() {
 
 	}
 
-	get_ok()->set_disabled(root->get_children()==NULL);
+	//get_ok()->set_disabled(root->get_children()==NULL);
 
 }
 
@@ -428,7 +428,7 @@ EditorHelpSearch::EditorHelpSearch() {
 	search_box->set_h_size_flags(SIZE_EXPAND_FILL);
 	vbc->add_margin_child(TTR("Search:"),sb_hb);
 	search_box->connect("text_changed",this,"_text_changed");
-	search_box->connect("gui_input",this,"_sbox_input");
+	//search_box->connect("gui_input",this,"_sbox_input");
 
 	// Trees container
 	HBoxContainer *tree_hb = memnew( HBoxContainer );
@@ -459,14 +459,21 @@ EditorHelpSearch::EditorHelpSearch() {
 	// Focus settings
 	class_list->set_focus_neighbour(MARGIN_RIGHT,search_options->get_path());
 	class_list->set_focus_neighbour(MARGIN_TOP,search_box->get_path());
+	class_list->set_focus_neighbour(MARGIN_LEFT,search_box->get_path());
 	search_options->set_focus_neighbour(MARGIN_LEFT,class_list->get_path());
 	search_options->set_focus_neighbour(MARGIN_TOP,search_box->get_path());
+	search_options->set_focus_neighbour(MARGIN_RIGHT,search_box->get_path());
+	search_box->set_focus_neighbour(MARGIN_BOTTOM,search_options->get_path());
 
 	// Window options
 	set_title(TTR("Search Help"));
-	get_ok()->set_text(TTR("Open"));
-	get_ok()->set_disabled(true);
-	register_text_enter(search_box);
+
+	// Disable buttons for now
+	get_ok()->hide();
+	get_cancel()->hide();
+	//get_ok()->set_text(TTR("Open"));
+	//get_ok()->set_disabled(true);
+	//register_text_enter(search_box);
 	set_hide_on_ok(false);
 
 	//search_options->set_hide_root(true);

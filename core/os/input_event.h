@@ -175,6 +175,7 @@ struct InputEventKey {
 	uint32_t get_scancode_with_modifiers() const;
 
 	bool echo; /// true if this is an echo key
+	bool mod_ignore;
 };
 
 struct InputEventMouse {

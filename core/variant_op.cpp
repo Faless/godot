@@ -1599,6 +1599,14 @@ void Variant::set(const Variant &p_index, const Variant &p_value, bool *r_valid)
 					valid = true;
 					ie.key.pressed = p_value;
 					return;
+				} else if (str == "mod_ignore") {
+
+					if (p_value.type != Variant::INT && p_value.type != Variant::REAL && p_value.type != Variant::BOOL)
+						return;
+
+					valid = true;
+					ie.key.mod_ignore = p_value;
+					return;
 				} else if (str == "scancode") {
 
 					if (p_value.type != Variant::INT && p_value.type != Variant::REAL)
@@ -2312,6 +2320,9 @@ Variant Variant::get(const Variant &p_index, bool *r_valid) const {
 				if (str == "pressed") {
 					valid = true;
 					return ie.key.pressed;
+				} else if (str == "mod_ignore") {
+					valid = true;
+					return ie.key.mod_ignore;
 				} else if (str == "scancode") {
 					valid = true;
 					return ie.key.scancode;
@@ -2851,6 +2862,7 @@ void Variant::get_property_list(List<PropertyInfo> *p_list) const {
 
 				p_list->push_back(PropertyInfo(Variant::BOOL, "pressed"));
 				p_list->push_back(PropertyInfo(Variant::BOOL, "echo"));
+				p_list->push_back(PropertyInfo(Variant::INT, "mod_ignore"));
 				p_list->push_back(PropertyInfo(Variant::INT, "scancode"));
 				p_list->push_back(PropertyInfo(Variant::INT, "unicode"));
 			}

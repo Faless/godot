@@ -987,6 +987,8 @@ Error VariantParser::parse_value(Token &token, Variant &value, Stream *p_stream,
 						ie.key.mod.shift = true;
 					if (mods.findn("M") != -1)
 						ie.key.mod.meta = true;
+					if (mods.findn("I") != -1)
+						ie.key.mod_ignore = true;
 
 					get_token(p_stream, token, line, r_err_str);
 					if (token.type != TK_PARENTHESIS_CLOSE) {
@@ -1974,6 +1976,8 @@ Error VariantWriter::write(const Variant &p_variant, StoreStringFunc p_store_str
 						mod += "C";
 					if (ev.key.mod.meta)
 						mod += "M";
+					if (ev.key.mod_ignore)
+						mod += "I";
 
 					if (mod != String())
 						str += "," + mod;

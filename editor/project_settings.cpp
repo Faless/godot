@@ -481,12 +481,13 @@ void ProjectSettings::_update_actions() {
 		TreeItem *item = input_editor->create_item(root);
 		//item->set_cell_mode(0,TreeItem::CELL_MODE_CHECK);
 		item->set_text(0, name);
-		item->add_button(0, get_icon("Add", "EditorIcons"), 1);
+		item->add_button(1, get_icon("Add", "EditorIcons"), 1);
 		if (!GlobalConfig::get_singleton()->get_input_presets().find(pi.name)) {
-			item->add_button(0, get_icon("Remove", "EditorIcons"), 2);
+			item->add_button(1, get_icon("Remove", "EditorIcons"), 2);
 			item->set_editable(0, true);
 		}
 		item->set_custom_bg_color(0, get_color("prop_subsection", "Editor"));
+		item->set_custom_bg_color(1, get_color("prop_subsection", "Editor"));
 		//item->set_checked(0,pi.usage&PROPERTY_USAGE_CHECKED);
 
 		Array actions = GlobalConfig::get_singleton()->get(pi.name);
@@ -515,6 +516,10 @@ void ProjectSettings::_update_actions() {
 
 					action->set_text(0, str);
 					action->set_icon(0, get_icon("Keyboard", "EditorIcons"));
+					action->set_cell_mode(1, TreeItem::CELL_MODE_CHECK);
+					action->set_editable(1, true);
+					action->set_text(1, TTR("Ignore other modifiers"));
+					action->set_checked(1, ie.key.mod_ignore);
 
 				} break;
 				case InputEvent::JOYPAD_BUTTON: {
@@ -553,7 +558,7 @@ void ProjectSettings::_update_actions() {
 					action->set_icon(0, get_icon("JoyAxis", "EditorIcons"));
 				} break;
 			}
-			action->add_button(0, get_icon("Remove", "EditorIcons"), 2);
+			action->add_button(1, get_icon("Remove", "EditorIcons"), 2);
 			action->set_metadata(0, i);
 			action->set_meta("__input", ie);
 		}
@@ -1346,6 +1351,7 @@ ProjectSettings::ProjectSettings(EditorData *p_data) {
 
 	input_editor = memnew(Tree);
 	vbc->add_child(input_editor);
+	input_editor->set_columns(2);
 	input_editor->set_v_size_flags(SIZE_EXPAND_FILL);
 	input_editor->connect("item_edited", this, "_action_edited");
 	input_editor->connect("cell_selected", this, "_action_selected");

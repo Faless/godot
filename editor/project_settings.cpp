@@ -124,53 +124,81 @@ void ProjectSettings::_action_edited() {
 	if (!ti)
 		return;
 
-	String new_name = ti->get_text(0);
-	String old_name = add_at.substr(add_at.find("/") + 1, add_at.length());
+	if (ti->get_parent() == input_editor->get_root()) {
+		String new_name = ti->get_text(0);
+		String old_name = add_at.substr(add_at.find("/") + 1, add_at.length());
 
-	if (new_name == old_name)
-		return;
+		if (new_name == old_name)
+			return;
 
-	if (new_name.find("/") != -1 || new_name.find(":") != -1 || new_name == "") {
+		if (new_name.find("/") != -1 || new_name.find(":") != -1 || new_name == "") {
 
-		ti->set_text(0, old_name);
-		add_at = "input/" + old_name;
+			ti->set_text(0, old_name);
+			add_at = "input/" + old_name;
 
-		message->set_text(TTR("Invalid action (anything goes but '/' or ':')."));
-		message->popup_centered(Size2(300, 100));
-		return;
+			message->set_text(TTR("Invalid action (anything goes but '/' or ':')."));
+			message->popup_centered(Size2(300, 100));
+			return;
+		}
+
+		String action_prop = "input/" + new_name;
+
+		if (GlobalConfig::get_singleton()->has(action_prop)) {
+
+			ti->set_text(0, old_name);
+			add_at = "input/" + old_name;
+
+			message->set_text(vformat(TTR("Action '%s' already exists!"), new_name));
+			message->popup_centered(Size2(300, 100));
+			return;
+		}
+
+		int order = GlobalConfig::get_singleton()->get_order(add_at);
+		Array va = GlobalConfig::get_singleton()->get(add_at);
+
+		setting = true;
+		undo_redo->create_action(TTR("Rename Input Action Event"));
+		undo_redo->add_do_method(GlobalConfig::get_singleton(), "clear", add_at);
+		undo_redo->add_do_method(GlobalConfig::get_singleton(), "set", action_prop, va);
+		undo_redo->add_do_method(GlobalConfig::get_singleton(), "set_order", action_prop, order);
+		undo_redo->add_undo_method(GlobalConfig::get_singleton(), "clear", action_prop);
+		undo_redo->add_undo_method(GlobalConfig::get_singleton(), "set", add_at, va);
+		undo_redo->add_undo_method(GlobalConfig::get_singleton(), "set_order", add_at, order);
+		undo_redo->add_do_method(this, "_update_actions");
+		undo_redo->add_undo_method(this, "_update_actions");
+		undo_redo->add_do_method(this, "_settings_changed");
+		undo_redo->add_undo_method(this, "_settings_changed");
+		undo_redo->commit_action();
+		setting = false;
+
+		add_at = action_prop;
+	} else {
+		//change mod_ignore option
+		String name = "input/" + ti->get_parent()->get_text(0);
+		Array old_val = GlobalConfig::get_singleton()->get(name);
+		Array arr;
+		int idx = ti->get_metadata(0);
+
+		ERR_FAIL_INDEX(idx, old_val.size());
+		ERR_FAIL_COND(((InputEvent)old_val[idx]).type != InputEvent::KEY);
+
+		arr.resize(old_val.size());
+		for (int i = 0; i < arr.size(); i++) {
+			arr[i] = old_val[i];
+		}
+		InputEvent evt = arr[idx];
+		evt.key.mod_ignore = ti->is_checked(1);
+		arr[idx] = evt;
+
+		undo_redo->create_action(TTR("Edit Input Action Event"));
+		undo_redo->add_do_method(GlobalConfig::get_singleton(), "set", name, arr);
+		undo_redo->add_undo_method(GlobalConfig::get_singleton(), "set", name, old_val);
+		undo_redo->add_do_method(this, "_update_actions");
+		undo_redo->add_undo_method(this, "_update_actions");
+		undo_redo->add_do_method(this, "_settings_changed");
+		undo_redo->add_undo_method(this, "_settings_changed");
+		undo_redo->commit_action();
 	}
-
-	String action_prop = "input/" + new_name;
-
-	if (GlobalConfig::get_singleton()->has(action_prop)) {
-
-		ti->set_text(0, old_name);
-		add_at = "input/" + old_name;
-
-		message->set_text(vformat(TTR("Action '%s' already exists!"), new_name));
-		message->popup_centered(Size2(300, 100));
-		return;
-	}
-
-	int order = GlobalConfig::get_singleton()->get_order(add_at);
-	Array va = GlobalConfig::get_singleton()->get(add_at);
-
-	setting = true;
-	undo_redo->create_action(TTR("Rename Input Action Event"));
-	undo_redo->add_do_method(GlobalConfig::get_singleton(), "clear", add_at);
-	undo_redo->add_do_method(GlobalConfig::get_singleton(), "set", action_prop, va);
-	undo_redo->add_do_method(GlobalConfig::get_singleton(), "set_order", action_prop, order);
-	undo_redo->add_undo_method(GlobalConfig::get_singleton(), "clear", action_prop);
-	undo_redo->add_undo_method(GlobalConfig::get_singleton(), "set", add_at, va);
-	undo_redo->add_undo_method(GlobalConfig::get_singleton(), "set_order", add_at, order);
-	undo_redo->add_do_method(this, "_update_actions");
-	undo_redo->add_undo_method(this, "_update_actions");
-	undo_redo->add_do_method(this, "_settings_changed");
-	undo_redo->add_undo_method(this, "_settings_changed");
-	undo_redo->commit_action();
-	setting = false;
-
-	add_at = action_prop;
 }
 
 void ProjectSettings::_device_input_add() {
@@ -1353,7 +1381,7 @@ ProjectSettings::ProjectSettings(EditorData *p_data) {
 	vbc->add_child(input_editor);
 	input_editor->set_columns(2);
 	input_editor->set_v_size_flags(SIZE_EXPAND_FILL);
-	input_editor->connect("item_edited", this, "_action_edited");
+	input_editor->connect("item_edited", this, "_action_edited", varray(), CONNECT_DEFERRED);
 	input_editor->connect("cell_selected", this, "_action_selected");
 	input_editor->connect("button_pressed", this, "_action_button_pressed");
 	popup_add = memnew(PopupMenu);

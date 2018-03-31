@@ -1,5 +1,5 @@
 /*************************************************************************/
-/*  register_types.cpp                                                   */
+/*  lws_server.h                                                         */
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
@@ -27,55 +27,38 @@
 /* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE     */
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
-#include "register_types.h"
-#include "error_macros.h"
-#ifdef JAVASCRIPT_ENABLED
-#include "emscripten.h"
-#include "emws_client.h"
-#include "emws_peer.h"
-#include "emws_server.h"
-#else
-#include "lws_client.h"
-#include "lws_http_server.h"
-#include "lws_peer.h"
-#include "lws_server.h"
-#endif
+#ifndef LWS_HTTP_SERVER_H
+#define LWS_HTTP_SERVER_H
 
-void register_websocket_types() {
-#ifdef JAVASCRIPT_ENABLED
-	EM_ASM({
-		var IDHandler = {};
-		IDHandler["ids"] = {};
-		IDHandler["has"] = function(id) {
-			return IDHandler.ids.hasOwnProperty(id);
-		};
-		IDHandler["add"] = function(obj) {
-			var id = crypto.getRandomValues(new Int32Array(32))[0];
-			IDHandler.ids[id] = obj;
-			return id;
-		};
-		IDHandler["get"] = function(id) {
-			return IDHandler.ids[id];
-		};
-		IDHandler["remove"] = function(id) {
-			delete IDHandler.ids[id];
-		};
-		Module["IDHandler"] = IDHandler;
-	});
-	EMWSPeer::make_default();
-	EMWSClient::make_default();
-	EMWSServer::make_default();
-#else
-	LWSPeer::make_default();
-	LWSClient::make_default();
-	LWSServer::make_default();
-	LWSHTTPServer::make_default();
-#endif
+#ifndef JAVASCRIPT_ENABLED
 
-	ClassDB::register_virtual_class<WebSocketMultiplayerPeer>();
-	ClassDB::register_custom_instance_class<WebSocketServer>();
-	ClassDB::register_custom_instance_class<WebSocketClient>();
-	ClassDB::register_custom_instance_class<WebSocketPeer>();
-}
+#include "core/io/http_server.h"
+#include "core/reference.h"
+#include "lws_helper.h"
+#include "os/dir_access.h"
 
-void unregister_websocket_types() {}
+class LWSHTTPServer : public HTTPServer {
+
+	GDCIIMPL(LWSHTTPServer, HTTPServer);
+
+	LWS_HELPER(LWSHTTPServer);
+
+protected:
+	Map<String, String> mime_types;
+	DirAccess *dir_access;
+
+public:
+	Error listen(int p_port, IP_Address = IP_Address("*"));
+	void stop();
+	bool is_listening() const;
+	virtual void poll() { _lws_poll(); }
+
+	String get_mime_type(String p_ext);
+
+	LWSHTTPServer();
+	~LWSHTTPServer();
+};
+
+#endif // JAVASCRIPT_ENABLED
+
+#endif // LWS_HTTP_SERVER_H

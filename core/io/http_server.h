@@ -1,5 +1,5 @@
 /*************************************************************************/
-/*  register_types.cpp                                                   */
+/*  stream_peer_tcp.h                                                    */
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
@@ -27,55 +27,38 @@
 /* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE     */
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
-#include "register_types.h"
-#include "error_macros.h"
-#ifdef JAVASCRIPT_ENABLED
-#include "emscripten.h"
-#include "emws_client.h"
-#include "emws_peer.h"
-#include "emws_server.h"
-#else
-#include "lws_client.h"
-#include "lws_http_server.h"
-#include "lws_peer.h"
-#include "lws_server.h"
+
+#ifndef HTTP_SERVER_H
+#define HTTP_SERVER_H
+
+#include "core/io/ip.h"
+#include "core/io/ip_address.h"
+#include "core/reference.h"
+
+class HTTPServer : public Reference {
+
+	GDCLASS(HTTPServer, Reference);
+	OBJ_CATEGORY("Networking");
+
+protected:
+	String serve_path;
+
+	static HTTPServer *(*_create)();
+	static void _bind_methods();
+
+public:
+	virtual Error listen(int p_port, IP_Address p_bind_ip = IP_Address("*")) = 0;
+	virtual bool is_listening() const = 0;
+	virtual void stop() = 0;
+	virtual void poll() = 0;
+	virtual void set_serve_path(String p_path);
+	virtual String get_serve_path();
+
+	static Ref<HTTPServer> create_ref();
+	static HTTPServer *create();
+
+	HTTPServer();
+	~HTTPServer();
+};
+
 #endif
-
-void register_websocket_types() {
-#ifdef JAVASCRIPT_ENABLED
-	EM_ASM({
-		var IDHandler = {};
-		IDHandler["ids"] = {};
-		IDHandler["has"] = function(id) {
-			return IDHandler.ids.hasOwnProperty(id);
-		};
-		IDHandler["add"] = function(obj) {
-			var id = crypto.getRandomValues(new Int32Array(32))[0];
-			IDHandler.ids[id] = obj;
-			return id;
-		};
-		IDHandler["get"] = function(id) {
-			return IDHandler.ids[id];
-		};
-		IDHandler["remove"] = function(id) {
-			delete IDHandler.ids[id];
-		};
-		Module["IDHandler"] = IDHandler;
-	});
-	EMWSPeer::make_default();
-	EMWSClient::make_default();
-	EMWSServer::make_default();
-#else
-	LWSPeer::make_default();
-	LWSClient::make_default();
-	LWSServer::make_default();
-	LWSHTTPServer::make_default();
-#endif
-
-	ClassDB::register_virtual_class<WebSocketMultiplayerPeer>();
-	ClassDB::register_custom_instance_class<WebSocketServer>();
-	ClassDB::register_custom_instance_class<WebSocketClient>();
-	ClassDB::register_custom_instance_class<WebSocketPeer>();
-}
-
-void unregister_websocket_types() {}

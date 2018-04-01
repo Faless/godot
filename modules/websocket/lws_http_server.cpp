@@ -74,18 +74,38 @@ String LWSHTTPServer::get_mime_type(String p_ext) {
 	return "application/octet-stream";
 }
 
+void LWSHTTPServer::_list_directory(struct lws *wsi, String req_path, String full_path) {
+	if (!DirAccess::exists(full_path) || dir_access->change_dir(full_path) != OK || dir_access->list_dir_begin() != OK) {
+		lws_return_http_status(wsi, HTTP_STATUS_NOT_FOUND, NULL);
+		return;
+	}
+
+	bool is_dir;
+	String http_response = "<!doctype HTML>\n<html><head><title>Dir Listing</title><body><h1>Dir listing</h1><ul>";
+	String fname = dir_access->get_next(&is_dir);
+
+	while (fname != "") {
+		if (fname != "." && fname != "..")
+			http_response += "<li><a href=\"" + req_path + fname + (is_dir ? "/" : "") + "\">" + fname + "</a></li>";
+		fname = dir_access->get_next(&is_dir);
+	}
+	dir_access->list_dir_end();
+	http_response += "</ul></body></html>";
+
+	http_response = "HTTP/1.1 200 OK\r\nCache-Control: no-cache\r\nContent-Type: text/html; charset=UTF-8\r\nContent-Length: " +
+					itos(http_response.size()) + "\r\n\r\n" + http_response;
+	lws_write(wsi, (unsigned char *)http_response.utf8().get_data(), http_response.size(), LWS_WRITE_HTTP);
+}
+
 int LWSHTTPServer::_handle_cb(struct lws *wsi, enum lws_callback_reasons reason, void *user, void *in, size_t len) {
 
 	LWSPeer::PeerData *peer_data = (LWSPeer::PeerData *)user;
 
 	switch (reason) {
 		case LWS_CALLBACK_HTTP: {
-			String http_response;
 			String req_path;
 			String full_path;
-			String fname;
 			FileAccess *file_access;
-			bool is_dir;
 
 			if (len < 1 || ((char *)in)[0] != '/') {
 				lws_return_http_status(wsi, HTTP_STATUS_BAD_REQUEST, NULL);
@@ -104,24 +124,7 @@ int LWSHTTPServer::_handle_cb(struct lws *wsi, enum lws_callback_reasons reason,
 				goto http_end;
 			} else if (req_path.ends_with("/")) {
 				// Directory listing (very inefficient for now)
-				if (!DirAccess::exists(full_path) || dir_access->change_dir(full_path) != OK || dir_access->list_dir_begin() != OK) {
-					lws_return_http_status(wsi, HTTP_STATUS_NOT_FOUND, NULL);
-					goto http_end;
-				}
-
-				http_response += "<!doctype HTML>\n<html><head><title>Dir Listing</title><body><h1>Dir listing</h1><ul>";
-				fname = dir_access->get_next(&is_dir);
-				while (fname != "") {
-					if (fname != "." && fname != "..")
-						http_response += "<li><a href=\"" + req_path + fname + (is_dir ? "/" : "") + "\">" + fname + "</a></li>";
-					fname = dir_access->get_next(&is_dir);
-				}
-				dir_access->list_dir_end();
-				http_response += "</ul></body></html>";
-
-				http_response = "HTTP/1.1 200 OK\r\nCache-Control: no-cache\r\nContent-Type: text/html; charset=UTF-8\r\nContent-Length: " +
-								itos(http_response.size()) + "\r\n\r\n" + http_response;
-				lws_write(wsi, (unsigned char *)http_response.utf8().get_data(), http_response.size(), LWS_WRITE_HTTP);
+				_list_directory(wsi, req_path, full_path);
 				goto http_end;
 			} else if (dir_access->file_exists(full_path)) {
 				// File access

@@ -43,6 +43,9 @@ class LWSHTTPServer : public HTTPServer {
 
 	LWS_HELPER(LWSHTTPServer);
 
+private:
+	void _list_directory(struct lws *wsi, String req_path, String full_path);
+
 protected:
 	Map<String, String> mime_types;
 	DirAccess *dir_access;

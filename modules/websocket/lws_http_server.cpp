@@ -80,40 +80,62 @@ int LWSHTTPServer::_handle_cb(struct lws *wsi, enum lws_callback_reasons reason,
 
 	switch (reason) {
 		case LWS_CALLBACK_HTTP: {
+			String http_response;
 			String req_path;
-			String file_path;
+			String full_path;
+			String fname;
 			FileAccess *file_access;
-			int ret;
+			bool is_dir;
 
-			if (len < 1) {
+			if (len < 1 || ((char *)in)[0] != '/') {
 				lws_return_http_status(wsi, HTTP_STATUS_BAD_REQUEST, NULL);
 				goto http_end;
 			}
 
+			if (serve_path == "") // Not configured
+				lws_return_http_status(wsi, HTTP_STATUS_INTERNAL_SERVER_ERROR, NULL);
+
 			req_path = (char *)in;
-			// No directories for now
-			if (req_path.ends_with("/")) {
+			full_path = (serve_path + req_path).simplify_path();
+
+			if (!full_path.begins_with(serve_path)) {
+				// Outisde of the serving directory
 				lws_return_http_status(wsi, HTTP_STATUS_NOT_ACCEPTABLE, NULL);
 				goto http_end;
-			}
-			WARN_PRINTS("HTTP Request: " + req_path);
-			file_path = serve_path + req_path;
-			if (serve_path == "")
-				lws_return_http_status(wsi, HTTP_STATUS_INTERNAL_SERVER_ERROR, NULL);
-			else if (dir_access->file_exists(file_path)) {
-				//file_access = FileAccess::open();
+			} else if (req_path.ends_with("/")) {
+				// Directory listing (very inefficient for now)
+				if (!DirAccess::exists(full_path) || dir_access->change_dir(full_path) != OK || dir_access->list_dir_begin() != OK) {
+					lws_return_http_status(wsi, HTTP_STATUS_NOT_FOUND, NULL);
+					goto http_end;
+				}
+
+				http_response += "<!doctype HTML>\n<html><head><title>Dir Listing</title><body><h1>Dir listing</h1><ul>";
+				fname = dir_access->get_next(&is_dir);
+				while (fname != "") {
+					if (fname != "." && fname != "..")
+						http_response += "<li><a href=\"" + req_path + fname + (is_dir ? "/" : "") + "\">" + fname + "</a></li>";
+					fname = dir_access->get_next(&is_dir);
+				}
+				dir_access->list_dir_end();
+				http_response += "</ul></body></html>";
+
+				http_response = "HTTP/1.1 200 OK\r\nCache-Control: no-cache\r\nContent-Type: text/html; charset=UTF-8\r\nContent-Length: " +
+								itos(http_response.size()) + "\r\n\r\n" + http_response;
+				lws_write(wsi, (unsigned char *)http_response.utf8().get_data(), http_response.size(), LWS_WRITE_HTTP);
+				goto http_end;
+			} else if (dir_access->file_exists(full_path)) {
+				// File access
 				String mime_type = get_mime_type(req_path.get_extension());
-				ret = lws_serve_http_file(
-						wsi,
-						file_path.utf8().get_data(),
-						mime_type.utf8().get_data(),
-						NULL,
-						0);
-				WARN_PRINTS("Sending file... " + itos(ret));
-				if (ret != 0)
+				if (lws_serve_http_file(
+							wsi,
+							full_path.utf8().get_data(),
+							mime_type.utf8().get_data(),
+							NULL,
+							0) != 0)
 					return -1;
 				return 0;
 			} else {
+				// File not found
 				lws_return_http_status(wsi, HTTP_STATUS_NOT_FOUND, NULL);
 				goto http_end;
 			}

@@ -67,7 +67,26 @@ public:
 		if (file.empty())
 			return;
 
-		add_file(p_path.get_basename() + ".gdc", file, true);
+		Vector<uint8_t> key = EditorExport::get_singleton()->get_encryption_key();
+		if (key.size() == 32) {
+
+			String tmp_path = EditorSettings::get_singleton()->get_settings_dir().plus_file("tmp_script.gde");
+			FileAccess *fa = FileAccess::open(tmp_path, FileAccess::WRITE);
+			FileAccessEncrypted *fae = memnew(FileAccessEncrypted);
+			Error err = fae->open_and_parse(fa, key, FileAccessEncrypted::MODE_WRITE_AES256);
+
+			if (err == OK)
+				fae->store_buffer(file.ptr(), file.size());
+
+			memdelete(fae);
+
+			file = FileAccess::get_file_as_array(tmp_path);
+			add_file(p_path.get_basename() + ".gde", file, true);
+
+		} else {
+
+			add_file(p_path.get_basename() + ".gdc", file, true);
+		}
 	}
 };
 

@@ -73,6 +73,7 @@ private:
 	String name;
 
 	String custom_features;
+	String encryption_key;
 
 protected:
 	bool _set(const StringName &p_name, const Variant &p_value);
@@ -95,6 +96,9 @@ public:
 
 	void set_runnable(bool p_enable);
 	bool is_runnable() const;
+
+	String get_encryption_key() const;
+	void set_encryption_key(String p_key);
 
 	void set_export_filter(ExportFilter p_filter);
 	ExportFilter get_export_filter() const;
@@ -321,6 +325,7 @@ class EditorExport : public Node {
 
 	Timer *save_timer;
 	bool block_save;
+	String encryption_key;
 
 	static EditorExport *singleton;
 

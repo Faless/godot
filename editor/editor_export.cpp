@@ -123,6 +123,17 @@ bool EditorExportPreset::is_runnable() const {
 	return runnable;
 }
 
+String EditorExportPreset::get_encryption_key() const {
+
+	return encryption_key;
+}
+
+void EditorExportPreset::set_encryption_key(String p_key) {
+
+	encryption_key = p_key;
+	EditorExport::singleton->save_presets();
+}
+
 void EditorExportPreset::set_export_filter(ExportFilter p_filter) {
 
 	export_filter = p_filter;
@@ -983,6 +994,7 @@ void EditorExport::_save() {
 		config->set_value(section, "name", preset->get_name());
 		config->set_value(section, "platform", preset->get_platform()->get_name());
 		config->set_value(section, "runnable", preset->is_runnable());
+		config->set_value(section, "encryption_key", preset->get_encryption_key());
 		config->set_value(section, "custom_features", preset->get_custom_features());
 		bool save_files = false;
 		switch (preset->get_export_filter()) {
@@ -1178,6 +1190,9 @@ void EditorExport::load_config() {
 
 			preset->set(E->get(), value);
 		}
+
+		String encryption_key = config->get_value(section, "encryption_key", "");
+		preset->set_encryption_key(encryption_key);
 
 		add_export_preset(preset);
 		index++;

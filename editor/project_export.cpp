@@ -186,6 +186,7 @@ void ProjectExportDialog::_edit_preset(int p_index) {
 	export_filter->select(current->get_export_filter());
 	include_filters->set_text(current->get_include_filter());
 	exclude_filters->set_text(current->get_exclude_filter());
+	encryption_key->set_text(current->get_encryption_key());
 
 	patches->clear();
 	TreeItem *patch_root = patches->create_item();
@@ -597,6 +598,33 @@ void ProjectExportDialog::_filter_changed(const String &p_filter) {
 	current->set_exclude_filter(exclude_filters->get_text());
 }
 
+void ProjectExportDialog::_encryption_key_changed(const String &p_key) {
+
+	if (updating)
+		return;
+
+	Ref<EditorExportPreset> current = EditorExport::get_singleton()->get_export_preset(presets->get_current());
+	if (current.is_null())
+		return;
+
+	if (p_key != "" && p_key.length() != 64) {
+		encryption_key_error->show();
+		return;
+	}
+
+	const char *skey = p_key.ascii().get_data();
+	for (int i = 0; i < p_key.length(); i++) {
+		if ((skey[i] >= 48 && skey[i] <= 57) || (skey[i] >= 65 && skey[i] <= 70))
+			continue;
+
+		encryption_key_error->show();
+		return;
+	}
+
+	current->set_encryption_key(p_key);
+	encryption_key_error->hide();
+}
+
 void ProjectExportDialog::_fill_resource_tree() {
 
 	include_files->clear();
@@ -769,6 +797,7 @@ void ProjectExportDialog::_bind_methods() {
 	ClassDB::bind_method("drop_data_fw", &ProjectExportDialog::drop_data_fw);
 	ClassDB::bind_method("_export_type_changed", &ProjectExportDialog::_export_type_changed);
 	ClassDB::bind_method("_filter_changed", &ProjectExportDialog::_filter_changed);
+	ClassDB::bind_method("_encryption_key_changed", &ProjectExportDialog::_encryption_key_changed);
 	ClassDB::bind_method("_tree_changed", &ProjectExportDialog::_tree_changed);
 	ClassDB::bind_method("_patch_button_pressed", &ProjectExportDialog::_patch_button_pressed);
 	ClassDB::bind_method("_patch_selected", &ProjectExportDialog::_patch_selected);
@@ -871,6 +900,15 @@ ProjectExportDialog::ProjectExportDialog() {
 	exclude_filters = memnew(LineEdit);
 	resources_vb->add_margin_child(TTR("Filters to exclude files from project (comma separated, e.g: *.json, *.txt)"), exclude_filters);
 	exclude_filters->connect("text_changed", this, "_filter_changed");
+
+	encryption_key = memnew(LineEdit);
+	resources_vb->add_margin_child(TTR("256-bit AES encryption key (hex format, leave empty for no encryption)"), encryption_key);
+	encryption_key->connect("text_changed", this, "_encryption_key_changed");
+
+	encryption_key_error = memnew(Label);
+	encryption_key_error->set_text(TTR("Invalid AES key. Must be 64 hex characters."));
+	encryption_key_error->hide();
+	resources_vb->add_child(encryption_key_error);
 
 	VBoxContainer *patch_vb = memnew(VBoxContainer);
 	sections->add_child(patch_vb);

@@ -79,6 +79,8 @@ private:
 	OptionButton *export_filter;
 	LineEdit *include_filters;
 	LineEdit *exclude_filters;
+	LineEdit *encryption_key;
+	Label *encryption_key_error;
 	Tree *include_files;
 
 	Label *include_label;
@@ -117,6 +119,7 @@ private:
 
 	void _export_type_changed(int p_which);
 	void _filter_changed(const String &p_filter);
+	void _encryption_key_changed(const String &p_key);
 	void _fill_resource_tree();
 	bool _fill_tree(EditorFileSystemDirectory *p_dir, TreeItem *p_item, Ref<EditorExportPreset> &current, bool p_only_scenes);
 	void _tree_changed();

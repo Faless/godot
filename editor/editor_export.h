@@ -358,6 +358,9 @@ public:
 
 	bool poll_export_platforms();
 
+	void set_encryption_key(String p_key);
+	Vector<uint8_t> get_encryption_key();
+
 	EditorExport();
 	~EditorExport();
 };

@@ -692,6 +692,9 @@ Error EditorExportPlatform::export_project_files(const Ref<EditorExportPreset> &
 
 		} else {
 
+			// Hacky, set the encryption key
+			EditorExport::get_singleton()->set_encryption_key(p_preset->get_encryption_key());
+
 			bool do_export = true;
 			for (int i = 0; i < export_plugins.size(); i++) {
 				if (export_plugins[i]->get_script_instance()) { //script based
@@ -727,6 +730,9 @@ Error EditorExportPlatform::export_project_files(const Ref<EditorExportPreset> &
 				Vector<uint8_t> array = FileAccess::get_file_as_array(path);
 				p_func(p_udata, path, array, idx, total);
 			}
+
+			// Hacky, reset the encryption key
+			EditorExport::get_singleton()->set_encryption_key("");
 		}
 
 		idx++;
@@ -981,6 +987,42 @@ EditorExportPlatform::EditorExportPlatform() {
 ////
 
 EditorExport *EditorExport::singleton = NULL;
+
+void EditorExport::set_encryption_key(String p_key) {
+	encryption_key = p_key;
+}
+
+Vector<uint8_t> EditorExport::get_encryption_key() {
+	Vector<uint8_t> key;
+	String skey = encryption_key;
+
+	if (encryption_key == "")
+		return key;
+
+	key.resize(32);
+	for (int i = 0; i < 32; i++) {
+		int v = 0;
+		if (i * 2 < skey.length()) {
+			CharType ct = skey[i * 2];
+			if (ct >= '0' && ct <= '9')
+				ct = ct - '0';
+			else if (ct >= 'a' && ct <= 'f')
+				ct = 10 + ct - 'a';
+			v |= ct << 4;
+		}
+
+		if (i * 2 + 1 < skey.length()) {
+			CharType ct = skey[i * 2 + 1];
+			if (ct >= '0' && ct <= '9')
+				ct = ct - '0';
+			else if (ct >= 'a' && ct <= 'f')
+				ct = 10 + ct - 'a';
+			v |= ct;
+		}
+		key[i] = v;
+	}
+	return key;
+}
 
 void EditorExport::_save() {
 

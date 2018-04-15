@@ -360,6 +360,7 @@ public:
 
 	void set_encryption_key(String p_key);
 	Vector<uint8_t> get_encryption_key();
+	Vector<uint8_t> get_encrypted_array(Vector<uint8_t> p_data);
 
 	EditorExport();
 	~EditorExport();

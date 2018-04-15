@@ -35,6 +35,8 @@
 #include "io/resource_saver.h"
 #include "os/file_access.h"
 
+extern uint8_t script_encryption_key[32];
+
 class ResourceInteractiveLoaderBinary : public ResourceInteractiveLoader {
 
 	bool translation_remapped;

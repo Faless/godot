@@ -32,6 +32,7 @@
 
 #include "core/image.h"
 #include "core/io/file_access_compressed.h"
+#include "core/io/file_access_encrypted.h"
 #include "core/io/marshalls.h"
 #include "core/os/dir_access.h"
 #include "core/project_settings.h"
@@ -997,6 +998,20 @@ Ref<ResourceInteractiveLoader> ResourceFormatLoaderBinary::load_interactive(cons
 		ERR_FAIL_COND_V(err != OK, Ref<ResourceInteractiveLoader>());
 	}
 
+	if (p_path.get_extension() == "cres") {
+		FileAccessEncrypted *fae = memnew(FileAccessEncrypted);
+		ERR_FAIL_COND_V(!fae, Ref<ResourceInteractiveLoader>());
+		Vector<uint8_t> key;
+		key.resize(32);
+		for (int i = 0; i < key.size(); i++) {
+			key[i] = script_encryption_key[i];
+		}
+		err = fae->open_and_parse(f, key, FileAccessEncrypted::MODE_READ);
+		ERR_FAIL_COND_V(err, Ref<ResourceInteractiveLoader>());
+
+		f = fae;
+	}
+
 	Ref<ResourceInteractiveLoaderBinary> ria = memnew(ResourceInteractiveLoaderBinary);
 	String path = p_original_path != "" ? p_original_path : p_path;
 	ria->local_path = ProjectSettings::get_singleton()->localize_path(path);
@@ -1023,6 +1038,7 @@ void ResourceFormatLoaderBinary::get_recognized_extensions_for_type(const String
 		String ext = E->get().to_lower();
 		p_extensions->push_back(ext);
 	}
+	p_extensions->push_back("cres");
 }
 void ResourceFormatLoaderBinary::get_recognized_extensions(List<String> *p_extensions) const {
 
@@ -1034,6 +1050,7 @@ void ResourceFormatLoaderBinary::get_recognized_extensions(List<String> *p_exten
 		String ext = E->get().to_lower();
 		p_extensions->push_back(ext);
 	}
+	p_extensions->push_back("cres");
 }
 
 bool ResourceFormatLoaderBinary::handles_type(const String &p_type) const {

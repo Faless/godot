@@ -35,6 +35,7 @@
 #include "editor_node.h"
 #include "editor_settings.h"
 #include "io/config_file.h"
+#include "io/file_access_encrypted.h"
 #include "io/resource_loader.h"
 #include "io/resource_saver.h"
 #include "io/zip_io.h"
@@ -1024,6 +1025,26 @@ Vector<uint8_t> EditorExport::get_encryption_key() {
 	return key;
 }
 
+Vector<uint8_t> EditorExport::get_encrypted_array(Vector<uint8_t> p_data) {
+
+	Vector<uint8_t> data;
+	Vector<uint8_t> key = get_encryption_key();
+	ERR_FAIL_COND_V(key.size() != 32, data);
+
+	String tmp_path = EditorSettings::get_singleton()->get_cache_dir().plus_file("file.enc");
+	FileAccess *fa = FileAccess::open(tmp_path, FileAccess::WRITE);
+	FileAccessEncrypted *fae = memnew(FileAccessEncrypted);
+	Error err = fae->open_and_parse(fa, key, FileAccessEncrypted::MODE_WRITE_AES256);
+
+	if (err == OK)
+		fae->store_buffer(p_data.ptr(), p_data.size());
+
+	memdelete(fae);
+
+	data = FileAccess::get_file_as_array(tmp_path);
+	return data;
+}
+
 void EditorExport::_save() {
 
 	Ref<ConfigFile> config;
@@ -1511,7 +1532,16 @@ void EditorExportTextSceneToBinaryPlugin::_export_file(const String &p_path, con
 	ERR_FAIL_COND(err != OK);
 	Vector<uint8_t> data = FileAccess::get_file_as_array(tmp_path);
 	ERR_FAIL_COND(data.size() == 0);
-	add_file(p_path + ".converted.res", data, true);
+
+	Vector<uint8_t> key = EditorExport::get_singleton()->get_encryption_key();
+	if (key.size() == 32) {
+
+		data = EditorExport::get_singleton()->get_encrypted_array(data);
+		add_file(p_path + ".converted.cres", data, true);
+	} else {
+
+		add_file(p_path + ".converted.res", data, true);
+	}
 }
 
 EditorExportTextSceneToBinaryPlugin::EditorExportTextSceneToBinaryPlugin() {

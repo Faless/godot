@@ -116,14 +116,19 @@ IP_Address IP::resolve_hostname(const String &p_hostname, IP::Type p_type) {
 
 	resolver->mutex->lock();
 
-	String key = _IP_ResolverPrivate::get_cache_key(p_hostname, p_type);
+	// Use IPv4 resolution is ANY is specified but no IPv6 is available
+	Type type = p_type;
+	if (type == IP::TYPE_ANY && !has_global_ipv6())
+		type = IP::TYPE_IPV4;
+
+	String key = _IP_ResolverPrivate::get_cache_key(p_hostname, type);
 	if (resolver->cache.has(key)) {
 		IP_Address res = resolver->cache[key];
 		resolver->mutex->unlock();
 		return res;
 	}
 
-	IP_Address res = _resolve_hostname(p_hostname, p_type);
+	IP_Address res = _resolve_hostname(p_hostname, type);
 	resolver->cache[key] = res;
 	resolver->mutex->unlock();
 	return res;
@@ -141,9 +146,14 @@ IP::ResolverID IP::resolve_hostname_queue_item(const String &p_hostname, IP::Typ
 		return id;
 	}
 
-	String key = _IP_ResolverPrivate::get_cache_key(p_hostname, p_type);
+	// Use IPv4 resolution is ANY is specified but no IPv6 is available
+	Type type = p_type;
+	if (type == IP::TYPE_ANY && !has_global_ipv6())
+		type = IP::TYPE_IPV4;
+
+	String key = _IP_ResolverPrivate::get_cache_key(p_hostname, type);
 	resolver->queue[id].hostname = p_hostname;
-	resolver->queue[id].type = p_type;
+	resolver->queue[id].type = type;
 	if (resolver->cache.has(key)) {
 		resolver->queue[id].response = resolver->cache[key];
 		resolver->queue[id].status = IP::RESOLVER_STATUS_DONE;

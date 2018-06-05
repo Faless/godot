@@ -183,6 +183,13 @@ bool IP_Address::is_ipv4() const {
 	return (field32[0] == 0 && field32[1] == 0 && field16[4] == 0 && field16[5] == 0xffff);
 }
 
+bool IP_Address::is_global_ipv6() const {
+	if (is_ipv4())
+		return false;
+	return !(field8[0] == 254 && field8[1] == 128 && field16[1] == 0 && field32[1] == 0) && // fe80::/10 as defined in RFC 4291 Section 2.5.6
+		   !(field32[0] == 0 && field32[1] == 0 && field32[2] == 0 && field16[6] == 0 && field8[14] == 0 && field8[15] == 1); // ::1/128 loopback
+}
+
 const uint8_t *IP_Address::get_ipv4() const {
 	ERR_FAIL_COND_V(!is_ipv4(), 0);
 	return &(field8[12]);

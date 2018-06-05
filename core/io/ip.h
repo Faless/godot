@@ -83,6 +83,7 @@ public:
 	ResolverStatus get_resolve_item_status(ResolverID p_id) const;
 	IP_Address get_resolve_item_address(ResolverID p_id) const;
 	virtual void get_local_addresses(List<IP_Address> *r_addresses) const = 0;
+	bool has_global_ipv6() const;
 	void erase_resolve_item(ResolverID p_id);
 
 	void clear_cache(const String &p_hostname = "");

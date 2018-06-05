@@ -72,6 +72,7 @@ public:
 	bool is_wildcard() const { return wildcard; }
 	bool is_valid() const { return valid; }
 	bool is_ipv4() const;
+	bool is_global_ipv6() const;
 	const uint8_t *get_ipv4() const;
 	void set_ipv4(const uint8_t *p_ip);
 

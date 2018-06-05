@@ -233,6 +233,18 @@ Array IP::_get_local_addresses() const {
 	return addresses;
 }
 
+bool IP::has_global_ipv6() const {
+	List<IP_Address> ips;
+	get_local_addresses(&ips);
+
+	for (const List<IP_Address>::Element *E = ips.front(); E; E = E->next()) {
+		if (E->get().is_global_ipv6()) {
+			return true;
+		}
+	}
+	return false;
+}
+
 void IP::_bind_methods() {
 
 	ClassDB::bind_method(D_METHOD("resolve_hostname", "host", "ip_type"), &IP::resolve_hostname, DEFVAL(IP::TYPE_ANY));
@@ -241,6 +253,7 @@ void IP::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_resolve_item_address", "id"), &IP::get_resolve_item_address);
 	ClassDB::bind_method(D_METHOD("erase_resolve_item", "id"), &IP::erase_resolve_item);
 	ClassDB::bind_method(D_METHOD("get_local_addresses"), &IP::_get_local_addresses);
+	ClassDB::bind_method(D_METHOD("has_global_ipv6"), &IP::has_global_ipv6);
 	ClassDB::bind_method(D_METHOD("clear_cache", "hostname"), &IP::clear_cache, DEFVAL(""));
 
 	BIND_ENUM_CONSTANT(RESOLVER_STATUS_NONE);

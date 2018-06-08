@@ -68,7 +68,7 @@ static size_t _set_sockaddr(struct sockaddr_storage *p_addr, const IP_Address &p
 		struct sockaddr_in *addr4 = (struct sockaddr_in *)p_addr;
 		addr4->sin_family = AF_INET;
 		addr4->sin_port = htons(p_port); // short, network byte order
-		copymem(&addr4->sin_addr.s_addr, p_ip.get_ipv4(), 16);
+		copymem(&addr4->sin_addr.s_addr, p_ip.get_ipv4(), 4);
 		return sizeof(sockaddr_in);
 	};
 };

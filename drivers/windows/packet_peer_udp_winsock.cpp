@@ -33,6 +33,7 @@
 #include "packet_peer_udp_winsock.h"
 
 #include <winsock2.h>
+#include <ws2ipdef.h>
 #include <ws2tcpip.h>
 
 #include "drivers/unix/socket_helpers.h"
@@ -74,6 +75,7 @@ Error PacketPeerUDPWinsock::get_packet(const uint8_t **r_buffer, int &r_buffer_s
 	r_buffer_size = size;
 	return OK;
 }
+
 Error PacketPeerUDPWinsock::put_packet(const uint8_t *p_buffer, int p_buffer_size) {
 
 	ERR_FAIL_COND_V(!peer_addr.is_valid(), ERR_UNCONFIGURED);
@@ -162,6 +164,7 @@ Error PacketPeerUDPWinsock::wait() {
 
 	return _poll(true);
 }
+
 Error PacketPeerUDPWinsock::_poll(bool p_wait) {
 
 	if (sockfd == -1) {
@@ -268,15 +271,45 @@ void PacketPeerUDPWinsock::set_dest_address(const IP_Address &p_address, int p_p
 	peer_port = p_port;
 }
 
+Error PacketPeerUDPWinsock::join_multicast_group(const IP_Address p_ip, int p_iface) {
+
+	ERR_FAIL_COND_V(sockfd == -1, ERR_UNCONFIGURED);
+
+	Error ret = _change_multicast_group(sockfd, p_ip, sock_type, p_iface, true);
+
+	if (ret == FAILED) {
+		int error = WSAGetLastError();
+		ERR_EXPLAIN("Add multicast group failed with error: " + itos(error));
+		ERR_FAIL_V(FAILED);
+	}
+
+	return ret;
+}
+
+Error PacketPeerUDPWinsock::leave_multicast_group(const IP_Address p_ip, int p_iface) {
+
+	ERR_FAIL_COND_V(sockfd == -1, ERR_UNCONFIGURED);
+
+	Error ret = _change_multicast_group(sockfd, p_ip, sock_type, p_iface, false);
+
+	if (ret == FAILED) {
+		int error = WSAGetLastError();
+		ERR_EXPLAIN("Delete multicast group failed with error: " + itos(error));
+		ERR_FAIL_V(FAILED);
+	}
+
+	return ret;
+}
+
 void PacketPeerUDPWinsock::make_default() {
 
 	PacketPeerUDP::_create = PacketPeerUDPWinsock::_create;
-};
+}
 
 PacketPeerUDP *PacketPeerUDPWinsock::_create() {
 
 	return memnew(PacketPeerUDPWinsock);
-};
+}
 
 PacketPeerUDPWinsock::PacketPeerUDPWinsock() {
 

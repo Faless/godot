@@ -244,6 +244,34 @@ int PacketPeerUDPPosix::get_packet_port() const {
 	return packet_port;
 }
 
+Error PacketPeerUDPPosix::join_multicast_group(const IP_Address p_ip, int p_iface) {
+
+	ERR_FAIL_COND_V(sockfd == -1, ERR_UNCONFIGURED);
+
+	Error ret = _change_multicast_group(sockfd, p_ip, sock_type, p_iface, true);
+
+	if (ret == FAILED) {
+		ERR_EXPLAIN("Join multicast group failed with error: " + itos(errno));
+		ERR_FAIL_V(FAILED);
+	}
+
+	return ret;
+}
+
+Error PacketPeerUDPPosix::leave_multicast_group(const IP_Address p_ip, int p_iface) {
+
+	ERR_FAIL_COND_V(sockfd == -1, ERR_UNCONFIGURED);
+
+	Error ret = _change_multicast_group(sockfd, p_ip, sock_type, p_iface, false);
+
+	if (ret == FAILED) {
+		ERR_EXPLAIN("Leave multicast group failed with error: " + itos(errno));
+		ERR_FAIL_V(FAILED);
+	}
+
+	return ret;
+}
+
 int PacketPeerUDPPosix::_get_socket() {
 
 	ERR_FAIL_COND_V(sock_type == IP::TYPE_NONE, -1);

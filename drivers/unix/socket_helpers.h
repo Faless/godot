@@ -33,10 +33,17 @@
 
 #include <string.h>
 
-#if defined(__MINGW32__) && (!defined(__MINGW64_VERSION_MAJOR) || __MINGW64_VERSION_MAJOR < 4)
+#if defined(__MINGW32__)
 // Workaround for mingw-w64 < 4.0
 #ifndef IPV6_V6ONLY
 #define IPV6_V6ONLY 27
+#endif
+// No mingw version seems to have those defined
+#ifndef MCAST_JOIN_GROUP
+#define MCAST_JOIN_GROUP 41
+#endif
+#ifndef MCAST_LEAVE_GROUP
+#define MCAST_LEAVE_GROUP 42
 #endif
 #endif
 
@@ -72,6 +79,41 @@ static size_t _set_sockaddr(struct sockaddr_storage *p_addr, const IP_Address &p
 		return sizeof(sockaddr_in);
 	};
 };
+
+static Error _change_multicast_group(int p_sock, IP_Address p_ip, IP::Type p_sock_type, int p_iface, bool p_join) {
+
+	ERR_FAIL_COND_V(!p_ip.is_valid(), ERR_INVALID_PARAMETER);
+
+	int ret = -1;
+
+	// Need to force level and af_family to IP(v4) when using dual stacking and provided multicast group is IPv4
+	IP::Type type = p_sock_type == IP::TYPE_ANY && p_ip.is_ipv4() ? IP::TYPE_IPV4 : p_sock_type;
+
+	// This needs to be the proper level for the multicast group, no matter if the socket is dual stacking.
+	int level = type == IP::TYPE_IPV4 ? IPPROTO_IP : IPPROTO_IPV6;
+
+	struct group_req greq;
+	memset(&greq, 0, sizeof(greq));
+	greq.gr_interface = p_iface;
+	int size = _set_sockaddr(&(greq.gr_group), p_ip, 0, type);
+
+	// Invalid ip/type configuration
+	if (size == 0) {
+		ERR_EXPLAIN("Invalid ip/type configuration")
+		ERR_FAIL_V(ERR_INVALID_PARAMETER);
+	}
+
+	if (p_join) {
+		ret = setsockopt(p_sock, level, MCAST_JOIN_GROUP, (const char *)&greq, sizeof(greq));
+	} else {
+		ret = setsockopt(p_sock, level, MCAST_LEAVE_GROUP, (const char *)&greq, sizeof(greq));
+	}
+
+	if (ret != 0)
+		return FAILED;
+
+	return OK;
+}
 
 static size_t _set_listen_sockaddr(struct sockaddr_storage *p_addr, int p_port, IP::Type p_sock_type, const IP_Address p_bind_address) {
 

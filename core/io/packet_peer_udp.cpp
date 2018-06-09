@@ -65,9 +65,10 @@ void PacketPeerUDP::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("wait"), &PacketPeerUDP::wait);
 	ClassDB::bind_method(D_METHOD("is_listening"), &PacketPeerUDP::is_listening);
 	ClassDB::bind_method(D_METHOD("get_packet_ip"), &PacketPeerUDP::_get_packet_ip);
-	//ClassDB::bind_method(D_METHOD("get_packet_address"),&PacketPeerUDP::_get_packet_address);
 	ClassDB::bind_method(D_METHOD("get_packet_port"), &PacketPeerUDP::get_packet_port);
 	ClassDB::bind_method(D_METHOD("set_dest_address", "host", "port"), &PacketPeerUDP::_set_dest_address);
+	ClassDB::bind_method(D_METHOD("join_multicast_group", "group", "interface"), &PacketPeerUDP::join_multicast_group, DEFVAL(0));
+	ClassDB::bind_method(D_METHOD("leave_multicast_group", "group", "interface"), &PacketPeerUDP::leave_multicast_group, DEFVAL(0));
 }
 
 Ref<PacketPeerUDP> PacketPeerUDP::create_ref() {

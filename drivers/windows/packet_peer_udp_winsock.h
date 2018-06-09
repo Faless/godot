@@ -80,6 +80,9 @@ public:
 
 	virtual void set_dest_address(const IP_Address &p_address, int p_port);
 
+	virtual Error join_multicast_group(const IP_Address p_ip, int p_iface = 0);
+	virtual Error leave_multicast_group(const IP_Address p_ip, int p_iface = 0);
+
 	static void make_default();
 	PacketPeerUDPWinsock();
 	~PacketPeerUDPWinsock();

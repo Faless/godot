@@ -57,6 +57,8 @@ public:
 	virtual IP_Address get_packet_address() const = 0;
 	virtual int get_packet_port() const = 0;
 	virtual void set_dest_address(const IP_Address &p_address, int p_port) = 0;
+	virtual Error join_multicast_group(const IP_Address, int p_iface = 0) = 0;
+	virtual Error leave_multicast_group(const IP_Address, int p_iface = 0) = 0;
 
 	static Ref<PacketPeerUDP> create_ref();
 	static PacketPeerUDP *create();

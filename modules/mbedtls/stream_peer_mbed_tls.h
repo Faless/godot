@@ -48,6 +48,8 @@ private:
 	Status status;
 	String hostname;
 
+	bool is_server;
+
 	Ref<StreamPeer> base;
 
 	static StreamPeerSSL *_create_func();
@@ -55,10 +57,13 @@ private:
 
 	static int bio_recv(void *ctx, unsigned char *buf, size_t len);
 	static int bio_send(void *ctx, const unsigned char *buf, size_t len);
+	PoolByteArray _read_file(String p_path);
 	void _cleanup();
 
 protected:
 	static mbedtls_x509_crt cacert;
+	mbedtls_x509_crt srvcert;
+	mbedtls_pk_context srvkey;
 
 	mbedtls_entropy_context entropy;
 	mbedtls_ctr_drbg_context ctr_drbg;
@@ -71,7 +76,7 @@ protected:
 
 public:
 	virtual void poll();
-	virtual Error accept_stream(Ref<StreamPeer> p_base);
+	virtual Error accept_stream(Ref<StreamPeer> p_base, String p_cert, String p_key, String p_ca_chain = "");
 	virtual Error connect_to_stream(Ref<StreamPeer> p_base, bool p_validate_certs = false, const String &p_for_hostname = String());
 	virtual Status get_status() const;
 

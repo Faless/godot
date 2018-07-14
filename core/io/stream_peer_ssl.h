@@ -64,7 +64,7 @@ public:
 	bool is_blocking_handshake_enabled() const;
 
 	virtual void poll() = 0;
-	virtual Error accept_stream(Ref<StreamPeer> p_base) = 0;
+	virtual Error accept_stream(Ref<StreamPeer> p_base, String p_cert, String p_key, String p_ca_chain = "") = 0;
 	virtual Error connect_to_stream(Ref<StreamPeer> p_base, bool p_validate_certs = false, const String &p_for_hostname = String()) = 0;
 	virtual Status get_status() const = 0;
 

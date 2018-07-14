@@ -83,12 +83,36 @@ int StreamPeerMbedTLS::bio_recv(void *ctx, unsigned char *buf, size_t len) {
 	return got;
 }
 
+PoolByteArray StreamPeerMbedTLS::_read_file(String p_path) {
+	PoolByteArray out;
+
+	FileAccess *f = FileAccess::open(p_path, FileAccess::READ);
+	ERR_FAIL_COND_V(!f, out);
+
+	int flen = f->get_len();
+	out.resize(flen + 1);
+	{
+		PoolByteArray::Write w = out.write();
+		f->get_buffer(w.ptr(), flen);
+		w[flen] = 0; //end f string
+	}
+	memdelete(f);
+
+	return out;
+}
+
 void StreamPeerMbedTLS::_cleanup() {
 
 	mbedtls_ssl_free(&ssl);
 	mbedtls_ssl_config_free(&conf);
 	mbedtls_ctr_drbg_free(&ctr_drbg);
 	mbedtls_entropy_free(&entropy);
+
+	if (is_server) {
+		is_server = false;
+		mbedtls_x509_crt_free(&srvcert);
+		mbedtls_pk_free(&srvkey);
+	}
 
 	base = Ref<StreamPeer>();
 	status = STATUS_DISCONNECTED;
@@ -155,7 +179,110 @@ Error StreamPeerMbedTLS::connect_to_stream(Ref<StreamPeer> p_base, bool p_valida
 	return OK;
 }
 
-Error StreamPeerMbedTLS::accept_stream(Ref<StreamPeer> p_base) {
+Error StreamPeerMbedTLS::accept_stream(Ref<StreamPeer> p_base, String p_cert, String p_key, String p_ca_chain) {
+
+	bool has_chain = false;
+	ERR_FAIL_COND_V(!FileAccess::exists(p_cert), ERR_INVALID_PARAMETER);
+	ERR_FAIL_COND_V(!FileAccess::exists(p_key), ERR_INVALID_PARAMETER);
+	if (!p_ca_chain.empty()) {
+		has_chain = true;
+		ERR_FAIL_COND_V(!FileAccess::exists(p_ca_chain), ERR_INVALID_PARAMETER);
+	}
+
+	base = p_base;
+
+	int ret = 0;
+	is_server = true;
+
+	mbedtls_ssl_init(&ssl);
+	mbedtls_ssl_config_init(&conf);
+	mbedtls_ctr_drbg_init(&ctr_drbg);
+	mbedtls_entropy_init(&entropy);
+
+	mbedtls_x509_crt_init(&srvcert);
+	mbedtls_pk_init(&srvkey);
+
+	PoolByteArray tmp;
+
+	// Server certificate
+	tmp = _read_file(p_cert);
+	ret = mbedtls_x509_crt_parse(&srvcert, tmp.read().ptr(), tmp.size());
+	if (ret != 0) {
+		ERR_PRINTS("Error parsing server certificate: " + itos(ret));
+		_cleanup();
+		return FAILED;
+	}
+
+	// CA chain certificates (added in srvcert.next , carry on)
+	if (has_chain) {
+		tmp = _read_file(p_ca_chain);
+		ret = mbedtls_x509_crt_parse(&srvcert, tmp.read().ptr(), tmp.size());
+		if (ret != 0) {
+			ERR_PRINTS("Error parsing CA chain: " + itos(ret));
+			_cleanup();
+			return FAILED;
+		}
+	}
+
+	// Server key
+	tmp = _read_file(p_key);
+	ret = mbedtls_pk_parse_key(&srvkey, tmp.read().ptr(), tmp.size(), NULL, 0);
+	// We MUST zeroize the memory for safety!
+	mbedtls_platform_zeroize(tmp.write().ptr(), tmp.size());
+	ERR_FAIL_COND_V(tmp.get(0) != 0, ERR_BUG); // This should prevent cc optimizaions.
+	if (ret != 0) {
+		ERR_PRINTS("Error parsing server key: " + itos(ret));
+		_cleanup();
+		return FAILED;
+	}
+
+	// Initialize the random generator
+	ret = mbedtls_ctr_drbg_seed(&ctr_drbg, mbedtls_entropy_func, &entropy, NULL, 0);
+	if (ret != 0) {
+		ERR_PRINTS("Error seeding random number generator: " + itos(ret));
+		_cleanup();
+		return FAILED;
+	}
+
+	mbedtls_ssl_conf_rng(&conf, mbedtls_ctr_drbg_random, &ctr_drbg);
+	mbedtls_ssl_conf_dbg(&conf, my_debug, stdout);
+
+	ret = mbedtls_ssl_config_defaults(&conf,
+			MBEDTLS_SSL_IS_SERVER,
+			MBEDTLS_SSL_TRANSPORT_STREAM,
+			MBEDTLS_SSL_PRESET_DEFAULT);
+	if (ret != 0) {
+		ERR_PRINTS("Error setting SSL config defaults: " + itos(ret));
+		_cleanup();
+		return FAILED;
+	}
+
+	// Add CA cahin from srvcert.next as loaded above
+	if (has_chain) {
+		mbedtls_ssl_conf_ca_chain(&conf, srvcert.next, NULL);
+	}
+
+	ret = mbedtls_ssl_conf_own_cert(&conf, &srvcert, &srvkey);
+	if (ret != 0) {
+		ERR_PRINTS("Invalid cert/key combination: " + itos(ret));
+		_cleanup();
+		return FAILED;
+	}
+
+	ret = mbedtls_ssl_setup(&ssl, &conf);
+	if (ret != 0) {
+		ERR_PRINTS("Error setting up SSL server: " + itos(ret));
+		_cleanup();
+		return FAILED;
+	}
+
+	mbedtls_ssl_set_bio(&ssl, this, bio_send, bio_recv, NULL);
+
+	if ((ret = _do_handshake()) != OK) {
+		return FAILED;
+	}
+
+	status = STATUS_CONNECTED;
 
 	return OK;
 }
@@ -270,6 +397,7 @@ int StreamPeerMbedTLS::get_available_bytes() const {
 }
 StreamPeerMbedTLS::StreamPeerMbedTLS() {
 
+	is_server = false;
 	status = STATUS_DISCONNECTED;
 }
 
@@ -281,6 +409,11 @@ void StreamPeerMbedTLS::disconnect_from_stream() {
 
 	if (status != STATUS_CONNECTED && status != STATUS_HANDSHAKING)
 		return;
+
+	//if (status == STATUS_CONNECTED) {
+	//	// Send SSL close notification (should we handle WANT_READ, WANT_WRITE?)
+	//	mbedtls_ssl_close_notify(&ssl);
+	//}
 
 	_cleanup();
 }

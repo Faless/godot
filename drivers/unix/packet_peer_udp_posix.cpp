@@ -75,17 +75,9 @@ Error PacketPeerUDPPosix::get_packet(const uint8_t **r_buffer, int &r_buffer_siz
 		return ERR_UNAVAILABLE;
 
 	uint32_t size = 0;
-	uint8_t type = IP::TYPE_NONE;
-	rb.read(&type, 1, true);
-	if (type == IP::TYPE_IPV4) {
-		uint8_t ip[4];
-		rb.read(ip, 4, true);
-		packet_ip.set_ipv4(ip);
-	} else {
-		uint8_t ipv6[16];
-		rb.read(ipv6, 16, true);
-		packet_ip.set_ipv6(ipv6);
-	};
+	uint8_t ipv6[16];
+	rb.read(ipv6, 16, true);
+	packet_ip.set_ipv6(ipv6);
 	rb.read((uint8_t *)&packet_port, 4, true);
 	rb.read((uint8_t *)&size, 4, true);
 	rb.read(packet_buffer, size, true);
@@ -185,21 +177,26 @@ Error PacketPeerUDPPosix::_poll(bool p_block) {
 	struct sockaddr_storage from = { 0 };
 	socklen_t len = sizeof(struct sockaddr_storage);
 	int ret;
-	while ((ret = recvfrom(sockfd, recv_buffer, MIN((int)sizeof(recv_buffer), MAX(rb.space_left() - 24, 0)), 0, (struct sockaddr *)&from, &len)) > 0) {
+	while ((ret = recvfrom(sockfd, recv_buffer, sizeof(recv_buffer), 0, (struct sockaddr *)&from, &len)) > 0) {
+
+		if (rb.space_left() < ret + 24) {
+#ifdef TOOLS_ENABLED
+			WARN_PRINTS("Buffer full, dropping packets!");
+#endif
+			continue;
+		}
 
 		uint32_t port = 0;
 
 		if (from.ss_family == AF_INET) {
-			uint8_t type = (uint8_t)IP::TYPE_IPV4;
-			rb.write(&type, 1);
+			IP_Address in_ip;
 			struct sockaddr_in *sin_from = (struct sockaddr_in *)&from;
-			rb.write((uint8_t *)&sin_from->sin_addr, 4);
+			in_ip.set_ipv4((uint8_t *)&sin_from->sin_addr);
+
+			rb.write(in_ip.get_ipv6(), 16);
 			port = ntohs(sin_from->sin_port);
 
 		} else if (from.ss_family == AF_INET6) {
-
-			uint8_t type = (uint8_t)IP::TYPE_IPV6;
-			rb.write(&type, 1);
 
 			struct sockaddr_in6 *s6_from = (struct sockaddr_in6 *)&from;
 			rb.write((uint8_t *)&s6_from->sin6_addr, 16);
@@ -207,9 +204,8 @@ Error PacketPeerUDPPosix::_poll(bool p_block) {
 			port = ntohs(s6_from->sin6_port);
 
 		} else {
-			// WARN_PRINT("Ignoring packet with unknown address family");
-			uint8_t type = (uint8_t)IP::TYPE_NONE;
-			rb.write(&type, 1);
+			WARN_PRINT("Ignoring packet with unknown address family");
+			continue;
 		};
 
 		rb.write((uint8_t *)&port, 4);
@@ -222,10 +218,15 @@ Error PacketPeerUDPPosix::_poll(bool p_block) {
 			break;
 	};
 
-	// TODO: Should ECONNRESET be handled here?
-	if (ret == 0 || (ret == -1 && errno != EAGAIN)) {
-		close();
-		return FAILED;
+	// A ret value of 0 is fine in UDP but will result in no new packet in queue.
+	if (ret == -1) {
+		if (errno == EAGAIN || errno == ECONNRESET) {
+			// EAGAIN means no data on a non-blocking socket.
+			// ECONNRESET can be safely ignored, as we never call connect.
+		} else {
+			close();
+			return FAILED;
+		}
 	};
 
 	return OK;

@@ -54,18 +54,10 @@ Error PacketPeerUDPWinsock::get_packet(const uint8_t **r_buffer, int &r_buffer_s
 	if (queue_count == 0)
 		return ERR_UNAVAILABLE;
 
-	uint32_t size;
-	uint8_t type;
-	rb.read(&type, 1, true);
-	if (type == IP::TYPE_IPV4) {
-		uint8_t ip[4];
-		rb.read(ip, 4, true);
-		packet_ip.set_ipv4(ip);
-	} else {
-		uint8_t ip[16];
-		rb.read(ip, 16, true);
-		packet_ip.set_ipv6(ip);
-	};
+	uint32_t size = 0;
+	uint8_t ip[16];
+	rb.read(ip, 16, true);
+	packet_ip.set_ipv6(ip);
 	rb.read((uint8_t *)&packet_port, 4, true);
 	rb.read((uint8_t *)&size, 4, true);
 	rb.read(packet_buffer, size, true);
@@ -174,21 +166,26 @@ Error PacketPeerUDPWinsock::_poll(bool p_wait) {
 	struct sockaddr_storage from = { 0 };
 	int len = sizeof(struct sockaddr_storage);
 	int ret;
-	while ((ret = recvfrom(sockfd, (char *)recv_buffer, MIN((int)sizeof(recv_buffer), MAX(rb.space_left() - 24, 0)), 0, (struct sockaddr *)&from, &len)) > 0) {
+	while ((ret = recvfrom(sockfd, (char *)recv_buffer, sizeof(recv_buffer), 0, (struct sockaddr *)&from, &len)) > 0) {
+
+		if (rb.space_left() < ret + 24) {
+#ifdef TOOLS_ENABLED
+			WARN_PRINTS("Buffer full, dropping packets!");
+#endif
+			continue;
+		}
 
 		uint32_t port = 0;
 
 		if (from.ss_family == AF_INET) {
-			uint8_t type = (uint8_t)IP::TYPE_IPV4;
-			rb.write(&type, 1);
+			IP_Address in_ip;
 			struct sockaddr_in *sin_from = (struct sockaddr_in *)&from;
-			rb.write((uint8_t *)&sin_from->sin_addr, 4);
+			in_ip.set_ipv4((uint8_t *)&sin_from->sin_addr);
+
+			rb.write(in_ip.get_ipv6(), 16);
 			port = ntohs(sin_from->sin_port);
 
 		} else if (from.ss_family == AF_INET6) {
-
-			uint8_t type = (uint8_t)IP::TYPE_IPV6;
-			rb.write(&type, 1);
 
 			struct sockaddr_in6 *s6_from = (struct sockaddr_in6 *)&from;
 			rb.write((uint8_t *)&s6_from->sin6_addr, 16);
@@ -196,9 +193,8 @@ Error PacketPeerUDPWinsock::_poll(bool p_wait) {
 			port = ntohs(s6_from->sin6_port);
 
 		} else {
-			// WARN_PRINT("Ignoring packet with unknown address family");
-			uint8_t type = (uint8_t)IP::TYPE_NONE;
-			rb.write(&type, 1);
+			WARN_PRINT("Ignoring packet with unknown address family");
+			continue;
 		};
 
 		rb.write((uint8_t *)&port, 4);
@@ -211,6 +207,7 @@ Error PacketPeerUDPWinsock::_poll(bool p_wait) {
 			break;
 	};
 
+	// A ret value of 0 is fine in UDP but will result in no new packet in queue.
 	if (ret == SOCKET_ERROR) {
 		int error = WSAGetLastError();
 
@@ -224,11 +221,6 @@ Error PacketPeerUDPWinsock::_poll(bool p_wait) {
 			return FAILED;
 		}
 	}
-
-	if (ret == 0) {
-		close();
-		return FAILED;
-	};
 
 	return OK;
 }

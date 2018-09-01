@@ -170,7 +170,7 @@ Error PacketPeerUDP::_poll() {
 
 	ERR_FAIL_COND_V(!_sock, ERR_UNAVAILABLE);
 
-	if (_sock->is_open()) {
+	if (!_sock->is_open()) {
 		return FAILED;
 	}
 

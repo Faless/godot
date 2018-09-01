@@ -240,6 +240,8 @@ void PacketPeerUDP::_bind_methods() {
 PacketPeerUDP::PacketPeerUDP() {
 
 	_sock = NetSocket::create();
+	if (!_sock)
+		ERR_PRINT("Unable to create network socket, platform not supported");
 	blocking = true;
 	packet_port = 0;
 	queue_count = 0;

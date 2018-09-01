@@ -121,7 +121,7 @@ size_t _set_addr_storage(struct sockaddr_storage *p_addr, const IP_Address &p_ip
 }
 
 NetSocket *NetSocketUnix::_create_func() {
-	return new NetSocketUnix();
+	return memnew(NetSocketUnix);
 }
 
 void NetSocketUnix::make_default() {

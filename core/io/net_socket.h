@@ -61,8 +61,8 @@ public:
 	virtual Error poll(PollType p_type, int timeout) = 0;
 	virtual Error recv(uint8_t *p_buffer, int p_len, int &r_read) = 0;
 	virtual Error recvfrom(uint8_t *p_buffer, int p_len, int &r_read, IP_Address &r_ip, uint16_t &r_port) = 0;
-	virtual Error send(uint8_t *p_buffer, int p_len, int &r_sent) = 0;
-	virtual Error sendto(uint8_t *p_buffer, int p_len, int &r_sent, IP_Address p_ip, uint16_t p_port) = 0;
+	virtual Error send(const uint8_t *p_buffer, int p_len, int &r_sent) = 0;
+	virtual Error sendto(const uint8_t *p_buffer, int p_len, int &r_sent, IP_Address p_ip, uint16_t p_port) = 0;
 	virtual void set_broadcasting_enabled(bool p_enabled) = 0;
 	virtual void set_blocking_enabled(bool p_enabled) = 0;
 	virtual void set_ipv6_only_enabled(bool p_enabled) = 0;

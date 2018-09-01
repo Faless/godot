@@ -40,10 +40,9 @@
 #include "semaphore_posix.h"
 #include "thread_posix.h"
 
-//#include "core/io/file_access_buffered_fa.h"
 #include "dir_access_unix.h"
 #include "file_access_unix.h"
-#include "packet_peer_udp_posix.h"
+#include "net_socket_unix.h"
 #include "stream_peer_tcp_posix.h"
 #include "tcp_server_posix.h"
 
@@ -126,9 +125,9 @@ void OS_Unix::initialize_core() {
 	DirAccess::make_default<DirAccessUnix>(DirAccess::ACCESS_FILESYSTEM);
 
 #ifndef NO_NETWORK
+	NetSocketUnix::make_default();
 	TCPServerPosix::make_default();
 	StreamPeerTCPPosix::make_default();
-	PacketPeerUDPPosix::make_default();
 	IP_Unix::make_default();
 #endif
 

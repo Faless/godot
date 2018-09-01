@@ -466,3 +466,7 @@ void NetSocketUnix::set_reuse_port_enabled(bool p_enabled) {
 	}
 #endif
 }
+
+bool NetSocketUnix::is_open() const {
+	return _sock != SOCK_EMPTY;
+}

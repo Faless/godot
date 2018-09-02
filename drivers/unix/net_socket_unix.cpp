@@ -334,7 +334,7 @@ Error NetSocketUnix::poll(PollType p_type, int timeout) const {
 			pfd.events = POLLOUT || POLLIN;
 	}
 
-	int ret = SOCK_POLL(&pfd, timeout, 0);
+	int ret = SOCK_POLL(&pfd, 1, timeout);
 
 	ERR_FAIL_COND_V(ret < 0, FAILED);
 

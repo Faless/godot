@@ -43,8 +43,6 @@
 #include "dir_access_unix.h"
 #include "file_access_unix.h"
 #include "net_socket_unix.h"
-#include "stream_peer_tcp_posix.h"
-#include "tcp_server_posix.h"
 
 #ifdef __APPLE__
 #include <mach-o/dyld.h>
@@ -126,8 +124,6 @@ void OS_Unix::initialize_core() {
 
 #ifndef NO_NETWORK
 	NetSocketUnix::make_default();
-	TCPServerPosix::make_default();
-	StreamPeerTCPPosix::make_default();
 	IP_Unix::make_default();
 #endif
 

@@ -78,7 +78,9 @@ Error TCP_Server::listen(uint16_t p_port, const IP_Address &p_bind_address) {
 bool TCP_Server::is_connection_available() const {
 
 	ERR_FAIL_COND_V(!_sock.is_valid(), false);
-	ERR_FAIL_COND_V(!_sock->is_open(), false);
+
+	if (!_sock->is_open())
+		return false;
 
 	Error err = _sock->poll(NetSocket::POLL_TYPE_IN, 0);
 	if (err != OK) {

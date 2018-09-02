@@ -34,7 +34,7 @@
 #include "io/ip.h"
 #include "reference.h"
 
-class NetSocket {
+class NetSocket : public Reference {
 
 protected:
 	static NetSocket *(*_create)();
@@ -49,6 +49,7 @@ public:
 	};
 
 	enum Type {
+		TYPE_NONE,
 		TYPE_TCP,
 		TYPE_UDP,
 	};
@@ -71,6 +72,7 @@ public:
 	virtual void set_ipv6_only_enabled(bool p_enabled) = 0;
 	virtual void set_tcp_no_delay_enabled(bool p_enabled) = 0;
 	virtual void set_reuse_address_enabled(bool p_enabled) = 0;
+	virtual int get_available_bytes() const = 0;
 };
 
 #endif // NET_SOCKET_H

@@ -56,7 +56,7 @@ protected:
 	IP_Address peer_addr;
 	int peer_port;
 	bool blocking;
-	NetSocket *_sock;
+	Ref<NetSocket> _sock;
 
 	static void _bind_methods();
 

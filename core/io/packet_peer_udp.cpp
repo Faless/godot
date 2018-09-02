@@ -89,7 +89,7 @@ Error PacketPeerUDP::get_packet(const uint8_t **r_buffer, int &r_buffer_size) {
 
 Error PacketPeerUDP::put_packet(const uint8_t *p_buffer, int p_buffer_size) {
 
-	ERR_FAIL_COND_V(!_sock, ERR_UNAVAILABLE);
+	ERR_FAIL_COND_V(!_sock.is_valid(), ERR_UNAVAILABLE);
 	ERR_FAIL_COND_V(!peer_addr.is_valid(), ERR_UNCONFIGURED);
 
 	Error err;
@@ -126,7 +126,7 @@ int PacketPeerUDP::get_max_packet_size() const {
 
 Error PacketPeerUDP::listen(int p_port, const IP_Address &p_bind_address, int p_recv_buffer_size) {
 
-	ERR_FAIL_COND_V(!_sock, ERR_UNAVAILABLE);
+	ERR_FAIL_COND_V(!_sock.is_valid(), ERR_UNAVAILABLE);
 	ERR_FAIL_COND_V(_sock->is_open(), ERR_ALREADY_IN_USE);
 	ERR_FAIL_COND_V(!p_bind_address.is_valid() && !p_bind_address.is_wildcard(), ERR_INVALID_PARAMETER);
 
@@ -142,6 +142,7 @@ Error PacketPeerUDP::listen(int p_port, const IP_Address &p_bind_address, int p_
 		return ERR_CANT_CREATE;
 
 	_sock->set_blocking_enabled(false);
+	_sock->set_reuse_address_enabled(true);
 	err = _sock->bind(p_bind_address, p_port);
 
 	if (err != OK) {
@@ -154,7 +155,7 @@ Error PacketPeerUDP::listen(int p_port, const IP_Address &p_bind_address, int p_
 
 void PacketPeerUDP::close() {
 
-	if (_sock)
+	if (_sock.is_valid())
 		_sock->close();
 	rb.resize(16);
 	queue_count = 0;
@@ -162,13 +163,13 @@ void PacketPeerUDP::close() {
 
 Error PacketPeerUDP::wait() {
 
-	ERR_FAIL_COND_V(!_sock, ERR_UNAVAILABLE);
+	ERR_FAIL_COND_V(!_sock.is_valid(), ERR_UNAVAILABLE);
 	return _sock->poll(NetSocket::POLL_TYPE_IN, -1);
 }
 
 Error PacketPeerUDP::_poll() {
 
-	ERR_FAIL_COND_V(!_sock, ERR_UNAVAILABLE);
+	ERR_FAIL_COND_V(!_sock.is_valid(), ERR_UNAVAILABLE);
 
 	if (!_sock->is_open()) {
 		return FAILED;
@@ -207,7 +208,7 @@ Error PacketPeerUDP::_poll() {
 }
 bool PacketPeerUDP::is_listening() const {
 
-	return _sock && _sock->is_open();
+	return _sock.is_valid() && _sock->is_open();
 }
 
 IP_Address PacketPeerUDP::get_packet_address() const {
@@ -239,9 +240,7 @@ void PacketPeerUDP::_bind_methods() {
 
 PacketPeerUDP::PacketPeerUDP() {
 
-	_sock = NetSocket::create();
-	if (!_sock)
-		ERR_PRINT("Unable to create network socket, platform not supported");
+	_sock = Ref<NetSocket>(NetSocket::create());
 	blocking = true;
 	packet_port = 0;
 	queue_count = 0;
@@ -252,6 +251,4 @@ PacketPeerUDP::PacketPeerUDP() {
 PacketPeerUDP::~PacketPeerUDP() {
 
 	close();
-	if (_sock)
-		memdelete(_sock);
 }

@@ -67,6 +67,7 @@
 #define SOCK_EMPTY -1
 #define SOCK_BUF(x) x
 #define SOCK_CBUF(x) x
+#define SOCK_IOCTL ioctl
 #define SOCK_POLL ::poll
 #define SOCK_CLOSE ::close
 
@@ -78,12 +79,18 @@
 #define SOCK_EMPTY INVALID_SOCKET
 #define SOCK_BUF(x) (char *)(x)
 #define SOCK_CBUF(x) (const char *)(x)
+#define SOCK_IOCTL ioctlsocket
 #define SOCK_POLL WSAPoll
 #define SOCK_CLOSE closesocket
 
+// Windows doesn't have this flag
+#ifndef MSG_NOSIGNAL
+#define MSG_NOSIGNAL 0
 #endif
 
-size_t _set_addr_storage(struct sockaddr_storage *p_addr, const IP_Address &p_ip, uint16_t p_port, IP::Type p_ip_type) {
+#endif
+
+static size_t _set_addr_storage(struct sockaddr_storage *p_addr, const IP_Address &p_ip, uint16_t p_port, IP::Type p_ip_type) {
 
 	memset(p_addr, 0, sizeof(struct sockaddr_storage));
 	if (p_ip_type == IP::TYPE_IPV6 || p_ip_type == IP::TYPE_ANY) { // IPv6 socket
@@ -120,6 +127,24 @@ size_t _set_addr_storage(struct sockaddr_storage *p_addr, const IP_Address &p_ip
 	}
 }
 
+static void _set_ip_port(IP_Address &r_ip, uint16_t &r_port, struct sockaddr_storage *p_addr) {
+
+	if (p_addr->ss_family == AF_INET) {
+
+		struct sockaddr_in *addr4 = (struct sockaddr_in *)p_addr;
+		r_ip.set_ipv4((uint8_t *)&(addr4->sin_addr.s_addr));
+
+		r_port = ntohs(addr4->sin_port);
+
+	} else if (p_addr->ss_family == AF_INET6) {
+
+		struct sockaddr_in6 *addr6 = (struct sockaddr_in6 *)p_addr;
+		r_ip.set_ipv6(addr6->sin6_addr.s6_addr);
+
+		r_port = ntohs(addr6->sin6_port);
+	};
+}
+
 NetSocket *NetSocketUnix::_create_func() {
 	return memnew(NetSocketUnix);
 }
@@ -131,6 +156,7 @@ void NetSocketUnix::make_default() {
 NetSocketUnix::NetSocketUnix() {
 	_sock = SOCK_EMPTY;
 	_ip_type = IP::TYPE_NONE;
+	_is_stream = false;
 }
 
 NetSocketUnix::~NetSocketUnix() {
@@ -174,7 +200,14 @@ bool NetSocketUnix::_can_use_ip(const IP_Address p_ip, const bool p_for_bind) co
 	return true;
 }
 
+void NetSocketUnix::_set_socket(SOCKET_TYPE p_sock, IP::Type p_ip_type, bool p_is_stream) {
+	_sock = p_sock;
+	_ip_type = p_ip_type;
+	_is_stream = p_is_stream;
+}
+
 Error NetSocketUnix::open(Type p_sock_type, IP::Type &ip_type) {
+	ERR_FAIL_COND_V(is_open(), ERR_ALREADY_IN_USE);
 	ERR_FAIL_COND_V(ip_type > IP::TYPE_ANY || ip_type < IP::TYPE_NONE, ERR_INVALID_PARAMETER);
 
 #if defined(__OpenBSD__)
@@ -209,6 +242,7 @@ Error NetSocketUnix::open(Type p_sock_type, IP::Type &ip_type) {
 		set_broadcasting_enabled(true);
 	}
 
+	_is_stream = p_sock_type == TYPE_TCP;
 	return OK;
 }
 
@@ -219,11 +253,12 @@ void NetSocketUnix::close() {
 
 	_sock = SOCK_EMPTY;
 	_ip_type = IP::TYPE_NONE;
+	_is_stream = false;
 }
 
 Error NetSocketUnix::bind(IP_Address p_addr, uint16_t p_port) {
 
-	ERR_FAIL_COND_V(_ip_type == IP::TYPE_NONE, ERR_UNCONFIGURED);
+	ERR_FAIL_COND_V(!is_open(), ERR_UNCONFIGURED);
 	ERR_FAIL_COND_V(!_can_use_ip(p_addr, true), ERR_INVALID_PARAMETER);
 
 	sockaddr_storage addr;
@@ -238,7 +273,7 @@ Error NetSocketUnix::bind(IP_Address p_addr, uint16_t p_port) {
 }
 
 Error NetSocketUnix::listen(int p_max_pending) {
-	ERR_FAIL_COND_V(_ip_type == IP::TYPE_NONE, ERR_UNCONFIGURED);
+	ERR_FAIL_COND_V(!is_open(), ERR_UNCONFIGURED);
 
 	if (::listen(_sock, p_max_pending) == SOCK_EMPTY) {
 
@@ -251,7 +286,7 @@ Error NetSocketUnix::listen(int p_max_pending) {
 
 Error NetSocketUnix::connect_to_host(IP_Address p_host, uint16_t p_port) {
 
-	ERR_FAIL_COND_V(_ip_type == IP::TYPE_NONE, ERR_UNCONFIGURED);
+	ERR_FAIL_COND_V(!is_open(), ERR_UNCONFIGURED);
 	ERR_FAIL_COND_V(!_can_use_ip(p_host, false), ERR_INVALID_PARAMETER);
 
 	struct sockaddr_storage addr;
@@ -279,9 +314,9 @@ Error NetSocketUnix::connect_to_host(IP_Address p_host, uint16_t p_port) {
 	return OK;
 }
 
-Error NetSocketUnix::poll(PollType p_type, int timeout) {
+Error NetSocketUnix::poll(PollType p_type, int timeout) const {
 
-	ERR_FAIL_COND_V(_ip_type == IP::TYPE_NONE, ERR_UNCONFIGURED);
+	ERR_FAIL_COND_V(!is_open(), ERR_UNCONFIGURED);
 
 	struct pollfd pfd;
 	pfd.fd = _sock;
@@ -310,7 +345,7 @@ Error NetSocketUnix::poll(PollType p_type, int timeout) {
 }
 
 Error NetSocketUnix::recv(uint8_t *p_buffer, int p_len, int &r_read) {
-	ERR_FAIL_COND_V(_ip_type == IP::TYPE_NONE, ERR_UNCONFIGURED);
+	ERR_FAIL_COND_V(!is_open(), ERR_UNCONFIGURED);
 
 	r_read = ::recv(_sock, SOCK_BUF(p_buffer), p_len, 0);
 
@@ -326,7 +361,7 @@ Error NetSocketUnix::recv(uint8_t *p_buffer, int p_len, int &r_read) {
 }
 
 Error NetSocketUnix::recvfrom(uint8_t *p_buffer, int p_len, int &r_read, IP_Address &r_ip, uint16_t &r_port) {
-	ERR_FAIL_COND_V(_ip_type == IP::TYPE_NONE, ERR_UNCONFIGURED);
+	ERR_FAIL_COND_V(!is_open(), ERR_UNCONFIGURED);
 
 	struct sockaddr_storage from;
 	socklen_t len = sizeof(struct sockaddr_storage);
@@ -359,9 +394,12 @@ Error NetSocketUnix::recvfrom(uint8_t *p_buffer, int p_len, int &r_read, IP_Addr
 }
 
 Error NetSocketUnix::send(const uint8_t *p_buffer, int p_len, int &r_sent) {
-	ERR_FAIL_COND_V(_ip_type == IP::TYPE_NONE, ERR_UNCONFIGURED);
+	ERR_FAIL_COND_V(!is_open(), ERR_UNCONFIGURED);
 
-	r_sent = ::send(_sock, SOCK_CBUF(p_buffer), p_len, 0);
+	int flags = 0;
+	if (_is_stream)
+		flags = MSG_NOSIGNAL;
+	r_sent = ::send(_sock, SOCK_CBUF(p_buffer), p_len, flags);
 
 	if (r_sent < 0) {
 		NetError err = _get_socket_error();
@@ -375,7 +413,7 @@ Error NetSocketUnix::send(const uint8_t *p_buffer, int p_len, int &r_sent) {
 }
 
 Error NetSocketUnix::sendto(const uint8_t *p_buffer, int p_len, int &r_sent, IP_Address p_ip, uint16_t p_port) {
-	ERR_FAIL_COND_V(_ip_type == IP::TYPE_NONE, ERR_UNCONFIGURED);
+	ERR_FAIL_COND_V(!is_open(), ERR_UNCONFIGURED);
 
 	struct sockaddr_storage addr;
 	size_t addr_size = _set_addr_storage(&addr, p_ip, p_port, _ip_type);
@@ -393,7 +431,7 @@ Error NetSocketUnix::sendto(const uint8_t *p_buffer, int p_len, int &r_sent, IP_
 }
 
 void NetSocketUnix::set_broadcasting_enabled(bool p_enabled) {
-	ERR_FAIL_COND(_sock == SOCK_EMPTY);
+	ERR_FAIL_COND(!is_open());
 	// IPv6 has no broadcast support.
 	ERR_FAIL_COND(_ip_type == IP::TYPE_IPV6);
 
@@ -404,15 +442,12 @@ void NetSocketUnix::set_broadcasting_enabled(bool p_enabled) {
 }
 
 void NetSocketUnix::set_blocking_enabled(bool p_enabled) {
-	ERR_FAIL_COND(_sock == SOCK_EMPTY);
+	ERR_FAIL_COND(!is_open());
 
 	int ret = 0;
-#if defined(WINDOWS_ENABLED)
+#if defined(WINDOWS_ENABLED) || defined(NO_FCNTL)
 	unsigned long par = p_enabled ? 0 : 1;
-	ret = ioctlsocket(_sock, FIONBIO, &par);
-#elif defined(NO_FCNTL)
-	int par = p_enabled ? 0 : 1;
-	ret = ioctl(_sock, FIONBIO, &par);
+	ret = SOCK_IOCTL(_sock, FIONBIO, &par);
 #else
 	int opts = fcntl(_sock, F_GETFL);
 	if (p_enabled)
@@ -426,7 +461,7 @@ void NetSocketUnix::set_blocking_enabled(bool p_enabled) {
 }
 
 void NetSocketUnix::set_ipv6_only_enabled(bool p_enabled) {
-	ERR_FAIL_COND(_sock == SOCK_EMPTY);
+	ERR_FAIL_COND(!is_open());
 	// This option is only avaiable in IPv6 sockets.
 	ERR_FAIL_COND(_ip_type == IP::TYPE_IPV4);
 
@@ -437,7 +472,7 @@ void NetSocketUnix::set_ipv6_only_enabled(bool p_enabled) {
 }
 
 void NetSocketUnix::set_tcp_no_delay_enabled(bool p_enabled) {
-	ERR_FAIL_COND(_sock == SOCK_EMPTY);
+	ERR_FAIL_COND(!is_open());
 	ERR_FAIL_COND(_ip_type != TYPE_TCP);
 
 	int par = p_enabled ? 1 : 0;
@@ -447,7 +482,7 @@ void NetSocketUnix::set_tcp_no_delay_enabled(bool p_enabled) {
 }
 
 void NetSocketUnix::set_reuse_address_enabled(bool p_enabled) {
-	ERR_FAIL_COND(_sock == SOCK_EMPTY);
+	ERR_FAIL_COND(!is_open());
 
 	int par = p_enabled ? 1 : 0;
 	if (setsockopt(_sock, SOL_SOCKET, SO_REUSEADDR, SOCK_CBUF(&par), sizeof(int)) < 0) {
@@ -458,7 +493,7 @@ void NetSocketUnix::set_reuse_address_enabled(bool p_enabled) {
 void NetSocketUnix::set_reuse_port_enabled(bool p_enabled) {
 // Windows does not have this option, as it is always ON when setting REUSEADDR.
 #ifndef WINDOWS_ENABLED
-	ERR_FAIL_COND(_sock == SOCK_EMPTY);
+	ERR_FAIL_COND(!is_open());
 
 	int par = p_enabled ? 1 : 0;
 	if (setsockopt(_sock, SOL_SOCKET, SO_REUSEPORT, SOCK_CBUF(&par), sizeof(int)) < 0) {
@@ -469,4 +504,32 @@ void NetSocketUnix::set_reuse_port_enabled(bool p_enabled) {
 
 bool NetSocketUnix::is_open() const {
 	return _sock != SOCK_EMPTY;
+}
+
+int NetSocketUnix::get_available_bytes() const {
+
+	ERR_FAIL_COND_V(_sock == SOCK_EMPTY, -1);
+
+	unsigned long len;
+	int ret = SOCK_IOCTL(_sock, FIONREAD, &len);
+	ERR_FAIL_COND_V(ret == -1, 0);
+	return len;
+}
+
+Ref<NetSocket> NetSocketUnix::accept(IP_Address &r_ip, uint16_t &r_port) {
+
+	Ref<NetSocket> out;
+	ERR_FAIL_COND_V(!is_open(), out);
+
+	struct sockaddr_storage their_addr;
+	socklen_t size = sizeof(their_addr);
+	SOCKET_TYPE fd = ::accept(_sock, (struct sockaddr *)&their_addr, &size);
+	ERR_FAIL_COND_V(fd == SOCK_EMPTY, out);
+
+	_set_ip_port(r_ip, r_port, &their_addr);
+
+	NetSocketUnix *ns = memnew(NetSocketUnix);
+	ns->_set_socket(fd, _ip_type, _is_stream);
+	ns->set_blocking_enabled(false);
+	return Ref<NetSocket>(ns);
 }

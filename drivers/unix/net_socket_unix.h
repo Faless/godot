@@ -48,6 +48,7 @@ class NetSocketUnix : public NetSocket {
 private:
 	SOCKET_TYPE _sock;
 	IP::Type _ip_type;
+	bool _is_stream;
 
 	enum NetError {
 		ERR_NET_WOULD_BLOCK,
@@ -57,6 +58,7 @@ private:
 	};
 
 	NetError _get_socket_error();
+	void _set_socket(SOCKET_TYPE p_sock, IP::Type p_ip_type, bool p_is_stream);
 
 protected:
 	static NetSocket *_create_func();
@@ -71,13 +73,15 @@ public:
 	virtual Error bind(IP_Address p_addr, uint16_t p_port);
 	virtual Error listen(int p_max_pending);
 	virtual Error connect_to_host(IP_Address p_addr, uint16_t p_port);
-	virtual Error poll(PollType p_type, int timeout);
+	virtual Error poll(PollType p_type, int timeout) const;
 	virtual Error recv(uint8_t *p_buffer, int p_len, int &r_read);
 	virtual Error recvfrom(uint8_t *p_buffer, int p_len, int &r_read, IP_Address &r_ip, uint16_t &r_port);
 	virtual Error send(const uint8_t *p_buffer, int p_len, int &r_sent);
 	virtual Error sendto(const uint8_t *p_buffer, int p_len, int &r_sent, IP_Address p_ip, uint16_t p_port);
+	virtual Ref<NetSocket> accept(IP_Address &r_ip, uint16_t &r_port);
 
 	virtual bool is_open() const;
+	virtual int get_available_bytes() const;
 
 	virtual void set_broadcasting_enabled(bool p_enabled);
 	virtual void set_blocking_enabled(bool p_enabled);

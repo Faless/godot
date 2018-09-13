@@ -494,7 +494,6 @@ ssdpDiscoverDevices(const char * const deviceTypes[],
 	struct addrinfo hints, *servinfo, *p;
 #endif
 #ifdef _WIN32
-	MIB_IPFORWARDROW ip_forward;
 	unsigned long _ttl = (unsigned long)ttl;
 #endif
 	int linklocal = 1;
@@ -538,8 +537,103 @@ ssdpDiscoverDevices(const char * const deviceTypes[],
  * SSDP multicast traffic */
 /* Get IP associated with the index given in the ip_forward struct
  * in order to give this ip to setsockopt(sudp, IPPROTO_IP, IP_MULTICAST_IF) */
-	if(!ipv6
-	   && (GetBestRoute(inet_addr("223.255.255.255"), 0, &ip_forward) == NO_ERROR)) {
+	if(!ipv6) {
+		DWORD ifbestidx;
+		struct sockaddr destAddr;
+		memset(&destAddr, 0, sizeof(destAddr));
+		if (GetBestInterfaceEx(inet_addr("223.255.255.255"), &ifbestidx) == NO_ERROR) {
+			DWORD dwSize = 0;
+			DWORD dwRetVal = 0;
+			unsigned int i = 0;
+			ULONG flags = GAA_FLAG_INCLUDE_PREFIX;
+			ULONG family = AF_INET;
+			LPVOID lpMsgBuf = NULL;
+			PIP_ADAPTER_ADDRESSES pAddresses = NULL;
+			ULONG outBufLen = 0;
+			ULONG Iterations = 0;
+			PIP_ADAPTER_ADDRESSES pCurrAddresses = NULL;
+			PIP_ADAPTER_UNICAST_ADDRESS pUnicast = NULL;
+			PIP_ADAPTER_ANYCAST_ADDRESS pAnycast = NULL;
+			PIP_ADAPTER_MULTICAST_ADDRESS pMulticast = NULL;
+			IP_ADAPTER_DNS_SERVER_ADDRESS *pDnServer = NULL;
+			IP_ADAPTER_PREFIX *pPrefix = NULL;
+
+			outBufLen = 15360;
+			do {
+				pAddresses = (IP_ADAPTER_ADDRESSES *) HeapAlloc(GetProcessHeap(), 0, outBufLen);
+				if (pAddresses == NULL) {
+					break;
+				}
+
+				dwRetVal = GetAdaptersAddresses(family, flags, NULL, pAddresses, &outBufLen);
+
+				if (dwRetVal == ERROR_BUFFER_OVERFLOW) {
+					HeapFree(GetProcessHeap(), 0, pAddresses);
+					pAddresses = NULL;
+				} else {
+					break;
+				}
+				Iterations++;
+			} while ((dwRetVal == ERROR_BUFFER_OVERFLOW) && (Iterations < 3));
+
+			if (dwRetVal == NO_ERROR) {
+				pCurrAddresses = pAddresses;
+				while (pCurrAddresses) {
+#ifdef DEBUG
+					printf("\tIfIndex (IPv4 interface): %u\n", pCurrAddresses->IfIndex);
+					printf("\tAdapter name: %s\n", pCurrAddresses->AdapterName);
+					pUnicast = pCurrAddresses->FirstUnicastAddress;
+					if (pUnicast != NULL) {
+						for (i = 0; pUnicast != NULL; i++) {
+							IPAddr.S_un.S_addr = (u_long) pUnicast->Address;
+							printf("\tIP Address[%d]:     \t%s\n", i, inet_ntoa(IPAddr) );
+							pUnicast = pUnicast->Next;
+						}
+						printf("\tNumber of Unicast Addresses: %d\n", i);
+					}
+					pAnycast = pCurrAddresses->FirstAnycastAddress;
+					if (pAnycast) {
+						for (i = 0; pAnycast != NULL; i++) {
+							IPAddr.S_un.S_addr = (u_long) pAnyCast->Address;
+							printf("\tAnycast Address[%d]:     \t%s\n", i, inet_ntoa(IPAddr) );
+							pAnycast = pAnycast->Next;
+						}
+						printf("\tNumber of Anycast Addresses: %d\n", i);
+					}
+					pMulticast = pCurrAddresses->FirstMulticastAddress;
+					if (pMulticast) {
+						for (i = 0; pMulticast != NULL; i++) {
+							IPAddr.S_un.S_addr = (u_long) pMultiCast->Address;
+							printf("\tMulticast Address[%d]:     \t%s\n", i, inet_ntoa(IPAddr) );
+						}
+					}
+					printf("\n");
+#endif
+					pUnicast = pCurrAddresses->FirstUnicastAddress;
+					if (pCurrAddresses->IfIndex == ifbestidx && pUnicast != NULL) {
+						SOCKADDR_IN *ipv4 = (SOCKADDR_IN *)(pUnicast->Address.lpSockaddr);
+						/* Set the address of this interface to be used */
+						struct in_addr mc_if;
+						memset(&mc_if, 0, sizeof(mc_if));
+						mc_if.s_addr = ipv4->sin_addr.s_addr;
+						if(setsockopt(sudp, IPPROTO_IP, IP_MULTICAST_IF, (const char *)&mc_if, sizeof(mc_if)) < 0) {
+							PRINT_SOCKET_ERROR("setsockopt");
+						}
+						((struct sockaddr_in *)&sockudp_r)->sin_addr.s_addr = ipv4->sin_addr.s_addr;
+#ifndef DEBUG
+						break;
+#endif
+					}
+				}
+			}
+			if (pAddresses != NULL) {
+				HeapFree(GetProcessHeap(), 0, pAddresses);
+				pAddresses = NULL;
+			}
+		}
+	}
+#if 0
+	   && (GetBestRoute2(&ifuid, ifbestidx, NULL, destAddr, &ip_forward, 0, ifbestaddr) == NO_ERROR)) {
 		DWORD dwRetVal = 0;
 		PMIB_IPADDRTABLE pIPAddrTable;
 		DWORD dwSize = 0;
@@ -595,6 +689,7 @@ ssdpDiscoverDevices(const char * const deviceTypes[],
 			pIPAddrTable = NULL;
 		}
 	}
+#endif
 #endif	/* _WIN32 */
 
 #ifdef _WIN32

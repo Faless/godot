@@ -182,23 +182,36 @@ NetSocketPosix::NetError NetSocketPosix::_get_socket_error() {
 #if defined(WINDOWS_ENABLED)
 	int err = WSAGetLastError();
 
-	if (err == WSAEISCONN)
-		return ERR_NET_IS_CONNECTED;
-	if (err == WSAEINPROGRESS || err == WSAEALREADY)
-		return ERR_NET_IN_PROGRESS;
-	if (err == WSAEWOULDBLOCK)
-		return ERR_NET_WOULD_BLOCK;
-	ERR_PRINTS("Socket error: " + itos(err));
-	return ERR_NET_OTHER;
+	switch (err) {
+		case WSAEISCONN:
+			return ERR_NET_IS_CONNECTED;
+		case WSAEINPROGRESS:
+		case WSAEALREADY:
+			return ERR_NET_IN_PROGRESS;
+		case WSAEWOULDBLOCK:
+			return ERR_NET_WOULD_BLOCK;
+		case WSAECONNRESET:
+			return ERR_NET_CONNECTION_RESET;
+		default:
+			ERR_PRINTS("Socket error: " + itos(err));
+			return ERR_NET_OTHER;
+	}
 #else
-	if (errno == EISCONN)
-		return ERR_NET_IS_CONNECTED;
-	if (errno == EINPROGRESS || errno == EALREADY)
-		return ERR_NET_IN_PROGRESS;
-	if (errno == EAGAIN || errno == EWOULDBLOCK)
-		return ERR_NET_WOULD_BLOCK;
-	ERR_PRINTS("Socket error: " + itos(errno));
-	return ERR_NET_OTHER;
+	switch (errno) {
+		case EISCONN:
+			return ERR_NET_IS_CONNECTED;
+		case EINPROGRESS:
+		case EALREADY:
+			return ERR_NET_IN_PROGRESS;
+		case EAGAIN:
+		case EWOULDBLOCK:
+			return ERR_NET_WOULD_BLOCK;
+		case ECONNRESET:
+			return ERR_NET_CONNECTION_RESET;
+		default:
+			ERR_PRINTS("Socket error: " + itos(err));
+			return ERR_NET_OTHER;
+	}
 #endif
 }
 
@@ -371,6 +384,13 @@ Error NetSocketPosix::recv(uint8_t *p_buffer, int p_len, int &r_read) {
 		if (err == ERR_NET_WOULD_BLOCK)
 			return ERR_BUSY;
 
+		if (!_is_stream && err == ERR_NET_CONNECTION_RESET) {
+			// Connection reset on UDP are not failures.
+			// Might be the result of an ICMP packet, signalling that the destination host is unreachable.
+			// We could try to handle this in the future.
+			return ERR_BUSY;
+		}
+
 		return FAILED;
 	}
 
@@ -390,6 +410,13 @@ Error NetSocketPosix::recvfrom(uint8_t *p_buffer, int p_len, int &r_read, IP_Add
 		NetError err = _get_socket_error();
 		if (err == ERR_NET_WOULD_BLOCK)
 			return ERR_BUSY;
+
+		if (!_is_stream && err == ERR_NET_CONNECTION_RESET) {
+			// Connection reset on UDP are not failures.
+			// Might be the result of an ICMP packet, signalling that the destination host is unreachable.
+			// We could try to handle this in the future.
+			return ERR_BUSY;
+		}
 
 		return FAILED;
 	}

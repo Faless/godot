@@ -51,10 +51,18 @@ private:
 	bool _is_stream;
 
 	enum NetError {
+		// Operation would block, but we requested non-blocking.
 		ERR_NET_WOULD_BLOCK,
+		// Is already connected.
 		ERR_NET_IS_CONNECTED,
+		// We are already performing this operation (e.g. connect).
 		ERR_NET_IN_PROGRESS,
-		ERR_NET_OTHER
+		// The connection was reset.
+		// For TCP, the connection was closed by the remote peer.
+		// For UDP, this might be the result of an ICMP unreachable dest.
+		ERR_NET_CONNECTION_RESET,
+		// Generic error
+		ERR_NET_OTHER,
 	};
 
 	NetError _get_socket_error();

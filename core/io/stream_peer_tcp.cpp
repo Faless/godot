@@ -254,8 +254,10 @@ StreamPeerTCP::Status StreamPeerTCP::get_status() {
 		err = _sock->poll(NetSocket::POLL_TYPE_IN, 0);
 		if (err == OK) {
 			// FIN received
-			if (_sock->get_available_bytes() == 0)
+			if (_sock->get_available_bytes() == 0) {
 				disconnect_from_host();
+				return status;
+			}
 		}
 		// Also poll write
 		err = _sock->poll(NetSocket::POLL_TYPE_IN_OUT, 0);

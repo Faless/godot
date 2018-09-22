@@ -195,7 +195,7 @@ private:
 	static void _bind_methods();
 
 public:
-	Error connect_to_host(const String &p_host, int p_port = -1, bool p_ssl = false, bool p_verify_host = true);
+	Error connect_to_host(const String &p_host, int p_port = -1, bool p_ssl = false, bool p_verify_host = true, IP::Type p_ip_type = IP::TYPE_ANY);
 
 	void set_connection(const Ref<StreamPeer> &p_connection);
 	Ref<StreamPeer> get_connection() const;

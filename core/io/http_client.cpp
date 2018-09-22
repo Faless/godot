@@ -46,7 +46,7 @@ const char *HTTPClient::_methods[METHOD_MAX] = {
 };
 
 #ifndef JAVASCRIPT_ENABLED
-Error HTTPClient::connect_to_host(const String &p_host, int p_port, bool p_ssl, bool p_verify_host) {
+Error HTTPClient::connect_to_host(const String &p_host, int p_port, bool p_ssl, bool p_verify_host, IP::Type p_ip_type) {
 
 	close();
 
@@ -89,7 +89,7 @@ Error HTTPClient::connect_to_host(const String &p_host, int p_port, bool p_ssl, 
 		status = STATUS_CONNECTING;
 	} else {
 		// Host contains hostname and needs to be resolved to IP
-		resolving = IP::get_singleton()->resolve_hostname_queue_item(conn_host);
+		resolving = IP::get_singleton()->resolve_hostname_queue_item(conn_host, p_ip_type);
 		status = STATUS_RESOLVING;
 	}
 
@@ -793,7 +793,7 @@ PoolStringArray HTTPClient::_get_response_headers() {
 
 void HTTPClient::_bind_methods() {
 
-	ClassDB::bind_method(D_METHOD("connect_to_host", "host", "port", "use_ssl", "verify_host"), &HTTPClient::connect_to_host, DEFVAL(-1), DEFVAL(false), DEFVAL(true));
+	ClassDB::bind_method(D_METHOD("connect_to_host", "host", "port", "use_ssl", "verify_host", "ip_type"), &HTTPClient::connect_to_host, DEFVAL(-1), DEFVAL(false), DEFVAL(true), DEFVAL(IP::TYPE_ANY));
 	ClassDB::bind_method(D_METHOD("set_connection", "connection"), &HTTPClient::set_connection);
 	ClassDB::bind_method(D_METHOD("get_connection"), &HTTPClient::get_connection);
 	ClassDB::bind_method(D_METHOD("request_raw", "method", "url", "headers", "body"), &HTTPClient::request_raw);

@@ -35,7 +35,7 @@ void HTTPRequest::_redirect_request(const String &p_new_url) {
 
 Error HTTPRequest::_request() {
 
-	return client->connect_to_host(url, port, use_ssl, validate_ssl);
+	return client->connect_to_host(url, port, use_ssl, validate_ssl, ip_type);
 }
 
 Error HTTPRequest::_parse_url(const String &p_url) {
@@ -476,8 +476,17 @@ int HTTPRequest::get_downloaded_bytes() const {
 
 	return downloaded;
 }
+
 int HTTPRequest::get_body_size() const {
 	return body_len;
+}
+
+void HTTPRequest::set_ip_type(IP::Type p_ip_type) {
+	ip_type = p_ip_type;
+}
+
+IP::Type HTTPRequest::get_ip_type() const {
+	return ip_type;
 }
 
 void HTTPRequest::_bind_methods() {
@@ -502,6 +511,9 @@ void HTTPRequest::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_downloaded_bytes"), &HTTPRequest::get_downloaded_bytes);
 	ClassDB::bind_method(D_METHOD("get_body_size"), &HTTPRequest::get_body_size);
 
+	ClassDB::bind_method(D_METHOD("set_ip_type", "ip_type"), &HTTPRequest::set_ip_type);
+	ClassDB::bind_method(D_METHOD("get_ip_type"), &HTTPRequest::get_ip_type);
+
 	ClassDB::bind_method(D_METHOD("_redirect_request"), &HTTPRequest::_redirect_request);
 	ClassDB::bind_method(D_METHOD("_request_done"), &HTTPRequest::_request_done);
 
@@ -509,6 +521,7 @@ void HTTPRequest::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "use_threads"), "set_use_threads", "is_using_threads");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "body_size_limit", PROPERTY_HINT_RANGE, "-1,2000000000"), "set_body_size_limit", "get_body_size_limit");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "max_redirects", PROPERTY_HINT_RANGE, "-1,64"), "set_max_redirects", "get_max_redirects");
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "ip_type", PROPERTY_HINT_ENUM, "None,IPv4,IPv6,ANY"), "set_ip_type", "get_ip_type");
 
 	ADD_SIGNAL(MethodInfo("request_completed", PropertyInfo(Variant::INT, "result"), PropertyInfo(Variant::INT, "response_code"), PropertyInfo(Variant::POOL_STRING_ARRAY, "headers"), PropertyInfo(Variant::POOL_BYTE_ARRAY, "body")));
 
@@ -548,6 +561,7 @@ HTTPRequest::HTTPRequest() {
 	body_size_limit = -1;
 	file = NULL;
 	status = HTTPClient::STATUS_DISCONNECTED;
+	ip_type = IP::TYPE_ANY;
 }
 
 HTTPRequest::~HTTPRequest() {

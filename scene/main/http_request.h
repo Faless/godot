@@ -87,6 +87,7 @@ private:
 	int body_size_limit;
 
 	int redirections;
+	IP::Type ip_type;
 
 	HTTPClient::Status status;
 
@@ -129,6 +130,9 @@ public:
 
 	void set_max_redirects(int p_max);
 	int get_max_redirects() const;
+
+	void set_ip_type(IP::Type p_ip_type);
+	IP::Type get_ip_type() const;
 
 	int get_downloaded_bytes() const;
 	int get_body_size() const;

@@ -55,10 +55,14 @@ private:
 		uint8_t padding[3]; // Align to 8th byte
 	};
 
-	uint8_t packet_buffer[PACKET_BUFFER_SIZE];
+	PacketBuffer<PacketInfo> _in_buffer;
+	PacketBuffer<PacketInfo> _out_buffer;
+	PacketInfo _in_info;
+	PacketInfo _current_info;
+	PoolVector<uint8_t> _packet_buffer;
+
 	struct lws *wsi;
 	WriteMode write_mode;
-	bool _was_string;
 
 	int close_code;
 	String close_reason;
@@ -69,10 +73,6 @@ public:
 		bool force_close;
 		bool clean_close;
 	};
-
-	PacketBuffer<PacketInfo> _in_buffer;
-	PacketBuffer<PacketInfo> _out_buffer;
-	uint32_t in_size;
 
 	virtual int get_available_packet_count() const;
 	virtual Error get_packet(const uint8_t **r_buffer, int &r_buffer_size);

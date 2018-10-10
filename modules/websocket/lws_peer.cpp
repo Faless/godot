@@ -48,6 +48,7 @@ void LWSPeer::set_wsi(struct lws *p_wsi) {
 	_in_buffer.set_payload_size(16);
 	_out_buffer.set_max_packets(10);
 	_out_buffer.set_payload_size(16);
+	_packet_buffer.resize((1 << 16) + LWS_PRE);
 	wsi = p_wsi;
 };
 
@@ -64,7 +65,7 @@ Error LWSPeer::read_wsi(void *in, size_t len) {
 	ERR_FAIL_COND_V(!is_connected_to_host(), FAILED);
 
 	if (lws_is_first_fragment(wsi))
-		in_size = 0;
+		_in_info.size = 0;
 
 	if (_in_buffer.packets_space() < 1) {
 		ERR_EXPLAIN("Too many packets! Dropping data");
@@ -77,14 +78,11 @@ Error LWSPeer::read_wsi(void *in, size_t len) {
 	}
 
 	_in_buffer.write_packet_payload(in, len);
-	in_size += len;
+	_in_info.size += len;
 
 	if (lws_is_final_fragment(wsi)) {
-		PacketInfo info = {};
-		uint8_t is_string = lws_frame_is_binary(wsi) ? 0 : 1;
-		info.is_string = is_string;
-		info.size = in_size;
-		_in_buffer.write_packet_info(&info);
+		_in_info.is_string = lws_frame_is_binary(wsi) ? 0 : 1;
+		_in_buffer.write_packet_info(&_in_info);
 	}
 
 	return OK;
@@ -102,13 +100,12 @@ Error LWSPeer::write_wsi() {
 
 	PacketInfo info = {};
 	_out_buffer.read_packet_info(&info);
+	PoolVector<uint8_t>::Write rw = _packet_buffer.write();
 	ERR_FAIL_COND_V(_out_buffer.payload_left() < info.size, ERR_BUG);
 
-	tmp.resize(LWS_PRE + info.size);
-	_out_buffer.read_packet_payload(&(tmp.write()[LWS_PRE]), info.size);
+	_out_buffer.read_packet_payload(&(rw[LWS_PRE]), info.size);
 	enum lws_write_protocol mode = info.is_string ? LWS_WRITE_TEXT : LWS_WRITE_BINARY;
-	lws_write(wsi, &(tmp.write()[LWS_PRE]), info.size, mode);
-	tmp.resize(0);
+	lws_write(wsi, &(rw[LWS_PRE]), info.size, mode);
 
 	if (count > 1)
 		lws_callback_on_writable(wsi); // we want to write more!
@@ -138,15 +135,14 @@ Error LWSPeer::get_packet(const uint8_t **r_buffer, int &r_buffer_size) {
 	if (_in_buffer.packets_left() == 0)
 		return ERR_UNAVAILABLE;
 
-	PacketInfo info = {};
-	_in_buffer.read_packet_info(&info);
-	ERR_FAIL_COND_V(_in_buffer.payload_left() < info.size, ERR_BUG);
+	_in_buffer.read_packet_info(&_current_info);
+	ERR_FAIL_COND_V(_in_buffer.payload_left() < _current_info.size, ERR_BUG);
 
 
-	_in_buffer.read_packet_payload(packet_buffer, info.size);
-	*r_buffer = packet_buffer;
-	r_buffer_size = info.size;
-	_was_string = info.is_string;
+	PoolVector<uint8_t>::Write rw = _packet_buffer.write();
+	_in_buffer.read_packet_payload(rw.ptr(), _current_info.size);
+	*r_buffer = rw.ptr();
+	r_buffer_size = _current_info.size;
 
 	return OK;
 };
@@ -161,7 +157,7 @@ int LWSPeer::get_available_packet_count() const {
 
 bool LWSPeer::was_string_packet() const {
 
-	return _was_string;
+	return _current_info.is_string;
 };
 
 bool LWSPeer::is_connected_to_host() const {
@@ -216,8 +212,9 @@ void LWSPeer::close(int p_code, String p_reason) {
 	wsi = NULL;
 	_in_buffer.clear();
 	_out_buffer.clear();
-	in_size = 0;
-	_was_string = false;
+	_in_info = {};
+	_current_info = {};
+	_packet_buffer.resize(0);
 };
 
 IP_Address LWSPeer::get_connected_host() const {

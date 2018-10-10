@@ -85,7 +85,7 @@ int LWSServer::_handle_cb(struct lws *wsi, enum lws_callback_reasons reason, voi
 			int32_t id = _gen_unique_id();
 
 			Ref<LWSPeer> peer = Ref<LWSPeer>(memnew(LWSPeer));
-			peer->set_wsi(wsi);
+			peer->set_wsi(wsi, _buffer_shift, _max_packets_shift);
 			_peer_map[id] = peer;
 
 			peer_data->peer_id = id;

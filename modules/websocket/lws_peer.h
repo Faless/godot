@@ -88,7 +88,7 @@ public:
 	virtual void set_write_mode(WriteMode p_mode);
 	virtual bool was_string_packet() const;
 
-	void set_wsi(struct lws *wsi);
+	void set_wsi(struct lws *wsi, unsigned int _buffer_shift, unsigned int _max_packets_shift);
 	Error read_wsi(void *in, size_t len);
 	Error write_wsi();
 	void send_close_status(struct lws *wsi);

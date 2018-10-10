@@ -41,14 +41,14 @@
 
 #include "drivers/unix/net_socket_posix.h"
 
-void LWSPeer::set_wsi(struct lws *p_wsi) {
+void LWSPeer::set_wsi(struct lws *p_wsi, unsigned int _buffer_shift, unsigned int _max_packets_shift) {
 	ERR_FAIL_COND(wsi != NULL);
 
-	_in_buffer.set_max_packets(10);
-	_in_buffer.set_payload_size(16);
-	_out_buffer.set_max_packets(10);
-	_out_buffer.set_payload_size(16);
-	_packet_buffer.resize((1 << 16) + LWS_PRE);
+	_in_buffer.set_max_packets(_max_packets_shift);
+	_in_buffer.set_payload_size(_buffer_shift);
+	_out_buffer.set_max_packets(_max_packets_shift);
+	_out_buffer.set_payload_size(_buffer_shift);
+	_packet_buffer.resize((1 << _buffer_shift) + LWS_PRE);
 	wsi = p_wsi;
 };
 

@@ -38,6 +38,7 @@
 #include "libwebsockets.h"
 #include "lws_config.h"
 #include "websocket_peer.h"
+#include "packet_buffer.h"
 
 class LWSPeer : public WebSocketPeer {
 
@@ -46,6 +47,12 @@ class LWSPeer : public WebSocketPeer {
 private:
 	enum {
 		PACKET_BUFFER_SIZE = 65536 - 5 // 4 bytes for the size, 1 for the type
+	};
+
+	struct PacketInfo {
+		uint32_t size;
+		uint8_t is_string;
+		uint8_t padding[3]; // Align to 8th byte
 	};
 
 	uint8_t packet_buffer[PACKET_BUFFER_SIZE];
@@ -63,12 +70,9 @@ public:
 		bool clean_close;
 	};
 
-	RingBuffer<uint8_t> rbw;
-	RingBuffer<uint8_t> rbr;
-	uint8_t input_buffer[PACKET_BUFFER_SIZE];
+	PacketBuffer<PacketInfo> _in_buffer;
+	PacketBuffer<PacketInfo> _out_buffer;
 	uint32_t in_size;
-	int in_count;
-	int out_count;
 
 	virtual int get_available_packet_count() const;
 	virtual Error get_packet(const uint8_t **r_buffer, int &r_buffer_size);

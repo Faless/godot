@@ -43,8 +43,9 @@ EMSCRIPTEN_KEEPALIVE void _esws_on_connect(void *obj, char *proto) {
 EMSCRIPTEN_KEEPALIVE void _esws_on_message(void *obj, uint8_t *p_data, int p_data_size, int p_is_string) {
 	EMWSClient *client = static_cast<EMWSClient *>(obj);
 
-	static_cast<EMWSPeer *>(*client->get_peer(1))->read_msg(p_data, p_data_size, p_is_string == 1);
-	client->_on_peer_packet();
+	Error err = static_cast<EMWSPeer *>(*client->get_peer(1))->read_msg(p_data, p_data_size, p_is_string == 1);
+	if (err == OK)
+		client->_on_peer_packet();
 }
 
 EMSCRIPTEN_KEEPALIVE void _esws_on_error(void *obj) {
@@ -159,7 +160,7 @@ Error EMWSClient::connect_to_host(String p_host, String p_path, uint16_t p_port,
 	}, _js_id, str.utf8().get_data(), proto_string.utf8().get_data());
 	/* clang-format on */
 
-	static_cast<Ref<EMWSPeer> >(_peer)->set_sock(peer_sock);
+	static_cast<Ref<EMWSPeer> >(_peer)->set_sock(peer_sock, _buffer_shift, _max_packets_shift);
 
 	return OK;
 };

@@ -139,7 +139,7 @@ int WebSocketMultiplayerPeer::get_max_packet_size() const {
 
 	ERR_FAIL_COND_V(!_is_multiplayer, ERR_UNCONFIGURED);
 
-	return MAX_PACKET_SIZE;
+	return (1 << _buffer_shift) - PROTO_SIZE;
 }
 
 Error WebSocketMultiplayerPeer::get_packet(const uint8_t **r_buffer, int &r_buffer_size) {

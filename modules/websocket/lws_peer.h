@@ -45,9 +45,6 @@ class LWSPeer : public WebSocketPeer {
 	GDCIIMPL(LWSPeer, WebSocketPeer);
 
 private:
-	enum {
-		PACKET_BUFFER_SIZE = 65536 - 5 // 4 bytes for the size, 1 for the type
-	};
 
 	typedef struct _PacketInfo {
 		uint32_t size;
@@ -77,7 +74,7 @@ public:
 	virtual int get_available_packet_count() const;
 	virtual Error get_packet(const uint8_t **r_buffer, int &r_buffer_size);
 	virtual Error put_packet(const uint8_t *p_buffer, int p_buffer_size);
-	virtual int get_max_packet_size() const { return PACKET_BUFFER_SIZE; };
+	virtual int get_max_packet_size() const { return _packet_buffer.size(); };
 
 	virtual void close(int p_code = 1000, String p_reason = "");
 	virtual bool is_connected_to_host() const;

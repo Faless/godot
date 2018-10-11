@@ -51,9 +51,7 @@ protected:
 		SYS_DEL = 2,
 		SYS_ID = 3,
 
-		PROTO_SIZE = 9,
-		SYS_PACKET_SIZE = 13,
-		MAX_PACKET_SIZE = 65536 - 14 // 5 websocket, 9 multiplayer
+		PROTO_SIZE = 9
 	};
 
 	struct Packet {

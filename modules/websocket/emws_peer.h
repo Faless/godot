@@ -33,11 +33,11 @@
 #ifdef JAVASCRIPT_ENABLED
 
 #include "core/error_list.h"
+#include "core/io/packet_buffer.h"
 #include "core/io/packet_peer.h"
 #include "core/ring_buffer.h"
 #include "emscripten.h"
 #include "websocket_peer.h"
-#include "packet_buffer.h"
 
 class EMWSPeer : public WebSocketPeer {
 

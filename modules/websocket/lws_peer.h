@@ -49,11 +49,11 @@ private:
 		PACKET_BUFFER_SIZE = 65536 - 5 // 4 bytes for the size, 1 for the type
 	};
 
-	struct PacketInfo {
+	typedef struct _PacketInfo {
 		uint32_t size;
 		uint8_t is_string;
 		uint8_t padding[3]; // Align to 8th byte
-	};
+	} PacketInfo;
 
 	PacketBuffer<PacketInfo> _in_buffer;
 	PacketBuffer<PacketInfo> _out_buffer;

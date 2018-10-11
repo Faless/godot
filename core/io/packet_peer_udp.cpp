@@ -64,7 +64,7 @@ int PacketPeerUDP::get_available_packet_count() const {
 	if (err != OK)
 		return -1;
 
-	return queue_count;
+	return _in_buffer.packets_left();
 }
 
 Error PacketPeerUDP::get_packet(const uint8_t **r_buffer, int &r_buffer_size) {
@@ -72,19 +72,17 @@ Error PacketPeerUDP::get_packet(const uint8_t **r_buffer, int &r_buffer_size) {
 	Error err = _poll();
 	if (err != OK)
 		return err;
-	if (queue_count == 0)
+	if (_in_buffer.packets_left() == 0)
 		return ERR_UNAVAILABLE;
 
-	uint32_t size = 0;
-	uint8_t ipv6[16];
-	rb.read(ipv6, 16, true);
-	packet_ip.set_ipv6(ipv6);
-	rb.read((uint8_t *)&packet_port, 4, true);
-	rb.read((uint8_t *)&size, 4, true);
-	rb.read(packet_buffer, size, true);
-	--queue_count;
-	*r_buffer = packet_buffer;
-	r_buffer_size = size;
+	PacketInfo info = {};
+	_in_buffer.read_packet_info(&info);
+	PoolVector<uint8_t>::Write rw = _packet_buffer.write();
+	_in_buffer.read_packet_payload(rw.ptr(), info.size);
+	packet_ip.set_ipv6(info.ip);
+	packet_port = info.port;
+	*r_buffer = rw.ptr();
+	r_buffer_size = info.size;
 	return OK;
 }
 
@@ -101,6 +99,7 @@ Error PacketPeerUDP::put_packet(const uint8_t *p_buffer, int p_buffer_size) {
 		err = _sock->open(NetSocket::TYPE_UDP, ip_type);
 		ERR_FAIL_COND_V(err != OK, err);
 		_sock->set_blocking_enabled(false);
+		_set_buffers();
 	}
 
 	do {
@@ -150,16 +149,28 @@ Error PacketPeerUDP::listen(int p_port, const IP_Address &p_bind_address, int p_
 		_sock->close();
 		return err;
 	}
-	rb.resize(nearest_shift(p_recv_buffer_size));
+	// TODO Deprecate this in favor of buffer_size property
+	if (p_recv_buffer_size > 0) {
+		_buffer_shift = nearest_shift(p_recv_buffer_size);
+	}
+	_set_buffers();
 	return OK;
+}
+
+void PacketPeerUDP::_set_buffers() {
+	_in_buffer.set_payload_size(_buffer_shift);
+	_in_buffer.set_max_packets(10);
+	_recv_buffer.resize((1 << _buffer_shift) - 1);
+	_packet_buffer.resize((1 << _buffer_shift) - 1);
 }
 
 void PacketPeerUDP::close() {
 
 	if (_sock.is_valid())
 		_sock->close();
-	rb.resize(16);
-	queue_count = 0;
+	_in_buffer.clear();
+	_recv_buffer.resize(0);
+	_packet_buffer.resize(0);
 }
 
 Error PacketPeerUDP::wait() {
@@ -180,9 +191,11 @@ Error PacketPeerUDP::_poll() {
 	int read;
 	IP_Address ip;
 	uint16_t port;
+	PacketInfo info = {};
+	PoolVector<uint8_t>::Write rw = _recv_buffer.write();
 
 	while (true) {
-		err = _sock->recvfrom(recv_buffer, sizeof(recv_buffer), read, ip, port);
+		err = _sock->recvfrom(rw.ptr(), _recv_buffer.size(), read, ip, port);
 
 		if (err != OK) {
 			if (err == ERR_BUSY)
@@ -190,19 +203,18 @@ Error PacketPeerUDP::_poll() {
 			return FAILED;
 		}
 
-		if (rb.space_left() < read + 24) {
+		if (_in_buffer.payload_space() < read) {
 #ifdef TOOLS_ENABLED
-			WARN_PRINTS("Buffer full, dropping packets!");
+			WARN_PRINT("Buffer payload full! Dropping data");
 #endif
 			continue;
 		}
 
-		uint32_t port32 = port;
-		rb.write(ip.get_ipv6(), 16);
-		rb.write((uint8_t *)&port32, 4);
-		rb.write((uint8_t *)&read, 4);
-		rb.write(recv_buffer, read);
-		++queue_count;
+		info.size = read;
+		info.port = port;
+		copymem(info.ip, ip.get_ipv6(), 16);
+		_in_buffer.write_packet_info(&info);
+		_in_buffer.write_packet_payload(rw.ptr(), read);
 	}
 
 	return OK;
@@ -230,7 +242,7 @@ void PacketPeerUDP::set_dest_address(const IP_Address &p_address, int p_port) {
 
 void PacketPeerUDP::_bind_methods() {
 
-	ClassDB::bind_method(D_METHOD("listen", "port", "bind_address", "recv_buf_size"), &PacketPeerUDP::listen, DEFVAL("*"), DEFVAL(65536));
+	ClassDB::bind_method(D_METHOD("listen", "port", "bind_address", "recv_buf_size"), &PacketPeerUDP::listen, DEFVAL("*"), DEFVAL(0));
 	ClassDB::bind_method(D_METHOD("close"), &PacketPeerUDP::close);
 	ClassDB::bind_method(D_METHOD("wait"), &PacketPeerUDP::wait);
 	ClassDB::bind_method(D_METHOD("is_listening"), &PacketPeerUDP::is_listening);
@@ -242,11 +254,10 @@ void PacketPeerUDP::_bind_methods() {
 PacketPeerUDP::PacketPeerUDP() {
 
 	_sock = Ref<NetSocket>(NetSocket::create());
+	_buffer_shift = 16;
 	blocking = true;
 	packet_port = 0;
-	queue_count = 0;
 	peer_port = 0;
-	rb.resize(16);
 }
 
 PacketPeerUDP::~PacketPeerUDP() {

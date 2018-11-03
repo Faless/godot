@@ -33,6 +33,7 @@
 #ifdef JAVASCRIPT_ENABLED
 
 #include "core/error_list.h"
+#include "core/io/packet_buffer.h"
 #include "core/io/packet_peer.h"
 #include "core/ring_buffer.h"
 #include "emscripten.h"
@@ -43,25 +44,26 @@ class EMWSPeer : public WebSocketPeer {
 	GDCIIMPL(EMWSPeer, WebSocketPeer);
 
 private:
-	enum {
-		PACKET_BUFFER_SIZE = 65536 - 5 // 4 bytes for the size, 1 for for type
-	};
+	typedef struct _PacketInfo {
+		uint32_t size;
+		uint8_t is_string;
+		uint8_t padding[3]; // Align to 8th byte
+	} PacketInfo;
 
 	int peer_sock;
 	WriteMode write_mode;
 
-	uint8_t packet_buffer[PACKET_BUFFER_SIZE];
-	RingBuffer<uint8_t> in_buffer;
-	int queue_count;
-	bool _was_string;
+	PoolVector<uint8_t> _packet_buffer;
+	PacketBuffer<PacketInfo> _in_buffer;
+	PacketInfo _current_info;
 
 public:
-	void read_msg(uint8_t *p_data, uint32_t p_size, bool p_is_string);
-	void set_sock(int sock);
+	Error read_msg(uint8_t *p_data, uint32_t p_size, bool p_is_string);
+	void set_sock(int sock, unsigned int p_buffer_shift, unsigned int p_max_packets_shift);
 	virtual int get_available_packet_count() const;
 	virtual Error get_packet(const uint8_t **r_buffer, int &r_buffer_size);
 	virtual Error put_packet(const uint8_t *p_buffer, int p_buffer_size);
-	virtual int get_max_packet_size() const { return PACKET_BUFFER_SIZE; };
+	virtual int get_max_packet_size() const { return _packet_buffer.size(); };
 
 	virtual void close(int p_code = 1000, String p_reason = "");
 	virtual bool is_connected_to_host() const;
@@ -71,10 +73,6 @@ public:
 	virtual WriteMode get_write_mode() const;
 	virtual void set_write_mode(WriteMode p_mode);
 	virtual bool was_string_packet() const;
-
-	void set_wsi(struct lws *wsi);
-	Error read_wsi(void *in, size_t len);
-	Error write_wsi();
 
 	EMWSPeer();
 	~EMWSPeer();

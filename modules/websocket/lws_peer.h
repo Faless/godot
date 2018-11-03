@@ -33,6 +33,7 @@
 #ifndef JAVASCRIPT_ENABLED
 
 #include "core/error_list.h"
+#include "core/io/packet_buffer.h"
 #include "core/io/packet_peer.h"
 #include "core/ring_buffer.h"
 #include "libwebsockets.h"
@@ -44,14 +45,20 @@ class LWSPeer : public WebSocketPeer {
 	GDCIIMPL(LWSPeer, WebSocketPeer);
 
 private:
-	enum {
-		PACKET_BUFFER_SIZE = 65536 - 5 // 4 bytes for the size, 1 for the type
-	};
+	typedef struct _PacketInfo {
+		uint32_t size;
+		uint8_t is_string;
+		uint8_t padding[3]; // Align to 8th byte
+	} PacketInfo;
 
-	uint8_t packet_buffer[PACKET_BUFFER_SIZE];
+	PacketBuffer<PacketInfo> _in_buffer;
+	PacketBuffer<PacketInfo> _out_buffer;
+	PacketInfo _in_info;
+	PacketInfo _current_info;
+	PoolVector<uint8_t> _packet_buffer;
+
 	struct lws *wsi;
 	WriteMode write_mode;
-	bool _was_string;
 
 	int close_code;
 	String close_reason;
@@ -63,17 +70,10 @@ public:
 		bool clean_close;
 	};
 
-	RingBuffer<uint8_t> rbw;
-	RingBuffer<uint8_t> rbr;
-	uint8_t input_buffer[PACKET_BUFFER_SIZE];
-	uint32_t in_size;
-	int in_count;
-	int out_count;
-
 	virtual int get_available_packet_count() const;
 	virtual Error get_packet(const uint8_t **r_buffer, int &r_buffer_size);
 	virtual Error put_packet(const uint8_t *p_buffer, int p_buffer_size);
-	virtual int get_max_packet_size() const { return PACKET_BUFFER_SIZE; };
+	virtual int get_max_packet_size() const { return _packet_buffer.size(); };
 
 	virtual void close(int p_code = 1000, String p_reason = "");
 	virtual bool is_connected_to_host() const;
@@ -84,7 +84,7 @@ public:
 	virtual void set_write_mode(WriteMode p_mode);
 	virtual bool was_string_packet() const;
 
-	void set_wsi(struct lws *wsi);
+	void set_wsi(struct lws *wsi, unsigned int _buffer_shift, unsigned int _max_packets_shift);
 	Error read_wsi(void *in, size_t len);
 	Error write_wsi();
 	void send_close_status(struct lws *wsi);

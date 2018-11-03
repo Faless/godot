@@ -32,6 +32,8 @@
 
 WebSocketMultiplayerPeer::WebSocketMultiplayerPeer() {
 
+	_buffer_shift = 16;
+	_max_packets_shift = 10;
 	_is_multiplayer = false;
 	_peer_id = 0;
 	_target_peer = 0;
@@ -83,11 +85,44 @@ void WebSocketMultiplayerPeer::_clear() {
 	_incoming_packets.clear();
 }
 
+void WebSocketMultiplayerPeer::set_peer_buffer_size(int p_size) {
+	ERR_EXPLAIN("Buffer size must be at least 1023");
+	ERR_FAIL_COND(p_size < 1023);
+	unsigned int shift = nearest_shift(p_size);
+	ERR_EXPLAIN("Buffer size must be a power of 2 minus 1. E.g. 1023, 2047, ...");
+	ERR_FAIL_COND(p_size != (1 << shift) - 1);
+	_buffer_shift = shift;
+}
+
+int WebSocketMultiplayerPeer::get_peer_buffer_size() {
+	return 1 << _buffer_shift;
+}
+
+void WebSocketMultiplayerPeer::set_peer_max_packets(int p_max) {
+	ERR_EXPLAIN("Max packets at least 1");
+	ERR_FAIL_COND(p_max < 1);
+	unsigned int shift = nearest_shift(p_max);
+	ERR_EXPLAIN("Max packet size must be a power of 2 minus 1. E.g. 15, 31, ...");
+	ERR_FAIL_COND(p_max != (1 << shift) - 1);
+	_max_packets_shift = shift;
+}
+
+int WebSocketMultiplayerPeer::get_peer_max_packets() {
+	return 1 << _max_packets_shift;
+}
+
 void WebSocketMultiplayerPeer::_bind_methods() {
 
 	ClassDB::bind_method(D_METHOD("get_peer", "peer_id"), &WebSocketMultiplayerPeer::get_peer);
+	ClassDB::bind_method(D_METHOD("get_peer_buffer_size"), &WebSocketMultiplayerPeer::get_peer_buffer_size);
+	ClassDB::bind_method(D_METHOD("set_peer_buffer_size", "size"), &WebSocketMultiplayerPeer::set_peer_buffer_size);
+	ClassDB::bind_method(D_METHOD("get_peer_max_packets"), &WebSocketMultiplayerPeer::get_peer_max_packets);
+	ClassDB::bind_method(D_METHOD("set_peer_max_packets", "max"), &WebSocketMultiplayerPeer::set_peer_max_packets);
 
 	ADD_SIGNAL(MethodInfo("peer_packet", PropertyInfo(Variant::INT, "peer_source")));
+
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "peer_buffer_size"), "set_peer_buffer_size", "get_peer_buffer_size");
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "peer_max_packets"), "set_peer_max_packets", "get_peer_max_packets");
 }
 
 //
@@ -104,7 +139,7 @@ int WebSocketMultiplayerPeer::get_max_packet_size() const {
 
 	ERR_FAIL_COND_V(!_is_multiplayer, ERR_UNCONFIGURED);
 
-	return MAX_PACKET_SIZE;
+	return (1 << _buffer_shift) - PROTO_SIZE;
 }
 
 Error WebSocketMultiplayerPeer::get_packet(const uint8_t **r_buffer, int &r_buffer_size) {

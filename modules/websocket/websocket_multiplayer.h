@@ -51,9 +51,7 @@ protected:
 		SYS_DEL = 2,
 		SYS_ID = 3,
 
-		PROTO_SIZE = 9,
-		SYS_PACKET_SIZE = 13,
-		MAX_PACKET_SIZE = 65536 - 14 // 5 websocket, 9 multiplayer
+		PROTO_SIZE = 9
 	};
 
 	struct Packet {
@@ -71,6 +69,8 @@ protected:
 	int _target_peer;
 	int _peer_id;
 	int _refusing;
+	unsigned int _buffer_shift;
+	unsigned int _max_packets_shift;
 
 	static void _bind_methods();
 
@@ -99,6 +99,10 @@ public:
 
 	/* WebSocketPeer */
 	virtual Ref<WebSocketPeer> get_peer(int p_peer_id) const = 0;
+	void set_peer_buffer_size(int p_size);
+	int get_peer_buffer_size();
+	void set_peer_max_packets(int p_max);
+	int get_peer_max_packets();
 
 	void _process_multiplayer(Ref<WebSocketPeer> p_peer, uint32_t p_peer_id);
 	void _clear();

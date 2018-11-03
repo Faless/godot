@@ -123,7 +123,7 @@ int LWSClient::_handle_cb(struct lws *wsi, enum lws_callback_reasons reason, voi
 		} break;
 
 		case LWS_CALLBACK_CLIENT_ESTABLISHED:
-			peer->set_wsi(wsi);
+			peer->set_wsi(wsi, _buffer_shift, _max_packets_shift);
 			peer_data->peer_id = 0;
 			peer_data->force_close = false;
 			peer_data->clean_close = false;

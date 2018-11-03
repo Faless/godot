@@ -33,22 +33,30 @@
 
 #include "core/io/ip.h"
 #include "core/io/net_socket.h"
+#include "core/io/packet_buffer.h"
 #include "core/io/packet_peer.h"
 
 class PacketPeerUDP : public PacketPeer {
 	GDCLASS(PacketPeerUDP, PacketPeer);
 
-protected:
-	enum {
-		PACKET_BUFFER_SIZE = 65536
-	};
+private:
+	typedef struct _PacketInfo {
+		uint32_t size;
+		uint8_t ip[16];
+		uint16_t port;
+		uint8_t padding[2];
+	} PacketInfo;
 
-	RingBuffer<uint8_t> rb;
-	uint8_t recv_buffer[PACKET_BUFFER_SIZE];
-	uint8_t packet_buffer[PACKET_BUFFER_SIZE];
+	void _set_buffers();
+
+protected:
+
+	uint32_t _buffer_shift;
+	PacketBuffer<PacketInfo> _in_buffer;
+	PoolVector<uint8_t> _packet_buffer;
+	PoolVector<uint8_t> _recv_buffer;
 	IP_Address packet_ip;
 	int packet_port;
-	int queue_count;
 
 	IP_Address peer_addr;
 	int peer_port;
@@ -65,7 +73,7 @@ protected:
 public:
 	void set_blocking_mode(bool p_enable);
 
-	Error listen(int p_port, const IP_Address &p_bind_address = IP_Address("*"), int p_recv_buffer_size = 65536);
+	Error listen(int p_port, const IP_Address &p_bind_address = IP_Address("*"), int p_recv_buffer_size = 0);
 	void close();
 	Error wait();
 	bool is_listening() const;

@@ -40,16 +40,6 @@ Error LWSClient::connect_to_host(String p_host, String p_path, uint16_t p_port, 
 
 	ERR_FAIL_COND_V(context != NULL, FAILED);
 
-	IP_Address addr;
-
-	if (!p_host.is_valid_ip_address()) {
-		addr = IP::get_singleton()->resolve_hostname(p_host);
-	} else {
-		addr = p_host;
-	}
-
-	ERR_FAIL_COND_V(!addr.is_valid(), ERR_INVALID_PARAMETER);
-
 	// Prepare protocols
 	_lws_make_protocols(this, &LWSClient::_lws_gd_callback, p_protocols, &_lws_ref);
 
@@ -93,10 +83,9 @@ Error LWSClient::connect_to_host(String p_host, String p_path, uint16_t p_port, 
 	}
 
 	// These CharStrings needs to survive till we call lws_client_connect_via_info
-	CharString addr_ch = ((String)addr).ascii();
 	CharString host_ch = p_host.utf8();
 	CharString path_ch = p_path.utf8();
-	i.address = addr_ch.get_data();
+	i.address = host_ch.get_data();
 	i.host = host_ch.get_data();
 	i.path = path_ch.get_data();
 	i.port = p_port;

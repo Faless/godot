@@ -1912,14 +1912,14 @@ void _File::store_var(const Variant &p_var) {
 
 	ERR_FAIL_COND(!f);
 	int len;
-	Error err = encode_variant(p_var, NULL, len);
+	Error err = encode_variant(p_var, NULL, len, false);
 	ERR_FAIL_COND(err != OK);
 
 	PoolVector<uint8_t> buff;
 	buff.resize(len);
 	PoolVector<uint8_t>::Write w = buff.write();
 
-	err = encode_variant(p_var, &w[0], len);
+	err = encode_variant(p_var, &w[0], len, false);
 	ERR_FAIL_COND(err != OK);
 	w = PoolVector<uint8_t>::Write();
 
@@ -1937,7 +1937,7 @@ Variant _File::get_var() const {
 	PoolVector<uint8_t>::Read r = buff.read();
 
 	Variant v;
-	Error err = decode_variant(v, &r[0], len);
+	Error err = decode_variant(v, &r[0], len, NULL, true);
 	ERR_FAIL_COND_V(err != OK, Variant());
 
 	return v;
@@ -2226,14 +2226,14 @@ _Marshalls *_Marshalls::get_singleton() {
 String _Marshalls::variant_to_base64(const Variant &p_var) {
 
 	int len;
-	Error err = encode_variant(p_var, NULL, len);
+	Error err = encode_variant(p_var, NULL, len, false);
 	ERR_FAIL_COND_V(err != OK, "");
 
 	PoolVector<uint8_t> buff;
 	buff.resize(len);
 	PoolVector<uint8_t>::Write w = buff.write();
 
-	err = encode_variant(p_var, &w[0], len);
+	err = encode_variant(p_var, &w[0], len, false);
 	ERR_FAIL_COND_V(err != OK, "");
 
 	int b64len = len / 3 * 4 + 4 + 1;
@@ -2261,7 +2261,7 @@ Variant _Marshalls::base64_to_variant(const String &p_str) {
 	int len = base64_decode((char *)(&w[0]), (char *)cstr.get_data(), strlen);
 
 	Variant v;
-	Error err = decode_variant(v, &w[0], len);
+	Error err = decode_variant(v, &w[0], len, NULL, true);
 	ERR_FAIL_COND_V(err != OK, Variant());
 
 	return v;

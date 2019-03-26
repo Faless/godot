@@ -772,7 +772,7 @@ void GDScriptFunctions::call(Function p_func, const Variant **p_args, int p_arg_
 
 			PoolByteArray barr;
 			int len;
-			Error err = encode_variant(*p_args[0], NULL, len);
+			Error err = encode_variant(*p_args[0], NULL, len, false);
 			if (err) {
 				r_error.error = Variant::CallError::CALL_ERROR_INVALID_ARGUMENT;
 				r_error.argument = 0;
@@ -784,7 +784,7 @@ void GDScriptFunctions::call(Function p_func, const Variant **p_args, int p_arg_
 			barr.resize(len);
 			{
 				PoolByteArray::Write w = barr.write();
-				encode_variant(*p_args[0], w.ptr(), len);
+				encode_variant(*p_args[0], w.ptr(), len, false);
 			}
 			r_ret = barr;
 		} break;
@@ -802,7 +802,7 @@ void GDScriptFunctions::call(Function p_func, const Variant **p_args, int p_arg_
 			Variant ret;
 			{
 				PoolByteArray::Read r = varr.read();
-				Error err = decode_variant(ret, r.ptr(), varr.size(), NULL);
+				Error err = decode_variant(ret, r.ptr(), varr.size(), NULL, true);
 				if (err != OK) {
 					r_ret = RTR("Not enough bytes for decoding bytes, or invalid format.");
 					r_error.error = Variant::CallError::CALL_ERROR_INVALID_ARGUMENT;

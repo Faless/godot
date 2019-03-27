@@ -501,7 +501,7 @@ Error ProjectSettings::_load_settings_binary(const String p_path) {
 		d.resize(vlen);
 		f->get_buffer(d.ptrw(), vlen);
 		Variant value;
-		err = decode_variant(value, d.ptr(), d.size(), NULL, true);
+		err = decode_variant(value, d.ptr(), d.size(), NULL, false);
 		ERR_EXPLAIN("Error decoding property: " + key);
 		ERR_CONTINUE(err != OK);
 		set(key, value);

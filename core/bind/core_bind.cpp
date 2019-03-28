@@ -1927,7 +1927,7 @@ void _File::store_var(const Variant &p_var, bool p_full_objects) {
 	store_buffer(buff);
 }
 
-Variant _File::get_var(bool p_allow_objects) const {
+Variant _File::get_var(bool allow_objects) const {
 
 	ERR_FAIL_COND_V(!f, Variant());
 	uint32_t len = get_32();

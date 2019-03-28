@@ -41,7 +41,7 @@
 
 #include "../mono_gd/gd_mono_utils.h"
 
-MonoObject *godot_icall_GD_bytes2var(MonoArray *p_bytes, bool p_allow_objects) {
+MonoObject *godot_icall_GD_bytes2var(MonoArray *p_bytes, MonoBoolean p_allow_objects) {
 	Variant ret;
 	PoolByteArray varr = GDMonoMarshal::mono_array_to_PoolByteArray(p_bytes);
 	PoolByteArray::Read r = varr.read();
@@ -187,7 +187,7 @@ void godot_icall_GD_pushwarning(MonoString *p_str) {
 	WARN_PRINTS(GDMonoMarshal::mono_string_to_godot(p_str));
 }
 
-MonoArray *godot_icall_GD_var2bytes(MonoObject *p_var, bool p_full_objects) {
+MonoArray *godot_icall_GD_var2bytes(MonoObject *p_var, MonoBoolean p_full_objects) {
 	Variant var = GDMonoMarshal::mono_object_to_variant(p_var);
 
 	PoolByteArray barr;

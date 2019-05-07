@@ -236,7 +236,7 @@ void IP_Unix::get_local_addresses(List<IP_Address> *r_addresses) const {
 	memfree(addrs);
 };
 
-void IP_Unix::get_local_interfaces(List<Interface_Info> *r_interfaces) const {
+void IP_Unix::get_local_interfaces(Map<String, Interface_Info> *r_interfaces) const {
 
 	ULONG buf_size = 1024;
 	IP_ADAPTER_ADDRESSES *addrs;
@@ -264,7 +264,7 @@ void IP_Unix::get_local_interfaces(List<Interface_Info> *r_interfaces) const {
 	while (adapter != NULL) {
 
 		Interface_Info info;
-		info.name = adapter->FriendlyName;
+		info.name = adapter->AdapterName;
 		info.name_friendly = adapter->FriendlyName;
 
 		IP_ADAPTER_UNICAST_ADDRESS *address = adapter->FirstUnicastAddress;
@@ -290,7 +290,7 @@ void IP_Unix::get_local_interfaces(List<Interface_Info> *r_interfaces) const {
 			address = address->Next;
 		};
 
-		r_interfaces->push_back(info);
+		r_interfaces->insert(adapter->AdapterName, info);
 
 		adapter = adapter->Next;
 	};

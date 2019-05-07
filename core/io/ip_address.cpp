@@ -40,6 +40,9 @@ IP_Address::operator Variant() const {
 
 IP_Address::operator String() const {
 
+	if (wildcard)
+		return "*";
+
 	if (!valid)
 		return "";
 
@@ -181,6 +184,10 @@ void IP_Address::clear() {
 
 bool IP_Address::is_ipv4() const {
 	return (field32[0] == 0 && field32[1] == 0 && field16[4] == 0 && field16[5] == 0xffff);
+}
+
+bool IP_Address::is_ipv6() const {
+	return !is_ipv4();
 }
 
 const uint8_t *IP_Address::get_ipv4() const {

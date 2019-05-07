@@ -186,10 +186,6 @@ bool IP_Address::is_ipv4() const {
 	return (field32[0] == 0 && field32[1] == 0 && field16[4] == 0 && field16[5] == 0xffff);
 }
 
-bool IP_Address::is_ipv6() const {
-	return !is_ipv4();
-}
-
 const uint8_t *IP_Address::get_ipv4() const {
 	ERR_FAIL_COND_V(!is_ipv4(), &(field8[12])); // Not the correct IPv4 (it's an IPv6), but we don't want to return a null pointer risking an engine crash.
 	return &(field8[12]);

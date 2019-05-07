@@ -90,7 +90,7 @@ public:
 	ResolverStatus get_resolve_item_status(ResolverID p_id) const;
 	IP_Address get_resolve_item_address(ResolverID p_id) const;
 	virtual void get_local_addresses(List<IP_Address> *r_addresses) const = 0;
-	virtual void get_local_interfaces(List<Interface_Info> *r_interfaces) const = 0;
+	virtual void get_local_interfaces(Map<String, Interface_Info> *r_interfaces) const = 0;
 	void erase_resolve_item(ResolverID p_id);
 
 	void clear_cache(const String &p_hostname = "");

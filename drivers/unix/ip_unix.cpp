@@ -326,15 +326,13 @@ void IP_Unix::get_local_addresses(List<IP_Address> *r_addresses) const {
 	if (ifAddrStruct != NULL) freeifaddrs(ifAddrStruct);
 }
 
-void IP_Unix::get_local_interfaces(List<Interface_Info> *r_interfaces) const {
+void IP_Unix::get_local_interfaces(Map<String, Interface_Info> *r_interfaces) const {
 
 	struct ifaddrs *ifAddrStruct = NULL;
 	struct ifaddrs *ifa = NULL;
 	int family;
 
 	getifaddrs(&ifAddrStruct);
-
-	Map<String, Interface_Info> interface_map;
 
 	for (ifa = ifAddrStruct; ifa != NULL; ifa = ifa->ifa_next) {
 		if (!ifa->ifa_addr)
@@ -345,22 +343,19 @@ void IP_Unix::get_local_interfaces(List<Interface_Info> *r_interfaces) const {
 		if (family != AF_INET && family != AF_INET6)
 			continue;
 
-		Interface_Info info;
-
-		Map<String, Interface_Info>::Element *E = interface_map.find(ifa->ifa_name);
+		Map<String, Interface_Info>::Element *E = r_interfaces->find(ifa->ifa_name);
 		if (!E) {
+			Interface_Info info;
 			info.name = ifa->ifa_name;
 			info.name_friendly = ifa->ifa_name;
-			interface_map[ifa->ifa_name] = info;
-		} else {
-			Interface_Info &c = E->get();
-			info = c;
+			E = r_interfaces->insert(ifa->ifa_name, info);
+			ERR_CONTINUE(!E);
 		}
+
+		Interface_Info &info = E->get();
 
 		IP_Address ip = _sockaddr2ip(ifa->ifa_addr);
 		info.ip_addresses.push_front(ip);
-
-		r_interfaces->push_back(info);
 	}
 
 	if (ifAddrStruct != NULL)

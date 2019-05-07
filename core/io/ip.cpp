@@ -237,9 +237,9 @@ Array IP::_get_local_addresses() const {
 Array IP::_get_local_interfaces() const {
 
 	Array results;
-	List<Interface_Info> interfaces;
+	Map<String, Interface_Info> interfaces;
 	get_local_interfaces(&interfaces);
-	for (List<Interface_Info>::Element *E = interfaces.front(); E; E = E->next()) {
+	for (Map<String, Interface_Info>::Element *E = interfaces.front(); E; E = E->next()) {
 		Interface_Info &c = E->get();
 		Dictionary rc;
 		rc["name"] = c.name;

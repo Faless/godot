@@ -124,7 +124,6 @@ IP_Address IP_Unix::_resolve_hostname(const String &p_hostname, Type p_type) {
 
 	return ip;
 }
-
 #if defined(WINDOWS_ENABLED)
 
 #if defined(UWP_ENABLED)
@@ -136,8 +135,6 @@ void IP_Unix::get_local_interfaces(Map<String, Interface_Info> *r_interfaces) co
 
 	// Returns addresses, not interfaces.
 	auto hostnames = NetworkInformation::GetHostNames();
-
-	Map<String, Interface_Info> interface_map;
 
 	for (int i = 0; i < hostnames->Size; i++) {
 
@@ -183,7 +180,7 @@ void IP_Unix::get_local_interfaces(Map<String, Interface_Info> *r_interfaces) co
 			continue; // will go back and alloc the right size
 		};
 
-		ERR_EXPLAIN("Call to GetLocalInterfaces failed with error " + itos(err));
+		ERR_EXPLAIN("Call to GetAdaptersAddresses failed with error " + itos(err));
 		ERR_FAIL();
 		return;
 	};
@@ -206,15 +203,15 @@ void IP_Unix::get_local_interfaces(Map<String, Interface_Info> *r_interfaces) co
 				SOCKADDR_IN *ipv4 = reinterpret_cast<SOCKADDR_IN *>(address->Address.lpSockaddr);
 
 				ip.set_ipv4((uint8_t *)&(ipv4->sin_addr));
+				info.ip_addresses.push_front(ip);
 
 			} else if (address->Address.lpSockaddr->sa_family == AF_INET6) { // ipv6
 
 				SOCKADDR_IN6 *ipv6 = reinterpret_cast<SOCKADDR_IN6 *>(address->Address.lpSockaddr);
 
 				ip.set_ipv6(ipv6->sin6_addr.s6_addr);
+				info.ip_addresses.push_front(ip);
 			};
-
-			info.ip_addresses.push_front(ip);
 
 			address = address->Next;
 		};

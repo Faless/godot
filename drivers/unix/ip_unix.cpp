@@ -150,6 +150,7 @@ void IP_Unix::get_local_interfaces(Map<String, Interface_Info> *r_interfaces) co
 	using namespace Windows::Networking;
 	using namespace Windows::Networking::Connectivity;
 
+	// Returns addresses, not interfaces.
 	auto hostnames = NetworkInformation::GetHostNames();
 
 	Map<String, Interface_Info> interface_map;
@@ -158,21 +159,22 @@ void IP_Unix::get_local_interfaces(Map<String, Interface_Info> *r_interfaces) co
 
 		auto hostname = hostnames->GetAt(i);
 
-		if (!((hostname->Type == HostNameType::Ipv4 || hostname->Type == HostNameType::Ipv6) && hostname->IPInformation != nullptr))
+		if (hostname->Type != HostNameType::Ipv4 && hostname->Type != HostNameType::Ipv6)
 			continue;
 
-		Map<String, Interface_Info>::Element *E = r_interfaces->find(ifa->ifa_name);
+		String name = hostname->RawName->Data();
+		Map<String, Interface_Info>::Element *E = r_interfaces->find(name);
 		if (!E) {
 			Interface_Info info;
-			info.name = hostname->RawName->Data();
+			info.name = name;
 			info.name_friendly = hostname->DisplayName->Data();
-			E = r_interfaces->insert(ifa->ifa_name, info);
+			E = r_interfaces->insert(name, info);
 			ERR_CONTINUE(!E);
 		}
 
 		Interface_Info &info = E->get();
 
-		IP_Address ip = _sockaddr2ip(hostnames->GetAt(i)->CanonicalName->Data());
+		IP_Address ip = IP_Address(hostname->CanonicalName->Data());
 		info.ip_addresses.push_front(ip);
 	}
 }

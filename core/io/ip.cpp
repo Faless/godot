@@ -251,7 +251,12 @@ Array IP::_get_local_interfaces() const {
 			IP_Address ip = F->get();
 			Dictionary rc_ip;
 			rc_ip["address"] = ip;
-			rc_ip["type"] = (ip.is_ipv4() ? IP::TYPE_IPV4 : ip.is_ipv6() ? IP::TYPE_IPV6 : ip.is_wildcard() ? IP::TYPE_ANY : IP::TYPE_NONE);
+			if (ip.is_wildcard())
+				rc_ip["type"] = IP::TYPE_ANY;
+			else if (!ip.is_valid())
+				rc_ip["type"] = IP::TYPE_NONE;
+			else
+				rc_ip["type"] = ip.is_ipv4() ? IP::TYPE_IPV4 : IP::TYPE_IPV6;
 			ips.push_front(rc_ip);
 		}
 

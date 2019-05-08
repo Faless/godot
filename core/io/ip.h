@@ -89,7 +89,7 @@ public:
 	ResolverID resolve_hostname_queue_item(const String &p_hostname, Type p_type = TYPE_ANY);
 	ResolverStatus get_resolve_item_status(ResolverID p_id) const;
 	IP_Address get_resolve_item_address(ResolverID p_id) const;
-	virtual void get_local_addresses(List<IP_Address> *r_addresses) const = 0;
+	virtual void get_local_addresses(List<IP_Address> *r_addresses) const;
 	virtual void get_local_interfaces(Map<String, Interface_Info> *r_interfaces) const = 0;
 	void erase_resolve_item(ResolverID p_id);
 

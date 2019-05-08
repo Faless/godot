@@ -252,15 +252,26 @@ Array IP::_get_local_interfaces() const {
 			Dictionary rc_ip;
 			rc_ip["address"] = ip;
 			rc_ip["type"] = (ip.is_ipv4() ? IP::TYPE_IPV4 : ip.is_ipv6() ? IP::TYPE_IPV6 : ip.is_wildcard() ? IP::TYPE_ANY : IP::TYPE_NONE);
-			ips.push_back(rc_ip);
+			ips.push_front(rc_ip);
 		}
 
 		rc["addresses"] = ips;
 
-		results.push_back(rc);
+		results.push_front(rc);
 	}
 
 	return results;
+}
+
+void IP::get_local_addresses(List<IP_Address> *r_addresses) const {
+
+	Map<String, Interface_Info> interfaces;
+	get_local_interfaces(&interfaces);
+	for (Map<String, Interface_Info>::Element *E = interfaces.front(); E; E = E->next()) {
+		for (const List<IP_Address>::Element *F = E->get().ip_addresses.front(); F; F = F->next()) {
+			r_addresses->push_front(F->get());
+		}
+	}
 }
 
 void IP::_bind_methods() {

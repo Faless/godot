@@ -129,22 +129,6 @@ IP_Address IP_Unix::_resolve_hostname(const String &p_hostname, Type p_type) {
 
 #if defined(UWP_ENABLED)
 
-void IP_Unix::get_local_addresses(List<IP_Address> *r_addresses) const {
-
-	using namespace Windows::Networking;
-	using namespace Windows::Networking::Connectivity;
-
-	auto hostnames = NetworkInformation::GetHostNames();
-
-	for (int i = 0; i < hostnames->Size; i++) {
-
-		if (hostnames->GetAt(i)->Type == HostNameType::Ipv4 || hostnames->GetAt(i)->Type == HostNameType::Ipv6 && hostnames->GetAt(i)->IPInformation != nullptr) {
-
-			r_addresses->push_back(IP_Address(String(hostnames->GetAt(i)->CanonicalName->Data())));
-		}
-	}
-};
-
 void IP_Unix::get_local_interfaces(Map<String, Interface_Info> *r_interfaces) const {
 
 	using namespace Windows::Networking;
@@ -178,62 +162,8 @@ void IP_Unix::get_local_interfaces(Map<String, Interface_Info> *r_interfaces) co
 		info.ip_addresses.push_front(ip);
 	}
 }
+
 #else
-
-void IP_Unix::get_local_addresses(List<IP_Address> *r_addresses) const {
-
-	ULONG buf_size = 1024;
-	IP_ADAPTER_ADDRESSES *addrs;
-
-	while (true) {
-
-		addrs = (IP_ADAPTER_ADDRESSES *)memalloc(buf_size);
-		int err = GetAdaptersAddresses(AF_UNSPEC, GAA_FLAG_SKIP_ANYCAST | GAA_FLAG_SKIP_MULTICAST | GAA_FLAG_SKIP_DNS_SERVER | GAA_FLAG_SKIP_FRIENDLY_NAME,
-				NULL, addrs, &buf_size);
-		if (err == NO_ERROR) {
-			break;
-		};
-		memfree(addrs);
-		if (err == ERROR_BUFFER_OVERFLOW) {
-			continue; // will go back and alloc the right size
-		};
-
-		ERR_EXPLAIN("Call to GetAdaptersAddresses failed with error " + itos(err));
-		ERR_FAIL();
-		return;
-	};
-
-	IP_ADAPTER_ADDRESSES *adapter = addrs;
-
-	while (adapter != NULL) {
-
-		IP_ADAPTER_UNICAST_ADDRESS *address = adapter->FirstUnicastAddress;
-		while (address != NULL) {
-
-			IP_Address ip;
-
-			if (address->Address.lpSockaddr->sa_family == AF_INET) {
-
-				SOCKADDR_IN *ipv4 = reinterpret_cast<SOCKADDR_IN *>(address->Address.lpSockaddr);
-
-				ip.set_ipv4((uint8_t *)&(ipv4->sin_addr));
-
-			} else if (address->Address.lpSockaddr->sa_family == AF_INET6) { // ipv6
-
-				SOCKADDR_IN6 *ipv6 = reinterpret_cast<SOCKADDR_IN6 *>(address->Address.lpSockaddr);
-
-				ip.set_ipv6(ipv6->sin6_addr.s6_addr);
-			};
-
-			r_addresses->push_back(ip);
-
-			address = address->Next;
-		};
-		adapter = adapter->Next;
-	};
-
-	memfree(addrs);
-};
 
 void IP_Unix::get_local_interfaces(Map<String, Interface_Info> *r_interfaces) const {
 
@@ -300,30 +230,6 @@ void IP_Unix::get_local_interfaces(Map<String, Interface_Info> *r_interfaces) co
 #endif
 
 #else // UNIX
-
-void IP_Unix::get_local_addresses(List<IP_Address> *r_addresses) const {
-
-	struct ifaddrs *ifAddrStruct = NULL;
-	struct ifaddrs *ifa = NULL;
-	int family;
-
-	getifaddrs(&ifAddrStruct);
-
-	for (ifa = ifAddrStruct; ifa != NULL; ifa = ifa->ifa_next) {
-		if (!ifa->ifa_addr)
-			continue;
-
-		family = ifa->ifa_addr->sa_family;
-
-		if (family != AF_INET && family != AF_INET6)
-			continue;
-
-		IP_Address ip = _sockaddr2ip(ifa->ifa_addr);
-		r_addresses->push_back(ip);
-	}
-
-	if (ifAddrStruct != NULL) freeifaddrs(ifAddrStruct);
-}
 
 void IP_Unix::get_local_interfaces(Map<String, Interface_Info> *r_interfaces) const {
 

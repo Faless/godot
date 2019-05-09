@@ -124,6 +124,7 @@ IP_Address IP_Unix::_resolve_hostname(const String &p_hostname, Type p_type) {
 
 	return ip;
 }
+
 #if defined(WINDOWS_ENABLED)
 
 #if defined(UWP_ENABLED)

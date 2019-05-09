@@ -260,8 +260,7 @@ void IP_Unix::get_local_interfaces(Map<String, Interface_Info> *r_interfaces) co
 		info.ip_addresses.push_front(ip);
 	}
 
-	if (ifAddrStruct != NULL)
-		freeifaddrs(ifAddrStruct);
+	if (ifAddrStruct != NULL) freeifaddrs(ifAddrStruct);
 }
 #endif
 

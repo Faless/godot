@@ -246,20 +246,9 @@ Array IP::_get_local_interfaces() const {
 		rc["friendly"] = c.name_friendly;
 
 		Array ips;
-
 		for (const List<IP_Address>::Element *F = c.ip_addresses.front(); F; F = F->next()) {
-			IP_Address ip = F->get();
-			Dictionary rc_ip;
-			rc_ip["address"] = ip;
-			if (ip.is_wildcard())
-				rc_ip["type"] = IP::TYPE_ANY;
-			else if (!ip.is_valid())
-				rc_ip["type"] = IP::TYPE_NONE;
-			else
-				rc_ip["type"] = ip.is_ipv4() ? IP::TYPE_IPV4 : IP::TYPE_IPV6;
-			ips.push_front(rc_ip);
+			ips.push_front(F->get());
 		}
-
 		rc["addresses"] = ips;
 
 		results.push_front(rc);

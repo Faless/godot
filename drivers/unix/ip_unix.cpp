@@ -77,6 +77,7 @@
 static IP_Address _sockaddr2ip(struct sockaddr *p_addr) {
 
 	IP_Address ip;
+
 	if (p_addr->sa_family == AF_INET) {
 		struct sockaddr_in *addr = (struct sockaddr_in *)p_addr;
 		ip.set_ipv4((uint8_t *)&(addr->sin_addr));
@@ -196,29 +197,13 @@ void IP_Unix::get_local_interfaces(Map<String, Interface_Info> *r_interfaces) co
 
 		IP_ADAPTER_UNICAST_ADDRESS *address = adapter->FirstUnicastAddress;
 		while (address != NULL) {
-
-			IP_Address ip;
-
-			if (address->Address.lpSockaddr->sa_family == AF_INET) {
-
-				SOCKADDR_IN *ipv4 = reinterpret_cast<SOCKADDR_IN *>(address->Address.lpSockaddr);
-
-				ip.set_ipv4((uint8_t *)&(ipv4->sin_addr));
-				info.ip_addresses.push_front(ip);
-
-			} else if (address->Address.lpSockaddr->sa_family == AF_INET6) { // ipv6
-
-				SOCKADDR_IN6 *ipv6 = reinterpret_cast<SOCKADDR_IN6 *>(address->Address.lpSockaddr);
-
-				ip.set_ipv6(ipv6->sin6_addr.s6_addr);
-				info.ip_addresses.push_front(ip);
-			};
-
+			int family = address->Address.lpSockaddr->sa_family;
+			if (family != AF_INET && family != AF_INET6)
+				continue;
+			info.ip_addresses.push_front(_sockaddr2ip(address->Address.lpSockaddr));
 			address = address->Next;
-		};
-
+		}
 		r_interfaces->insert(adapter->AdapterName, info);
-
 		adapter = adapter->Next;
 	};
 
@@ -256,9 +241,7 @@ void IP_Unix::get_local_interfaces(Map<String, Interface_Info> *r_interfaces) co
 		}
 
 		Interface_Info &info = E->get();
-
-		IP_Address ip = _sockaddr2ip(ifa->ifa_addr);
-		info.ip_addresses.push_front(ip);
+		info.ip_addresses.push_front(_sockaddr2ip(ifa->ifa_addr));
 	}
 
 	if (ifAddrStruct != NULL) freeifaddrs(ifAddrStruct);

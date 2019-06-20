@@ -74,8 +74,8 @@ public:
 	virtual void set_ipv6_only_enabled(bool p_enabled) = 0;
 	virtual void set_tcp_no_delay_enabled(bool p_enabled) = 0;
 	virtual void set_reuse_address_enabled(bool p_enabled) = 0;
-	virtual Error join_multicast_group(const IP_Address &p_ip, String p_if_name) = 0;
-	virtual Error leave_multicast_group(const IP_Address &p_ip, String p_if_name) = 0;
+	virtual Error add_multicast_membership(const IP_Address &p_multi_address, IP_Address p_if_address) = 0;
+	virtual Error drop_multicast_membership(const IP_Address &p_multi_address, IP_Address p_if_address) = 0;
 };
 
 #endif // NET_SOCKET_H

@@ -37,25 +37,25 @@ void PacketPeerUDP::set_blocking_mode(bool p_enable) {
 	blocking = p_enable;
 }
 
-Error PacketPeerUDP::join_multicast_group(IP_Address p_group, String p_if_name) {
+Error PacketPeerUDP::add_multicast_membership(IP_Address p_multi_address, IP_Address p_if_address) {
 
 	ERR_FAIL_COND_V(!_sock.is_valid(), ERR_UNAVAILABLE);
-	ERR_FAIL_COND_V(!p_group.is_valid(), ERR_INVALID_PARAMETER);
+	ERR_FAIL_COND_V(!p_multi_address.is_valid(), ERR_INVALID_PARAMETER);
 
 	if (!_sock->is_open()) {
-		IP::Type ip_type = p_group.is_ipv4() ? IP::TYPE_IPV4 : IP::TYPE_IPV6;
+		IP::Type ip_type = p_multi_address.is_ipv4() ? IP::TYPE_IPV4 : IP::TYPE_IPV6;
 		Error err = _sock->open(NetSocket::TYPE_UDP, ip_type);
 		ERR_FAIL_COND_V(err != OK, err);
 		_sock->set_blocking_enabled(false);
 	}
-	return _sock->join_multicast_group(p_group, p_if_name);
+	return _sock->add_multicast_membership(p_multi_address, p_if_address);
 }
 
-Error PacketPeerUDP::leave_multicast_group(IP_Address p_group, String p_if_name) {
+Error PacketPeerUDP::drop_multicast_membership(IP_Address p_multi_address, IP_Address p_if_address) {
 
 	ERR_FAIL_COND_V(!_sock.is_valid(), ERR_UNAVAILABLE);
 	ERR_FAIL_COND_V(!_sock->is_open(), ERR_UNCONFIGURED);
-	return _sock->leave_multicast_group(p_group, p_if_name);
+	return _sock->drop_multicast_membership(p_multi_address, p_if_address);
 }
 
 String PacketPeerUDP::_get_packet_ip() const {
@@ -258,8 +258,8 @@ void PacketPeerUDP::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_packet_ip"), &PacketPeerUDP::_get_packet_ip);
 	ClassDB::bind_method(D_METHOD("get_packet_port"), &PacketPeerUDP::get_packet_port);
 	ClassDB::bind_method(D_METHOD("set_dest_address", "host", "port"), &PacketPeerUDP::_set_dest_address);
-	ClassDB::bind_method(D_METHOD("leave_multicast_group", "multicast_address", "interface_name"), &PacketPeerUDP::join_multicast_group);
-	ClassDB::bind_method(D_METHOD("join_multicast_group", "multicast_address", "interface_name"), &PacketPeerUDP::join_multicast_group);
+	ClassDB::bind_method(D_METHOD("add_multicast_membership", "multicast_address", "interface_address"), &PacketPeerUDP::add_multicast_membership);
+	ClassDB::bind_method(D_METHOD("drop_multicast_membership", "multicast_address", "interface_address"), &PacketPeerUDP::drop_multicast_membership);
 }
 
 PacketPeerUDP::PacketPeerUDP() :

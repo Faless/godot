@@ -60,7 +60,7 @@ private:
 
 	NetError _get_socket_error();
 	void _set_socket(SOCKET_TYPE p_sock, IP::Type p_ip_type, bool p_is_stream);
-	_FORCE_INLINE_ Error _change_multicast_membership(IP_Address p_ip, IP_Address p_if_address, bool p_add);
+	_FORCE_INLINE_ Error _change_multicast_group(IP_Address p_ip, String p_if_name, bool p_add);
 
 protected:
 	static NetSocket *_create_func();
@@ -94,8 +94,8 @@ public:
 	virtual void set_tcp_no_delay_enabled(bool p_enabled);
 	virtual void set_reuse_address_enabled(bool p_enabled);
 	virtual void set_reuse_port_enabled(bool p_enabled);
-	virtual Error add_multicast_membership(const IP_Address &p_multi_address, IP_Address p_if_address);
-	virtual Error drop_multicast_membership(const IP_Address &p_multi_address, IP_Address p_if_address);
+	virtual Error join_multicast_group(const IP_Address &p_multi_address, String p_if_name);
+	virtual Error leave_multicast_group(const IP_Address &p_multi_address, String p_if_name);
 
 	NetSocketPosix();
 	~NetSocketPosix();

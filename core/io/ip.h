@@ -81,6 +81,7 @@ public:
 	struct Interface_Info {
 		String name;
 		String name_friendly;
+		String index;
 		List<IP_Address> ip_addresses;
 	};
 

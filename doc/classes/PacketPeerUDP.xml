@@ -9,34 +9,11 @@
 	<tutorials>
 	</tutorials>
 	<methods>
-		<method name="add_multicast_membership">
-			<return type="int" enum="Error">
-			</return>
-			<argument index="0" name="multicast_address" type="String">
-			</argument>
-			<argument index="1" name="interface_address" type="String">
-			</argument>
-			<description>
-				Join the multicast group specified by [code]multicast_address[/code] with the interface having IP address [code]interface_address[/code].
-				You can join the same multicast group with multiple interfaces. Use [method IP.get_local_interfaces] or [method IP.get_local_addresses] to know which are available.
-			</description>
-		</method>
 		<method name="close">
 			<return type="void">
 			</return>
 			<description>
 				Close the UDP socket the [PacketPeerUDP] is currently listening on.
-			</description>
-		</method>
-		<method name="drop_multicast_membership">
-			<return type="int" enum="Error">
-			</return>
-			<argument index="0" name="multicast_address" type="String">
-			</argument>
-			<argument index="1" name="interface_address" type="String">
-			</argument>
-			<description>
-				Remove the interface having IP address [code]interface_address[/code] from the multicast group specified by [code]multicast_address[/code].
 			</description>
 		</method>
 		<method name="get_packet_ip" qualifiers="const">
@@ -58,6 +35,29 @@
 			</return>
 			<description>
 				Returns whether this [PacketPeerUDP] is listening.
+			</description>
+		</method>
+		<method name="join_multicast_group">
+			<return type="int" enum="Error">
+			</return>
+			<argument index="0" name="multicast_address" type="String">
+			</argument>
+			<argument index="1" name="interface_name" type="String">
+			</argument>
+			<description>
+				Join the multicast group specified by [code]multicast_address[/code] using the interface identified by [code]interface_name[/code].
+				You can join the same multicast group with multiple interfaces. Use [method IP.get_local_interfaces] to know which are available.
+			</description>
+		</method>
+		<method name="leave_multicast_group">
+			<return type="int" enum="Error">
+			</return>
+			<argument index="0" name="multicast_address" type="String">
+			</argument>
+			<argument index="1" name="interface_name" type="String">
+			</argument>
+			<description>
+				Remove the interface identified by [code]interface_name[/code] from the multicast group specified by [code]multicast_address[/code].
 			</description>
 		</method>
 		<method name="listen">

@@ -56,6 +56,7 @@
 #endif // MINGW hack
 #endif
 #else // UNIX
+#include <net/if.h>
 #include <netdb.h>
 #ifdef ANDROID_ENABLED
 // We could drop this file once we up our API level to 24,
@@ -151,6 +152,7 @@ void IP_Unix::get_local_interfaces(Map<String, Interface_Info> *r_interfaces) co
 			Interface_Info info;
 			info.name = name;
 			info.name_friendly = hostname->DisplayName->Data();
+			info.index = 0;
 			E = r_interfaces->insert(name, info);
 			ERR_CONTINUE(!E);
 		}
@@ -194,6 +196,7 @@ void IP_Unix::get_local_interfaces(Map<String, Interface_Info> *r_interfaces) co
 		Interface_Info info;
 		info.name = adapter->AdapterName;
 		info.name_friendly = adapter->FriendlyName;
+		info.index = String::num_uint64(adapter->Ipv6IfIndex);
 
 		IP_ADAPTER_UNICAST_ADDRESS *address = adapter->FirstUnicastAddress;
 		while (address != NULL) {
@@ -238,6 +241,7 @@ void IP_Unix::get_local_interfaces(Map<String, Interface_Info> *r_interfaces) co
 			Interface_Info info;
 			info.name = ifa->ifa_name;
 			info.name_friendly = ifa->ifa_name;
+			info.index = String::num_uint64(if_nametoindex(ifa->ifa_name));
 			E = r_interfaces->insert(ifa->ifa_name, info);
 			ERR_CONTINUE(!E);
 		}

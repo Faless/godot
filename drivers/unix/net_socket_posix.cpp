@@ -247,11 +247,7 @@ _FORCE_INLINE_ Error NetSocketPosix::_change_multicast_group(IP_Address p_ip, St
 	int ret = -1;
 
 	IP_Address if_ip;
-#ifdef WINDOWS_ENABLED
-	uint64_t if_v6id = 0;
-#else
 	uint32_t if_v6id = 0;
-#endif
 	Map<String, IP::Interface_Info> if_info;
 	IP::get_singleton()->get_local_interfaces(&if_info);
 	for (Map<String, IP::Interface_Info>::Element *E = if_info.front(); E; E = E->next()) {
@@ -259,11 +255,7 @@ _FORCE_INLINE_ Error NetSocketPosix::_change_multicast_group(IP_Address p_ip, St
 		if (c.name != p_if_name)
 			continue;
 
-#ifdef WINDOWS_ENABLED
-		if_v6id = strtoul(c.index.ascii().get_data(), NULL, 10);
-#else
 		if_v6id = (uint32_t)c.index.to_int64();
-#endif
 		if (type == IP::TYPE_IPV6)
 			break; // IPv6 uses index.
 

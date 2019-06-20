@@ -203,8 +203,10 @@ void IP_Unix::get_local_interfaces(Map<String, Interface_Info> *r_interfaces) co
 			info.ip_addresses.push_front(_sockaddr2ip(address->Address.lpSockaddr));
 			address = address->Next;
 		}
-		r_interfaces->insert(adapter->AdapterName, info);
 		adapter = adapter->Next;
+		// Only add interface if it has at least one IP
+		if (info.ip_addresses.size() > 0)
+			r_interfaces->insert(info.name, info);
 	};
 
 	memfree(addrs);

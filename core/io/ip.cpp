@@ -244,6 +244,7 @@ Array IP::_get_local_interfaces() const {
 		Dictionary rc;
 		rc["name"] = c.name;
 		rc["friendly"] = c.name_friendly;
+		rc["index"] = c.index;
 
 		Array ips;
 		for (const List<IP_Address>::Element *F = c.ip_addresses.front(); F; F = F->next()) {

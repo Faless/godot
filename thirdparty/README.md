@@ -372,6 +372,10 @@ Collection of single-file libraries used in Godot components.
   * Upstream: http://www.pcg-random.org
   * Version: minimal C implementation, http://www.pcg-random.org/download.html
   * License: Apache 2.0
+- `sha1.{c,h}`
+  * Upstream: https://github.com/postgres/postgres/
+  * Version: git (e3860ff, 2017)
+  * License: BSD-3-Clause
 - `sha256.{c,h}`
   * Upstream: https://github.com/ilvn/SHA256
   * Version: git (35ff823, 2015)

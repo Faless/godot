@@ -49,6 +49,7 @@ thirdparty_misc_sources = [
     # C sources
     "base64.c",
     "fastlz.c",
+    "sha1.c",
     "sha256.c",
     "smaz.c",
 

@@ -39,6 +39,7 @@
 #include "core/variant.h"
 
 #include "thirdparty/misc/md5.h"
+#include "thirdparty/misc/sha1.h"
 #include "thirdparty/misc/sha256.h"
 
 #include <wchar.h>
@@ -2261,6 +2262,16 @@ String String::md5_text() const {
 	return String::md5(ctx.digest);
 }
 
+String String::sha1_text() const {
+	CharString cs = utf8();
+	unsigned char hash[20];
+	struct sha1_ctxt ctx;
+	misc_sha1_init(&ctx);
+	misc_sha1_loop(&ctx, (unsigned char *)cs.ptr(), cs.length());
+	misc_sha1_result(&ctx, hash);
+	return String::hex_encode_buffer(hash, 20);
+}
+
 String String::sha256_text() const {
 	CharString cs = utf8();
 	unsigned char hash[32];
@@ -2287,6 +2298,23 @@ Vector<uint8_t> String::md5_buffer() const {
 
 	return ret;
 };
+
+Vector<uint8_t> String::sha1_buffer() const {
+	CharString cs = utf8();
+	unsigned char hash[20];
+	struct sha1_ctxt ctx;
+	misc_sha1_init(&ctx);
+	misc_sha1_loop(&ctx, (unsigned char *)cs.ptr(), cs.length());
+	misc_sha1_result(&ctx, hash);
+
+	Vector<uint8_t> ret;
+	ret.resize(20);
+	for (int i = 0; i < 20; i++) {
+		ret.write[i] = hash[i];
+	}
+
+	return ret;
+}
 
 Vector<uint8_t> String::sha256_buffer() const {
 	CharString cs = utf8();

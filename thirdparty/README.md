@@ -264,6 +264,13 @@ changes are marked with `// -- GODOT --` comments.
 
 ## libwebsockets
 
+- Upstream: https://github.com/tatsuhiro-t/wslay
+- Version: 1.1.0
+- License: MIT
+
+
+## libwebsockets
+
 - Upstream: https://github.com/warmcat/libwebsockets
 - Version: 3.0.1
 - License: LGPLv2.1 + static linking exception

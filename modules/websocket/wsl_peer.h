@@ -1,5 +1,5 @@
 /*************************************************************************/
-/*  register_types.cpp                                                   */
+/*  lws_peer.h                                                           */
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
@@ -28,53 +28,71 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 
-#include "register_types.h"
-#include "core/error_macros.h"
-#include "core/project_settings.h"
-#ifdef JAVASCRIPT_ENABLED
-#include "emscripten.h"
-#include "emws_client.h"
-#include "emws_peer.h"
-#include "emws_server.h"
-#else
-#include "lws_client.h"
-#include "lws_peer.h"
-#include "lws_server.h"
-#include "wsl_client.h"
+#ifndef WSLPEER_H
+#define WSLPEER_H
+
+#ifndef JAVASCRIPT_ENABLED
+
+#include "core/error_list.h"
+#include "core/io/packet_peer.h"
+#include "core/ring_buffer.h"
+#include "packet_buffer.h"
+#include "websocket_peer.h"
+
+#ifndef LWS_PRE
+#define LWS_PRE 0
 #endif
 
-void register_websocket_types() {
-#define _SET_HINT(NAME, _VAL_, _MAX_) \
-	GLOBAL_DEF(NAME, _VAL_);          \
-	ProjectSettings::get_singleton()->set_custom_property_info(NAME, PropertyInfo(Variant::INT, NAME, PROPERTY_HINT_RANGE, "2," #_MAX_ ",1,or_greater"));
+class WSLPeer : public WebSocketPeer {
 
-	// Client buffers project settings
-	_SET_HINT(WSC_IN_BUF, 64, 4096);
-	_SET_HINT(WSC_IN_PKT, 1024, 16384);
-	_SET_HINT(WSC_OUT_BUF, 64, 4096);
-	_SET_HINT(WSC_OUT_PKT, 1024, 16384);
+	GDCIIMPL(WSLPeer, WebSocketPeer);
 
-	// Server buffers project settings
-	_SET_HINT(WSS_IN_BUF, 64, 4096);
-	_SET_HINT(WSS_IN_PKT, 1024, 16384);
-	_SET_HINT(WSS_OUT_BUF, 64, 4096);
-	_SET_HINT(WSS_OUT_PKT, 1024, 16384);
+private:
+	Ref<StreamPeer> _stream;
+	int _in_size;
+	uint8_t _is_string;
+	// Our packet info is just a boolean (is_string), using uint8_t for it.
+	PacketBuffer<uint8_t> _in_buffer;
+	PacketBuffer<uint8_t> _out_buffer;
 
-#ifdef JAVASCRIPT_ENABLED
-	EMWSPeer::make_default();
-	EMWSClient::make_default();
-	EMWSServer::make_default();
-#else
-	LWSPeer::make_default();
-	LWSClient::make_default();
-	WSLClient::make_default();
-	LWSServer::make_default();
-#endif
+	PoolVector<uint8_t> _packet_buffer;
 
-	ClassDB::register_virtual_class<WebSocketMultiplayerPeer>();
-	ClassDB::register_custom_instance_class<WebSocketServer>();
-	ClassDB::register_custom_instance_class<WebSocketClient>();
-	ClassDB::register_custom_instance_class<WebSocketPeer>();
-}
+	WriteMode write_mode;
 
-void unregister_websocket_types() {}
+	int close_code;
+	String close_reason;
+
+public:
+	struct PeerData {
+		uint32_t peer_id;
+		bool force_close;
+		bool clean_close;
+	};
+
+	virtual int get_available_packet_count() const;
+	virtual Error get_packet(const uint8_t **r_buffer, int &r_buffer_size);
+	virtual Error put_packet(const uint8_t *p_buffer, int p_buffer_size);
+	virtual int get_max_packet_size() const { return _packet_buffer.size(); };
+
+	virtual void close(int p_code = 1000, String p_reason = "");
+	virtual bool is_connected_to_host() const;
+	virtual IP_Address get_connected_host() const;
+	virtual uint16_t get_connected_port() const;
+
+	virtual WriteMode get_write_mode() const;
+	virtual void set_write_mode(WriteMode p_mode);
+	virtual bool was_string_packet() const;
+
+	void set_context(unsigned int p_in_buf_size, unsigned int p_in_pkt_size, unsigned int p_out_buf_size, unsigned int p_out_pkt_size);
+	Error read_wsi(void *in, size_t len);
+	Error write_wsi();
+	void send_close_status();
+	String get_close_reason(void *in, size_t len, int &r_code);
+
+	WSLPeer();
+	~WSLPeer();
+};
+
+#endif // JAVASCRIPT_ENABLED
+
+#endif // LSWPEER_H

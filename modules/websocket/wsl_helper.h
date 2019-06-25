@@ -1,5 +1,5 @@
 /*************************************************************************/
-/*  register_types.cpp                                                   */
+/*  wsl_helper.h                                                         */
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
@@ -28,53 +28,65 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 
-#include "register_types.h"
-#include "core/error_macros.h"
-#include "core/project_settings.h"
-#ifdef JAVASCRIPT_ENABLED
-#include "emscripten.h"
-#include "emws_client.h"
-#include "emws_peer.h"
-#include "emws_server.h"
-#else
-#include "lws_client.h"
-#include "lws_peer.h"
-#include "lws_server.h"
-#include "wsl_client.h"
-#endif
+#ifndef WSL_HELPER_H
+#define WSL_HELPER_H
 
-void register_websocket_types() {
-#define _SET_HINT(NAME, _VAL_, _MAX_) \
-	GLOBAL_DEF(NAME, _VAL_);          \
-	ProjectSettings::get_singleton()->set_custom_property_info(NAME, PropertyInfo(Variant::INT, NAME, PROPERTY_HINT_RANGE, "2," #_MAX_ ",1,or_greater"));
+#define WSL_BUF_SIZE 65536
+#define WSL_PACKET_SIZE WSL_BUF_SIZE
 
-	// Client buffers project settings
-	_SET_HINT(WSC_IN_BUF, 64, 4096);
-	_SET_HINT(WSC_IN_PKT, 1024, 16384);
-	_SET_HINT(WSC_OUT_BUF, 64, 4096);
-	_SET_HINT(WSC_OUT_PKT, 1024, 16384);
+#include "core/io/stream_peer.h"
+#include "core/os/os.h"
+#include "core/reference.h"
+#include "core/ring_buffer.h"
+#include "wsl_peer.h"
 
-	// Server buffers project settings
-	_SET_HINT(WSS_IN_BUF, 64, 4096);
-	_SET_HINT(WSS_IN_PKT, 1024, 16384);
-	_SET_HINT(WSS_OUT_BUF, 64, 4096);
-	_SET_HINT(WSS_OUT_PKT, 1024, 16384);
+struct _WSLRef {
+	bool free_context;
+	bool is_polling;
+	bool is_valid;
+	bool is_destroying;
+	void *obj;
+};
 
-#ifdef JAVASCRIPT_ENABLED
-	EMWSPeer::make_default();
-	EMWSClient::make_default();
-	EMWSServer::make_default();
-#else
-	LWSPeer::make_default();
-	LWSClient::make_default();
-	WSLClient::make_default();
-	LWSServer::make_default();
-#endif
+_WSLRef *_wsl_create_ref(void *obj);
+void _wsl_free_ref(_WSLRef *ref);
+bool _wsl_destroy(struct wsl_context *context, _WSLRef *ref);
+bool _wsl_poll(struct wsl_context *context, _WSLRef *ref);
 
-	ClassDB::register_virtual_class<WebSocketMultiplayerPeer>();
-	ClassDB::register_custom_instance_class<WebSocketServer>();
-	ClassDB::register_custom_instance_class<WebSocketClient>();
-	ClassDB::register_custom_instance_class<WebSocketPeer>();
-}
+/* clang-format off */
+#define WSL_HELPER() \
+protected:															\
+	struct _WSLRef *_wsl_ref;												\
+	struct wslay_event_context_ptr context;											\
+																\
+	void invalidate_wsl_ref() {												\
+		if (_wsl_ref != NULL)												\
+			_wsl_ref->is_valid = false;										\
+	}															\
+																\
+	void destroy_context() {												\
+		if (_wsl_destroy(context, _wsl_ref)) {										\
+			context = NULL;												\
+			_wsl_ref = NULL;											\
+		}														\
+	}															\
+																\
+public:																\
+																\
+	void _wsl_poll() {													\
+		ERR_FAIL_COND(context == NULL);											\
+		do {														\
+			_keep_servicing = false;										\
+			if (::_wsl_poll(context, _wsl_ref)) {									\
+				context = NULL;											\
+				_wsl_ref = NULL;										\
+				break;												\
+			}													\
+		} while (_keep_servicing);											\
+	}															\
+																\
+protected:
 
-void unregister_websocket_types() {}
+/* clang-format on */
+
+#endif // WSL_HELPER_H

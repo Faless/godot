@@ -38,6 +38,7 @@
 #include "core/ring_buffer.h"
 #include "packet_buffer.h"
 #include "websocket_peer.h"
+#include "wslay/wslay.h"
 
 #ifndef LWS_PRE
 #define LWS_PRE 0
@@ -48,7 +49,7 @@ class WSLPeer : public WebSocketPeer {
 	GDCIIMPL(WSLPeer, WebSocketPeer);
 
 private:
-	Ref<StreamPeer> _stream;
+	wslay_event_context_ptr _ctx;
 	int _in_size;
 	uint8_t _is_string;
 	// Our packet info is just a boolean (is_string), using uint8_t for it.
@@ -83,7 +84,7 @@ public:
 	virtual void set_write_mode(WriteMode p_mode);
 	virtual bool was_string_packet() const;
 
-	void set_context(unsigned int p_in_buf_size, unsigned int p_in_pkt_size, unsigned int p_out_buf_size, unsigned int p_out_pkt_size);
+	void set_context(wslay_event_context_ptr p_ctx, unsigned int p_in_buf_size, unsigned int p_in_pkt_size, unsigned int p_out_buf_size, unsigned int p_out_pkt_size);
 	Error read_wsi(void *in, size_t len);
 	Error write_wsi();
 	void send_close_status();

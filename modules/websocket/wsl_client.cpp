@@ -1,5 +1,5 @@
 /*************************************************************************/
-/*  lws_client.cpp                                                       */
+/*  wsl_client.cpp                                                       */
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
@@ -32,7 +32,75 @@
 
 #include "wsl_client.h"
 #include "core/io/ip.h"
+#include "core/math/random_number_generator.h"
+#include "core/os/os.h"
 #include "core/project_settings.h"
+
+ssize_t wsl_recv_callback(wslay_event_context_ptr ctx, uint8_t *data, size_t len, int flags, void *user_data) {
+	WARN_PRINTS("Read");
+	_WSLRef *ref = (_WSLRef *)user_data;
+	if (!ref->is_valid) {
+		wslay_event_set_error(ctx, WSLAY_ERR_CALLBACK_FAILURE);
+		return -1;
+	}
+	WSLClient *helper = (WSLClient *)ref->obj;
+	int read = 0;
+	Error err = helper->_connection->get_partial_data(data, len, read);
+	if (err != OK) {
+		wslay_event_set_error(ctx, WSLAY_ERR_CALLBACK_FAILURE);
+		return -1;
+	}
+	if (read == 0) {
+		wslay_event_set_error(ctx, WSLAY_ERR_WOULDBLOCK);
+		return -1;
+	}
+	return read;
+}
+
+ssize_t wsl_send_callback(wslay_event_context_ptr ctx, const uint8_t *data, size_t len, int flags, void *user_data) {
+	WARN_PRINTS("Send");
+	_WSLRef *ref = (_WSLRef *)user_data;
+	if (!ref->is_valid) {
+		wslay_event_set_error(ctx, WSLAY_ERR_CALLBACK_FAILURE);
+		return -1;
+	}
+	WSLClient *helper = (WSLClient *)ref->obj;
+	int sent = 0;
+	Error err = helper->_connection->put_partial_data(data, len, sent);
+	if (err != OK) {
+		wslay_event_set_error(ctx, WSLAY_ERR_CALLBACK_FAILURE);
+		return -1;
+	}
+	if (sent == 0) {
+		wslay_event_set_error(ctx, WSLAY_ERR_WOULDBLOCK);
+		return -1;
+	}
+	return sent;
+}
+
+int wsl_genmask_callback(wslay_event_context_ptr ctx, uint8_t *buf, size_t len, void *user_data) {
+	WARN_PRINTS("Genmask");
+	RandomNumberGenerator rng;
+	rng.set_seed(OS::get_singleton()->get_unix_time()); // TODO maybe use crypto in the future?
+	for (unsigned int i = 0; i < len; i++) {
+		buf[i] = (uint8_t)rng.randi_range(0, 255);
+	}
+	return 0;
+}
+
+void wsl_msg_recv_callback(wslay_event_context_ptr ctx, const struct wslay_event_on_msg_recv_arg *arg, void *user_data) {
+	WARN_PRINTS("Received message");
+}
+
+wslay_event_callbacks wsl_callbacks = {
+	wsl_recv_callback,
+	wsl_send_callback,
+	wsl_genmask_callback,
+	NULL, /* on_frame_recv_start_callback */
+	NULL, /* on_frame_recv_callback */
+	NULL, /* on_frame_recv_end_callback */
+	wsl_msg_recv_callback
+};
 
 void WSLClient::_do_handshake() {
 	if (!_requested) {
@@ -79,7 +147,14 @@ void WSLClient::_do_handshake() {
 				}
 				// Create peer.
 				_peer = Ref<WSLPeer>(memnew(WSLPeer));
-				_peer->set_context(_in_buf_size, _in_pkt_size, _out_buf_size, _out_pkt_size);
+				int ret = wslay_event_context_client_init(&_ctx, &wsl_callbacks, _wsl_create_ref(this));
+				if (ret != 0) {
+					disconnect_from_host();
+					_on_error();
+					ERR_EXPLAIN("Unable to initialize WebSocket context");
+					ERR_FAIL();
+				}
+				_peer->set_context(_ctx, _in_buf_size, _in_pkt_size, _out_buf_size, _out_pkt_size);
 				return;
 			}
 		}
@@ -186,8 +261,13 @@ int WSLClient::get_max_packet_size() const {
 void WSLClient::poll() {
 	if (_connection.is_null())
 		return; // Not connected.
-	if (_peer.is_valid())
-		return; // TODO Peer polling.
+	if (_peer.is_valid()) {
+		if (wslay_event_recv(_ctx) != 0 || wslay_event_send(_ctx) != 0) {
+			disconnect_from_host();
+			return;
+		}
+		return;
+	}
 
 	switch (_tcp->get_status()) {
 		case StreamPeerTCP::STATUS_NONE:
@@ -242,14 +322,13 @@ Ref<WebSocketPeer> WSLClient::get_peer(int p_peer_id) const {
 
 NetworkedMultiplayerPeer::ConnectionStatus WSLClient::get_connection_status() const {
 
-	//if (context == NULL)
-	//	return CONNECTION_DISCONNECTED;
-
-	// FIXME right status
 	if (_peer.is_valid() && _peer->is_connected_to_host())
 		return CONNECTION_CONNECTED;
 
-	return CONNECTION_CONNECTING;
+	if (_tcp->is_connected_to_host())
+		return CONNECTION_CONNECTING;
+
+	return CONNECTION_DISCONNECTED;
 }
 
 void WSLClient::disconnect_from_host(int p_code, String p_reason) {
@@ -282,7 +361,7 @@ uint16_t WSLClient::get_connected_port() const {
 
 Error WSLClient::set_buffers(int p_in_buffer, int p_in_packets, int p_out_buffer, int p_out_packets) {
 	ERR_EXPLAIN("Buffers sizes can only be set before listening or connecting");
-	//ERR_FAIL_COND_V(context != NULL, FAILED);
+	ERR_FAIL_COND_V(_ctx != NULL, FAILED);
 
 	_in_buf_size = nearest_shift(p_in_buffer - 1) + 10;
 	_in_pkt_size = nearest_shift(p_in_packets - 1);
@@ -297,6 +376,7 @@ WSLClient::WSLClient() {
 	_out_buf_size = nearest_shift((int)GLOBAL_GET(WSC_OUT_BUF) - 1) + 10;
 	_out_pkt_size = nearest_shift((int)GLOBAL_GET(WSC_OUT_PKT) - 1);
 
+	_ctx = NULL;
 	_tcp.instance();
 	_requested = false;
 }

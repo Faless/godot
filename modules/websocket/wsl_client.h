@@ -52,10 +52,10 @@ private:
 	int _in_pkt_size;
 	int _out_buf_size;
 	int _out_pkt_size;
+	wslay_event_context_ptr _ctx;
 	Ref<WSLPeer> _peer;
 	// XXX we could use HTTPClient with some hacking instead...
 	Ref<StreamPeerTCP> _tcp;
-	Ref<StreamPeer> _connection;
 	String _request;
 	String _response;
 	String _key;
@@ -67,6 +67,7 @@ private:
 	bool _verify_headers();
 
 public:
+	Ref<StreamPeer> _connection;
 	Error set_buffers(int p_in_buffer, int p_in_packets, int p_out_buffer, int p_out_packets);
 	Error connect_to_host(String p_host, String p_path, uint16_t p_port, bool p_ssl, PoolVector<String> p_protocol = PoolVector<String>());
 	int get_max_packet_size() const;

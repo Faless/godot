@@ -42,13 +42,13 @@
 
 #include "drivers/unix/net_socket_posix.h"
 
-void WSLPeer::set_context(unsigned int p_in_buf_size, unsigned int p_in_pkt_size, unsigned int p_out_buf_size, unsigned int p_out_pkt_size) {
-	//ERR_FAIL_COND(p_stream.is_null());
+void WSLPeer::set_context(wslay_event_context_ptr p_ctx, unsigned int p_in_buf_size, unsigned int p_in_pkt_size, unsigned int p_out_buf_size, unsigned int p_out_pkt_size) {
+	ERR_FAIL_COND(_ctx != NULL);
 
 	_in_buffer.resize(p_in_pkt_size, p_in_buf_size);
 	_out_buffer.resize(p_out_pkt_size, p_out_buf_size);
 	_packet_buffer.resize((1 << MAX(p_in_buf_size, p_out_buf_size)) + LWS_PRE);
-	WARN_PRINTS("Set!");
+	_ctx = p_ctx;
 }
 
 void WSLPeer::set_write_mode(WriteMode p_mode) {
@@ -159,7 +159,7 @@ bool WSLPeer::was_string_packet() const {
 
 bool WSLPeer::is_connected_to_host() const {
 
-	return false;
+	return _ctx != NULL;
 };
 
 String WSLPeer::get_close_reason(void *in, size_t len, int &r_code) {
@@ -207,6 +207,7 @@ void WSLPeer::close(int p_code, String p_reason) {
 	_in_size = 0;
 	_is_string = 0;
 	_packet_buffer.resize(0);
+	_ctx = NULL;
 };
 
 IP_Address WSLPeer::get_connected_host() const {
@@ -226,6 +227,7 @@ uint16_t WSLPeer::get_connected_port() const {
 };
 
 WSLPeer::WSLPeer() {
+	_ctx = NULL;
 	write_mode = WRITE_MODE_BINARY;
 	close();
 };

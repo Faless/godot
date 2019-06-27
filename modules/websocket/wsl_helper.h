@@ -38,7 +38,6 @@
 #include "core/os/os.h"
 #include "core/reference.h"
 #include "core/ring_buffer.h"
-#include "wsl_peer.h"
 
 struct _WSLRef {
 	bool free_context;

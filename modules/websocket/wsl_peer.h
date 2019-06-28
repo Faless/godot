@@ -48,8 +48,26 @@ class WSLPeer : public WebSocketPeer {
 
 	GDCIIMPL(WSLPeer, WebSocketPeer);
 
+public:
+	struct PeerData {
+		bool polling;
+		bool destroy;
+		void *obj;
+		StreamPeer *conn;
+		wslay_event_context_ptr ctx;
+
+		PeerData() {
+			polling = false;
+			destroy = false;
+			ctx = NULL;
+		}
+	};
+
 private:
-	wslay_event_context_ptr _ctx;
+	static bool _wsl_poll(struct PeerData *p_data);
+
+	Ref<StreamPeer> _connection;
+	struct PeerData *_data;
 	int _in_size;
 	uint8_t _is_string;
 	// Our packet info is just a boolean (is_string), using uint8_t for it.
@@ -79,7 +97,7 @@ public:
 	virtual void set_write_mode(WriteMode p_mode);
 	virtual bool was_string_packet() const;
 
-	void make_context(void *p_obj, unsigned int p_in_buf_size, unsigned int p_in_pkt_size, unsigned int p_out_buf_size, unsigned int p_out_pkt_size);
+	void make_context(void *p_obj, Ref<StreamPeer> connection, unsigned int p_in_buf_size, unsigned int p_in_pkt_size, unsigned int p_out_buf_size, unsigned int p_out_pkt_size);
 	Error read_wsi(void *in, size_t len);
 	Error write_wsi();
 	void send_close_status();

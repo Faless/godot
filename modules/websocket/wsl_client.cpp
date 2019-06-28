@@ -79,7 +79,7 @@ void WSLClient::_do_handshake() {
 				}
 				// Create peer.
 				_peer = Ref<WSLPeer>(memnew(WSLPeer));
-				_peer->make_context(this, _in_buf_size, _in_pkt_size, _out_buf_size, _out_pkt_size);
+				_peer->make_context(this, _connection, _in_buf_size, _in_pkt_size, _out_buf_size, _out_pkt_size);
 				_on_connect(""); // TODO protocol
 			}
 		}

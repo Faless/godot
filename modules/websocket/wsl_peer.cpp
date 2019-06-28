@@ -32,23 +32,78 @@
 
 #include "wsl_peer.h"
 
-#include "core/io/ip.h"
+#include "wsl_client.h"
+#include "wsl_helper.h"
 
-// Needed for socket_helpers on Android at least. UNIXes has it, just include if not windows
-#if !defined(WINDOWS_ENABLED)
-#include <netinet/in.h>
-#include <sys/socket.h>
-#endif
+#include "core/math/random_number_generator.h"
+#include "core/os/os.h"
 
-#include "drivers/unix/net_socket_posix.h"
+ssize_t wsl_recv_callback(wslay_event_context_ptr ctx, uint8_t *data, size_t len, int flags, void *user_data) {
+	WARN_PRINTS("Read");
+	WSLClient *helper = (WSLClient *)user_data;
+	int read = 0;
+	Error err = helper->_connection->get_partial_data(data, len, read);
+	if (err != OK) {
+		WARN_PRINTS(itos(err));
+		wslay_event_set_error(ctx, WSLAY_ERR_CALLBACK_FAILURE);
+		return -1;
+	}
+	WARN_PRINTS(itos(read) + " " + itos(len));
+	if (read == 0) {
+		wslay_event_set_error(ctx, WSLAY_ERR_WOULDBLOCK);
+		return -1;
+	}
+	return read;
+}
 
-void WSLPeer::set_context(wslay_event_context_ptr p_ctx, unsigned int p_in_buf_size, unsigned int p_in_pkt_size, unsigned int p_out_buf_size, unsigned int p_out_pkt_size) {
+ssize_t wsl_send_callback(wslay_event_context_ptr ctx, const uint8_t *data, size_t len, int flags, void *user_data) {
+	WARN_PRINTS("Send");
+	WSLClient *helper = (WSLClient *)user_data;
+	int sent = 0;
+	Error err = helper->_connection->put_partial_data(data, len, sent);
+	if (err != OK) {
+		wslay_event_set_error(ctx, WSLAY_ERR_CALLBACK_FAILURE);
+		return -1;
+	}
+	if (sent == 0) {
+		wslay_event_set_error(ctx, WSLAY_ERR_WOULDBLOCK);
+		return -1;
+	}
+	return sent;
+}
+
+int wsl_genmask_callback(wslay_event_context_ptr ctx, uint8_t *buf, size_t len, void *user_data) {
+	WARN_PRINTS("Genmask");
+	RandomNumberGenerator rng;
+	// TODO maybe use crypto in the future?
+	rng.set_seed(OS::get_singleton()->get_unix_time());
+	for (unsigned int i = 0; i < len; i++) {
+		buf[i] = (uint8_t)rng.randi_range(0, 255);
+	}
+	return 0;
+}
+
+void wsl_msg_recv_callback(wslay_event_context_ptr ctx, const struct wslay_event_on_msg_recv_arg *arg, void *user_data) {
+	WARN_PRINTS("Received message");
+}
+
+wslay_event_callbacks wsl_callbacks = {
+	wsl_recv_callback,
+	wsl_send_callback,
+	wsl_genmask_callback,
+	NULL, /* on_frame_recv_start_callback */
+	NULL, /* on_frame_recv_callback */
+	NULL, /* on_frame_recv_end_callback */
+	wsl_msg_recv_callback
+};
+
+void WSLPeer::make_context(void *p_obj, unsigned int p_in_buf_size, unsigned int p_in_pkt_size, unsigned int p_out_buf_size, unsigned int p_out_pkt_size) {
 	ERR_FAIL_COND(_ctx != NULL);
 
 	_in_buffer.resize(p_in_pkt_size, p_in_buf_size);
 	_out_buffer.resize(p_out_pkt_size, p_out_buf_size);
 	_packet_buffer.resize((1 << MAX(p_in_buf_size, p_out_buf_size)) + LWS_PRE);
-	_ctx = p_ctx;
+	wslay_event_context_client_init(&_ctx, &wsl_callbacks, p_obj);
 }
 
 void WSLPeer::set_write_mode(WriteMode p_mode) {
@@ -59,69 +114,25 @@ WSLPeer::WriteMode WSLPeer::get_write_mode() const {
 	return write_mode;
 }
 
-Error WSLPeer::read_wsi(void *in, size_t len) {
-
-	ERR_FAIL_COND_V(!is_connected_to_host(), FAILED);
-
-	//if (lws_is_first_fragment(wsi))
-	//	_in_size = 0;
-	//else if (_in_size == -1) // Trash this frame
-	//	return ERR_FILE_CORRUPT;
-
-	Error err = _in_buffer.write_packet((const uint8_t *)in, len, NULL);
-
-	if (err != OK) {
-		_in_buffer.discard_payload(_in_size);
-		_in_size = -1;
-		ERR_FAIL_V(err);
+void WSLPeer::poll() {
+	int err = 0;
+	if ((err = wslay_event_recv(_ctx)) != 0 || (err = wslay_event_send(_ctx)) != 0) {
+		WARN_PRINTS("ERROR! " + itos(err));
+		close(0, "");
+		return;
 	}
-
-	_in_size += len;
-
-	//if (lws_is_final_fragment(wsi)) {
-	//	uint8_t is_string = lws_frame_is_binary(wsi) ? 0 : 1;
-	//	err = _in_buffer.write_packet(NULL, _in_size, &is_string);
-	//	if (err != OK) {
-	//		_in_buffer.discard_payload(_in_size);
-	//		_in_size = -1;
-	//		ERR_FAIL_V(err);
-	//	}
-	//}
-
-	return OK;
-}
-
-Error WSLPeer::write_wsi() {
-
-	ERR_FAIL_COND_V(!is_connected_to_host(), FAILED);
-
-	PoolVector<uint8_t> tmp;
-	int count = _out_buffer.packets_left();
-
-	if (count == 0)
-		return OK;
-
-	int read = 0;
-	uint8_t is_string = 0;
-	PoolVector<uint8_t>::Write rw = _packet_buffer.write();
-	_out_buffer.read_packet(&(rw[LWS_PRE]), _packet_buffer.size() - LWS_PRE, &is_string, read);
-
-	//enum lws_write_protocol mode = is_string ? LWS_WRITE_TEXT : LWS_WRITE_BINARY;
-	//lws_write(wsi, &(rw[LWS_PRE]), read, mode);
-
-	//if (count > 1)
-	//	lws_callback_on_writable(wsi); // we want to write more!
-
-	return OK;
 }
 
 Error WSLPeer::put_packet(const uint8_t *p_buffer, int p_buffer_size) {
 
 	ERR_FAIL_COND_V(!is_connected_to_host(), FAILED);
 
-	uint8_t is_string = write_mode == WRITE_MODE_TEXT;
-	_out_buffer.write_packet(p_buffer, p_buffer_size, &is_string);
-	//lws_callback_on_writable(wsi); // notify that we want to write
+	struct wslay_event_msg msg; // Should I use fragmented?
+	msg.opcode = write_mode == WRITE_MODE_TEXT ? WSLAY_TEXT_FRAME : WSLAY_BINARY_FRAME;
+	msg.msg = p_buffer;
+	msg.msg_length = p_buffer_size;
+
+	wslay_event_queue_msg(_ctx, &msg);
 	return OK;
 };
 
@@ -207,6 +218,7 @@ void WSLPeer::close(int p_code, String p_reason) {
 	_in_size = 0;
 	_is_string = 0;
 	_packet_buffer.resize(0);
+	wslay_event_context_free(_ctx);
 	_ctx = NULL;
 };
 
@@ -227,7 +239,6 @@ uint16_t WSLPeer::get_connected_port() const {
 };
 
 WSLPeer::WSLPeer() {
-	_ctx = NULL;
 	write_mode = WRITE_MODE_BINARY;
 	close();
 };

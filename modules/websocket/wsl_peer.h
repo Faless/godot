@@ -60,15 +60,10 @@ private:
 
 	WriteMode write_mode;
 
+public:
 	int close_code;
 	String close_reason;
-
-public:
-	struct PeerData {
-		uint32_t peer_id;
-		bool force_close;
-		bool clean_close;
-	};
+	void poll(); // Used by client and server.
 
 	virtual int get_available_packet_count() const;
 	virtual Error get_packet(const uint8_t **r_buffer, int &r_buffer_size);
@@ -84,7 +79,7 @@ public:
 	virtual void set_write_mode(WriteMode p_mode);
 	virtual bool was_string_packet() const;
 
-	void set_context(wslay_event_context_ptr p_ctx, unsigned int p_in_buf_size, unsigned int p_in_pkt_size, unsigned int p_out_buf_size, unsigned int p_out_pkt_size);
+	void make_context(void *p_obj, unsigned int p_in_buf_size, unsigned int p_in_pkt_size, unsigned int p_out_buf_size, unsigned int p_out_pkt_size);
 	Error read_wsi(void *in, size_t len);
 	Error write_wsi();
 	void send_close_status();

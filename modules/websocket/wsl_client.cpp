@@ -32,82 +32,14 @@
 
 #include "wsl_client.h"
 #include "core/io/ip.h"
-#include "core/math/random_number_generator.h"
-#include "core/os/os.h"
 #include "core/project_settings.h"
-
-ssize_t wsl_recv_callback(wslay_event_context_ptr ctx, uint8_t *data, size_t len, int flags, void *user_data) {
-	WARN_PRINTS("Read");
-	_WSLRef *ref = (_WSLRef *)user_data;
-	if (!ref->is_valid) {
-		wslay_event_set_error(ctx, WSLAY_ERR_CALLBACK_FAILURE);
-		return -1;
-	}
-	WSLClient *helper = (WSLClient *)ref->obj;
-	int read = 0;
-	Error err = helper->_connection->get_partial_data(data, len, read);
-	if (err != OK) {
-		wslay_event_set_error(ctx, WSLAY_ERR_CALLBACK_FAILURE);
-		return -1;
-	}
-	if (read == 0) {
-		wslay_event_set_error(ctx, WSLAY_ERR_WOULDBLOCK);
-		return -1;
-	}
-	return read;
-}
-
-ssize_t wsl_send_callback(wslay_event_context_ptr ctx, const uint8_t *data, size_t len, int flags, void *user_data) {
-	WARN_PRINTS("Send");
-	_WSLRef *ref = (_WSLRef *)user_data;
-	if (!ref->is_valid) {
-		wslay_event_set_error(ctx, WSLAY_ERR_CALLBACK_FAILURE);
-		return -1;
-	}
-	WSLClient *helper = (WSLClient *)ref->obj;
-	int sent = 0;
-	Error err = helper->_connection->put_partial_data(data, len, sent);
-	if (err != OK) {
-		wslay_event_set_error(ctx, WSLAY_ERR_CALLBACK_FAILURE);
-		return -1;
-	}
-	if (sent == 0) {
-		wslay_event_set_error(ctx, WSLAY_ERR_WOULDBLOCK);
-		return -1;
-	}
-	return sent;
-}
-
-int wsl_genmask_callback(wslay_event_context_ptr ctx, uint8_t *buf, size_t len, void *user_data) {
-	WARN_PRINTS("Genmask");
-	RandomNumberGenerator rng;
-	rng.set_seed(OS::get_singleton()->get_unix_time()); // TODO maybe use crypto in the future?
-	for (unsigned int i = 0; i < len; i++) {
-		buf[i] = (uint8_t)rng.randi_range(0, 255);
-	}
-	return 0;
-}
-
-void wsl_msg_recv_callback(wslay_event_context_ptr ctx, const struct wslay_event_on_msg_recv_arg *arg, void *user_data) {
-	WARN_PRINTS("Received message");
-}
-
-wslay_event_callbacks wsl_callbacks = {
-	wsl_recv_callback,
-	wsl_send_callback,
-	wsl_genmask_callback,
-	NULL, /* on_frame_recv_start_callback */
-	NULL, /* on_frame_recv_callback */
-	NULL, /* on_frame_recv_end_callback */
-	wsl_msg_recv_callback
-};
 
 void WSLClient::_do_handshake() {
 	if (!_requested) {
 		_requested = true;
 		const CharString cs = _request.utf8();
 		// TODO non-blocking handshake
-		_connection->put_data((const uint8_t *)cs.get_data(), cs.size());
+		_connection->put_data((const uint8_t *)cs.get_data(), cs.size() - 1);
 	} else {
 		uint8_t byte = 0;
 		int read = 0;
@@ -147,15 +79,8 @@ void WSLClient::_do_handshake() {
 				}
 				// Create peer.
 				_peer = Ref<WSLPeer>(memnew(WSLPeer));
-				int ret = wslay_event_context_client_init(&_ctx, &wsl_callbacks, _wsl_create_ref(this));
-				if (ret != 0) {
-					disconnect_from_host();
-					_on_error();
-					ERR_EXPLAIN("Unable to initialize WebSocket context");
-					ERR_FAIL();
-				}
-				_peer->set_context(_ctx, _in_buf_size, _in_pkt_size, _out_buf_size, _out_pkt_size);
-				return;
+				_peer->make_context(this, _in_buf_size, _in_pkt_size, _out_buf_size, _out_pkt_size);
+				_on_connect(""); // TODO protocol
 			}
 		}
 	}
@@ -183,8 +108,10 @@ bool WSLClient::_verify_headers() {
 	Map<String, String> headers;
 	for (int i = 1; i < len; i++) {
 		Vector<String> header = psa[i].split(":", false, 1);
-		if (header.size() != 2)
-			return false;
+		if (header.size() != 2) {
+			ERR_EXPLAIN("Invalid header -> " + psa[i]);
+			ERR_FAIL_V(false);
+		}
 		String name = header[0].to_lower();
 		String value = header[1].strip_edges();
 		if (headers.has(name))
@@ -249,6 +176,15 @@ Error WSLClient::connect_to_host(String p_host, String p_path, uint16_t p_port, 
 	_request += "Connection: Upgrade\r\n";
 	_request += "Sec-WebSocket-Key: " + _key + "\r\n";
 	_request += "Sec-WebSocket-Version: 13\r\n";
+	if (p_protocols.size() > 0) {
+		_request += "Sec-WebSocket-Protocol: ";
+		for (int i = 0; i < p_protocols.size(); i++) {
+			if (i != 0)
+				_request += ",";
+			_request += p_protocols[i];
+		}
+		_request += "\r\n";
+	}
 	_request += "\r\n";
 
 	return OK;
@@ -262,9 +198,10 @@ void WSLClient::poll() {
 	if (_connection.is_null())
 		return; // Not connected.
 	if (_peer.is_valid()) {
-		if (wslay_event_recv(_ctx) != 0 || wslay_event_send(_ctx) != 0) {
+		_peer->poll();
+		if (!_peer->is_connected_to_host()) {
+			_on_disconnect(_peer->close_code != 0);
 			disconnect_from_host();
-			return;
 		}
 		return;
 	}

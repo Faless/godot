@@ -64,7 +64,9 @@ ssize_t wsl_recv_callback(wslay_event_context_ptr ctx, uint8_t *data, size_t len
 	int read = 0;
 	Error err = conn->get_partial_data(data, len, read);
 	if (err != OK) {
-		WARN_PRINTS(itos(err));
+		if (err == ERR_FILE_EOF && read > 0) // Got EOF, but with data.
+			return read;
+		WARN_PRINTS(itos(read) + " " + itos(err));
 		wslay_event_set_error(ctx, WSLAY_ERR_CALLBACK_FAILURE);
 		return -1;
 	}
@@ -135,6 +137,21 @@ Error WSLPeer::parse_message(const wslay_event_on_msg_recv_arg *arg) {
 	uint8_t is_string = 0;
 	if (arg->opcode == WSLAY_TEXT_FRAME) {
 		is_string = 1;
+	} else if (arg->opcode == WSLAY_CONNECTION_CLOSE) {
+		close_code = arg->status_code;
+		char buf[128];
+		size_t len = arg->msg_length;
+		memset(&buf, 0, sizeof(buf));
+		if (len && len < sizeof(buf)) {
+			copymem(&buf, arg->msg, arg->msg_length);
+		}
+		close_reason = String(buf);
+		if (_data) {
+			_data->destroy = true;
+			_data->closed = true;
+			_data = NULL;
+		}
+		return ERR_FILE_EOF;
 	} else if (arg->opcode != WSLAY_BINARY_FRAME) {
 		WARN_PRINTS("Unknown opcode " + itos(arg->opcode));
 		return FAILED;
@@ -241,11 +258,18 @@ String WSLPeer::get_close_reason(void *in, size_t len, int &r_code) {
 	return s;
 }
 
+void WSLPeer::send_close(int p_code, String p_reason) {
+	if (!_data || _data->closed)
+		return;
+	CharString cs = p_reason.utf8();
+	wslay_event_queue_close(_data->ctx, p_code, (uint8_t *)cs.ptr(), cs.size() - 1);
+	_data->closed = true;
+}
+
 void WSLPeer::close(int p_code, String p_reason) {
 	if (_data) {
-		CharString cs = p_reason.utf8();
-		wslay_event_queue_close(_data->ctx, p_code, (uint8_t *)cs.ptr(), cs.size() - 1);
-		wslay_event_send(_data->ctx); // Try to notify close
+		send_close(p_code, p_reason);
+		wslay_event_send(_data->ctx); // Try to notify close to server at least
 		if (_data->polling)
 			_data->destroy = true;
 		else {

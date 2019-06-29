@@ -53,6 +53,7 @@ public:
 		bool polling;
 		bool destroy;
 		bool valid;
+		bool closed;
 		void *obj;
 		void *peer;
 		StreamPeer *conn;
@@ -62,6 +63,7 @@ public:
 			polling = false;
 			destroy = false;
 			valid = false;
+			closed = false;
 			ctx = NULL;
 			obj = NULL;
 			peer = NULL;
@@ -93,6 +95,7 @@ public:
 	virtual Error put_packet(const uint8_t *p_buffer, int p_buffer_size);
 	virtual int get_max_packet_size() const { return _packet_buffer.size(); };
 
+	virtual void send_close(int p_code = 1000, String p_reason = "");
 	virtual void close(int p_code = 1000, String p_reason = "");
 	virtual bool is_connected_to_host() const;
 	virtual IP_Address get_connected_host() const;

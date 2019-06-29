@@ -84,6 +84,7 @@ public:
 	void set_wsi(struct lws *wsi, unsigned int _in_buf_size, unsigned int _in_pkt_size, unsigned int _out_buf_size, unsigned int _out_pkt_size);
 	Error read_wsi(void *in, size_t len);
 	Error write_wsi();
+	void send_close(int p_code = 1000, String p_reason = "") { close(p_code, p_reason); }
 	void send_close_status(struct lws *wsi);
 	String get_close_reason(void *in, size_t len, int &r_code);
 

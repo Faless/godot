@@ -108,6 +108,17 @@ int wsl_genmask_callback(wslay_event_context_ptr ctx, uint8_t *buf, size_t len, 
 
 void wsl_msg_recv_callback(wslay_event_context_ptr ctx, const struct wslay_event_on_msg_recv_arg *arg, void *user_data) {
 	WARN_PRINTS("Received message");
+	struct WSLPeer::PeerData *peer_data = (struct WSLPeer::PeerData *)user_data;
+	if (peer_data->destroy) {
+		return;
+	}
+	WSLPeer *peer = (WSLPeer *)peer_data->peer;
+
+	if (peer->parse_message(arg) != OK)
+		return;
+
+	WSLClient *helper = (WSLClient *)peer_data->obj;
+	helper->_on_peer_packet();
 }
 
 wslay_event_callbacks wsl_callbacks = {
@@ -120,14 +131,27 @@ wslay_event_callbacks wsl_callbacks = {
 	wsl_msg_recv_callback
 };
 
+Error WSLPeer::parse_message(const wslay_event_on_msg_recv_arg *arg) {
+	uint8_t is_string = 0;
+	if (arg->opcode == WSLAY_TEXT_FRAME) {
+		is_string = 1;
+	} else if (arg->opcode != WSLAY_BINARY_FRAME) {
+		WARN_PRINTS("Unknown opcode " + itos(arg->opcode));
+		return FAILED;
+	}
+	_in_buffer.write_packet(arg->msg, arg->msg_length, &is_string);
+	return OK;
+}
+
 void WSLPeer::make_context(void *p_obj, Ref<StreamPeer> p_connection, unsigned int p_in_buf_size, unsigned int p_in_pkt_size, unsigned int p_out_buf_size, unsigned int p_out_pkt_size) {
 	ERR_FAIL_COND(_data != NULL);
 
 	_in_buffer.resize(p_in_pkt_size, p_in_buf_size);
-	_out_buffer.resize(p_out_pkt_size, p_out_buf_size);
-	_packet_buffer.resize((1 << MAX(p_in_buf_size, p_out_buf_size)) + LWS_PRE);
+	_packet_buffer.resize((1 << MAX(p_in_buf_size, p_out_buf_size)));
+	// wslay_event_config_set_max_recv_msg_length(_data->ctx, (1 << p_in_buf_size));
 	_data = memnew(struct PeerData);
 	_data->obj = p_obj;
+	_data->peer = this;
 	_data->conn = p_connection.ptr();
 	wslay_event_context_client_init(&(_data->ctx), &wsl_callbacks, _data);
 	_connection = p_connection;
@@ -250,7 +274,6 @@ void WSLPeer::close(int p_code, String p_reason) {
 		close_reason = "";
 	}
 	_in_buffer.clear();
-	_out_buffer.clear();
 	_in_size = 0;
 	_is_string = 0;
 	_packet_buffer.resize(0);

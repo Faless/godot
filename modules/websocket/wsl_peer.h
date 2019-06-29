@@ -53,6 +53,7 @@ public:
 		bool polling;
 		bool destroy;
 		void *obj;
+		void *peer;
 		StreamPeer *conn;
 		wslay_event_context_ptr ctx;
 
@@ -60,6 +61,9 @@ public:
 			polling = false;
 			destroy = false;
 			ctx = NULL;
+			obj = NULL;
+			peer = NULL;
+			conn = NULL;
 		}
 	};
 
@@ -72,7 +76,6 @@ private:
 	uint8_t _is_string;
 	// Our packet info is just a boolean (is_string), using uint8_t for it.
 	PacketBuffer<uint8_t> _in_buffer;
-	PacketBuffer<uint8_t> _out_buffer;
 
 	PoolVector<uint8_t> _packet_buffer;
 
@@ -98,8 +101,7 @@ public:
 	virtual bool was_string_packet() const;
 
 	void make_context(void *p_obj, Ref<StreamPeer> connection, unsigned int p_in_buf_size, unsigned int p_in_pkt_size, unsigned int p_out_buf_size, unsigned int p_out_pkt_size);
-	Error read_wsi(void *in, size_t len);
-	Error write_wsi();
+	Error parse_message(const wslay_event_on_msg_recv_arg *arg);
 	void send_close_status();
 	String get_close_reason(void *in, size_t len, int &r_code);
 

@@ -200,7 +200,7 @@ void WSLClient::poll() {
 	if (_peer.is_valid()) {
 		_peer->poll();
 		if (!_peer->is_connected_to_host()) {
-			_on_disconnect(_peer->close_code != 0);
+			_on_disconnect(_peer->close_code != -1);
 			disconnect_from_host();
 		}
 		return;
@@ -320,6 +320,8 @@ WSLClient::WSLClient() {
 
 WSLClient::~WSLClient() {
 
+	if (_peer.is_valid())
+		_peer->invalidate();
 	disconnect_from_host();
 }
 

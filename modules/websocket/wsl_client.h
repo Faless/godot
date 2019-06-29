@@ -60,6 +60,7 @@ private:
 	String _response;
 	String _key;
 	String _host;
+	Ref<StreamPeer> _connection;
 	bool _requested;
 	bool _use_ssl;
 
@@ -67,7 +68,6 @@ private:
 	bool _verify_headers();
 
 public:
-	Ref<StreamPeer> _connection;
 	Error set_buffers(int p_in_buffer, int p_in_packets, int p_out_buffer, int p_out_packets);
 	Error connect_to_host(String p_host, String p_path, uint16_t p_port, bool p_ssl, PoolVector<String> p_protocol = PoolVector<String>());
 	int get_max_packet_size() const;

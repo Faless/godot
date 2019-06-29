@@ -56,7 +56,7 @@ bool WSLPeer::_wsl_poll(struct PeerData *p_data) {
 
 ssize_t wsl_recv_callback(wslay_event_context_ptr ctx, uint8_t *data, size_t len, int flags, void *user_data) {
 	struct WSLPeer::PeerData *peer_data = (struct WSLPeer::PeerData *)user_data;
-	if (peer_data->destroy) {
+	if (!peer_data->valid) {
 		wslay_event_set_error(ctx, WSLAY_ERR_CALLBACK_FAILURE);
 		return -1;
 	}
@@ -77,7 +77,7 @@ ssize_t wsl_recv_callback(wslay_event_context_ptr ctx, uint8_t *data, size_t len
 
 ssize_t wsl_send_callback(wslay_event_context_ptr ctx, const uint8_t *data, size_t len, int flags, void *user_data) {
 	struct WSLPeer::PeerData *peer_data = (struct WSLPeer::PeerData *)user_data;
-	if (peer_data->destroy) {
+	if (!peer_data->valid) {
 		wslay_event_set_error(ctx, WSLAY_ERR_CALLBACK_FAILURE);
 		return -1;
 	}
@@ -109,7 +109,7 @@ int wsl_genmask_callback(wslay_event_context_ptr ctx, uint8_t *buf, size_t len, 
 void wsl_msg_recv_callback(wslay_event_context_ptr ctx, const struct wslay_event_on_msg_recv_arg *arg, void *user_data) {
 	WARN_PRINTS("Received message");
 	struct WSLPeer::PeerData *peer_data = (struct WSLPeer::PeerData *)user_data;
-	if (peer_data->destroy) {
+	if (!peer_data->valid) {
 		return;
 	}
 	WSLPeer *peer = (WSLPeer *)peer_data->peer;
@@ -148,12 +148,13 @@ void WSLPeer::make_context(void *p_obj, Ref<StreamPeer> p_connection, unsigned i
 
 	_in_buffer.resize(p_in_pkt_size, p_in_buf_size);
 	_packet_buffer.resize((1 << MAX(p_in_buf_size, p_out_buf_size)));
-	// wslay_event_config_set_max_recv_msg_length(_data->ctx, (1 << p_in_buf_size));
 	_data = memnew(struct PeerData);
 	_data->obj = p_obj;
+	_data->valid = true;
 	_data->peer = this;
 	_data->conn = p_connection.ptr();
 	wslay_event_context_client_init(&(_data->ctx), &wsl_callbacks, _data);
+	wslay_event_config_set_max_recv_msg_length(_data->ctx, (1 << p_in_buf_size));
 	_connection = p_connection;
 }
 
@@ -185,7 +186,7 @@ Error WSLPeer::put_packet(const uint8_t *p_buffer, int p_buffer_size) {
 
 	wslay_event_queue_msg(_data->ctx, &msg);
 	return OK;
-};
+}
 
 Error WSLPeer::get_packet(const uint8_t **r_buffer, int &r_buffer_size) {
 
@@ -204,7 +205,7 @@ Error WSLPeer::get_packet(const uint8_t **r_buffer, int &r_buffer_size) {
 	r_buffer_size = read;
 
 	return OK;
-};
+}
 
 int WSLPeer::get_available_packet_count() const {
 
@@ -212,17 +213,17 @@ int WSLPeer::get_available_packet_count() const {
 		return 0;
 
 	return _in_buffer.packets_left();
-};
+}
 
 bool WSLPeer::was_string_packet() const {
 
 	return _is_string;
-};
+}
 
 bool WSLPeer::is_connected_to_host() const {
 
 	return _data != NULL;
-};
+}
 
 String WSLPeer::get_close_reason(void *in, size_t len, int &r_code) {
 	String s;
@@ -240,24 +241,11 @@ String WSLPeer::get_close_reason(void *in, size_t len, int &r_code) {
 	return s;
 }
 
-void WSLPeer::send_close_status() {
-	if (close_code == -1)
-		return;
-
-	int len = close_reason.size();
-	ERR_FAIL_COND(len > 123); // Maximum allowed reason size in bytes
-
-	//lws_close_status code = (lws_close_status)close_code;
-	//unsigned char *reason = len > 0 ? (unsigned char *)close_reason.utf8().ptrw() : NULL;
-
-	//lws_close_reason(p_wsi, code, reason, len);
-
-	close_code = -1;
-	close_reason = "";
-}
-
 void WSLPeer::close(int p_code, String p_reason) {
 	if (_data) {
+		CharString cs = p_reason.utf8();
+		wslay_event_queue_close(_data->ctx, p_code, (uint8_t *)cs.ptr(), cs.size() - 1);
+		wslay_event_send(_data->ctx); // Try to notify close
 		if (_data->polling)
 			_data->destroy = true;
 		else {
@@ -266,18 +254,14 @@ void WSLPeer::close(int p_code, String p_reason) {
 		}
 		_data = NULL;
 	}
-	if (false) {
-		close_code = p_code;
-		close_reason = p_reason;
-	} else {
-		close_code = -1;
-		close_reason = "";
-	}
+
+	close_code = -1;
+	close_reason = "";
 	_in_buffer.clear();
 	_in_size = 0;
 	_is_string = 0;
 	_packet_buffer.resize(0);
-};
+}
 
 IP_Address WSLPeer::get_connected_host() const {
 
@@ -285,7 +269,7 @@ IP_Address WSLPeer::get_connected_host() const {
 
 	IP_Address ip;
 	return ip;
-};
+}
 
 uint16_t WSLPeer::get_connected_port() const {
 
@@ -293,17 +277,23 @@ uint16_t WSLPeer::get_connected_port() const {
 
 	uint16_t port = 0;
 	return port;
-};
+}
+
+void WSLPeer::invalidate() {
+	if (_data)
+		_data->valid = false;
+}
 
 WSLPeer::WSLPeer() {
 	_data = NULL;
 	write_mode = WRITE_MODE_BINARY;
 	close();
-};
+}
 
 WSLPeer::~WSLPeer() {
 
+	invalidate();
 	close();
-};
+}
 
 #endif // JAVASCRIPT_ENABLED

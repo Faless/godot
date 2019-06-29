@@ -52,6 +52,7 @@ public:
 	struct PeerData {
 		bool polling;
 		bool destroy;
+		bool valid;
 		void *obj;
 		void *peer;
 		StreamPeer *conn;
@@ -60,6 +61,7 @@ public:
 		PeerData() {
 			polling = false;
 			destroy = false;
+			valid = false;
 			ctx = NULL;
 			obj = NULL;
 			peer = NULL;
@@ -103,6 +105,7 @@ public:
 	void make_context(void *p_obj, Ref<StreamPeer> connection, unsigned int p_in_buf_size, unsigned int p_in_pkt_size, unsigned int p_out_buf_size, unsigned int p_out_pkt_size);
 	Error parse_message(const wslay_event_on_msg_recv_arg *arg);
 	void send_close_status();
+	void invalidate();
 	String get_close_reason(void *in, size_t len, int &r_code);
 
 	WSLPeer();

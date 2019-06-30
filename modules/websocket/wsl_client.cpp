@@ -76,8 +76,9 @@ void WSLClient::_do_handshake() {
 				ERR_FAIL();
 			}
 			if (_response.ends_with("\r\n\r\n")) {
+				String protocol;
 				// Response is over, verify headers and create peer.
-				if (!_verify_headers()) {
+				if (!_verify_headers(protocol)) {
 					disconnect_from_host();
 					_on_error();
 					ERR_EXPLAIN("Invalid response headers");
@@ -85,13 +86,13 @@ void WSLClient::_do_handshake() {
 				}
 				// Create peer.
 				_peer->make_context(this, _connection, _in_buf_size, _in_pkt_size, _out_buf_size, _out_pkt_size);
-				_on_connect(""); // TODO protocol
+				_on_connect(protocol);
 			}
 		}
 	}
 }
 
-bool WSLClient::_verify_headers() {
+bool WSLClient::_verify_headers(String &r_protocol) {
 	Vector<String> psa = _response.trim_suffix("\r\n\r\n").split("\r\n");
 	int len = psa.size();
 	if (len < 4) {
@@ -137,6 +138,22 @@ bool WSLClient::_verify_headers() {
 	_WLS_CHECK("upgrade", "websocket");
 	// TODO compute value for random key
 	_WLS_CHECK_NC("sec-websocket-accept", "s3pPLMBiTxaQ9kYGzzhZRbK+xOo=");
+	if (_protocols.size() == 0) {
+		// We didn't request a custom protocol
+		ERR_FAIL_COND_V(headers.has("sec-websocket-protocol"), false);
+	} else {
+		ERR_FAIL_COND_V(!headers.has("sec-websocket-protocol"), false);
+		r_protocol = headers["sec-websocket-protocol"];
+		bool valid = false;
+		for (int i = 0; i < _protocols.size(); i++) {
+			if (_protocols[i] != r_protocol)
+				continue;
+			valid = true;
+			break;
+		}
+		if (!valid)
+			return false;
+	}
 #undef _WLS_CHECK_NC
 #undef _WLS_CHECK
 #undef _WLS_EXPLAIN
@@ -172,6 +189,7 @@ Error WSLClient::connect_to_host(String p_host, String p_path, uint16_t p_port, 
 	_connection = _tcp;
 	_use_ssl = p_ssl;
 	_host = p_host;
+	_protocols = p_protocols;
 
 	_key = "dGhlIHNhbXBsZSBub25jZQ=="; // FIXME randomize this
 	// TODO custom extra headers (allow overriding this too?)

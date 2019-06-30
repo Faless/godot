@@ -60,12 +60,13 @@ private:
 	String _response;
 	String _key;
 	String _host;
+	PoolVector<String> _protocols;
 	Ref<StreamPeer> _connection;
 	int _requested;
 	bool _use_ssl;
 
 	void _do_handshake();
-	bool _verify_headers();
+	bool _verify_headers(String &r_protocol);
 
 public:
 	Error set_buffers(int p_in_buffer, int p_in_packets, int p_out_buffer, int p_out_packets);

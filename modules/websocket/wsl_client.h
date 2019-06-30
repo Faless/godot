@@ -56,12 +56,12 @@ private:
 	Ref<WSLPeer> _peer;
 	// XXX we could use HTTPClient with some hacking instead...
 	Ref<StreamPeerTCP> _tcp;
-	String _request;
+	CharString _request;
 	String _response;
 	String _key;
 	String _host;
 	Ref<StreamPeer> _connection;
-	bool _requested;
+	int _requested;
 	bool _use_ssl;
 
 	void _do_handshake();

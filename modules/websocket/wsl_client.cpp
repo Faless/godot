@@ -35,11 +35,17 @@
 #include "core/project_settings.h"
 
 void WSLClient::_do_handshake() {
-	if (!_requested) {
-		_requested = true;
-		const CharString cs = _request.utf8();
-		// TODO non-blocking handshake
-		_connection->put_data((const uint8_t *)cs.get_data(), cs.size() - 1);
+	if (_requested < _request.size() - 1) {
+		int sent = 0;
+		Error err = _connection->put_partial_data((const uint8_t *)_request.get_data(), _request.size() - 1, sent);
+		// Sending handshake failed
+		if (err != OK) {
+			disconnect_from_host();
+			_on_error();
+			return;
+		}
+		_requested += sent;
+
 	} else {
 		uint8_t byte = 0;
 		int read = 0;
@@ -169,22 +175,23 @@ Error WSLClient::connect_to_host(String p_host, String p_path, uint16_t p_port, 
 
 	_key = "dGhlIHNhbXBsZSBub25jZQ=="; // FIXME randomize this
 	// TODO custom extra headers (allow overriding this too?)
-	_request = "GET " + p_path + " HTTP/1.1\r\n";
-	_request += "Host: " + p_host + port + "\r\n";
-	_request += "Upgrade: websocket\r\n";
-	_request += "Connection: Upgrade\r\n";
-	_request += "Sec-WebSocket-Key: " + _key + "\r\n";
-	_request += "Sec-WebSocket-Version: 13\r\n";
+	String request = "GET " + p_path + " HTTP/1.1\r\n";
+	request += "Host: " + p_host + port + "\r\n";
+	request += "Upgrade: websocket\r\n";
+	request += "Connection: Upgrade\r\n";
+	request += "Sec-WebSocket-Key: " + _key + "\r\n";
+	request += "Sec-WebSocket-Version: 13\r\n";
 	if (p_protocols.size() > 0) {
-		_request += "Sec-WebSocket-Protocol: ";
+		request += "Sec-WebSocket-Protocol: ";
 		for (int i = 0; i < p_protocols.size(); i++) {
 			if (i != 0)
-				_request += ",";
-			_request += p_protocols[i];
+				request += ",";
+			request += p_protocols[i];
 		}
-		_request += "\r\n";
+		request += "\r\n";
 	}
-	_request += "\r\n";
+	request += "\r\n";
+	_request = request.utf8();
 
 	return OK;
 }
@@ -280,7 +287,7 @@ void WSLClient::disconnect_from_host(int p_code, String p_reason) {
 	_key = "";
 	_host = "";
 	_use_ssl = false;
-	_requested = false;
+	_requested = 0;
 }
 
 IP_Address WSLClient::get_connected_host() const {
@@ -313,7 +320,7 @@ WSLClient::WSLClient() {
 	_ctx = NULL;
 	_peer.instance();
 	_tcp.instance();
-	_requested = false;
+	_requested = 0;
 }
 
 WSLClient::~WSLClient() {

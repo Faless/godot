@@ -38,6 +38,19 @@
 #include "core/math/random_number_generator.h"
 #include "core/os/os.h"
 
+void WSLPeer::_wsl_destroy(struct PeerData **p_data) {
+	if (!p_data || !(*p_data))
+		return;
+	struct PeerData *data = *p_data;
+	if (data->polling) {
+		data->destroy = true;
+		return;
+	}
+	wslay_event_context_free(data->ctx);
+	memdelete(data);
+	*p_data = NULL;
+}
+
 bool WSLPeer::_wsl_poll(struct PeerData *p_data) {
 	p_data->polling = true;
 	int err = 0;
@@ -46,10 +59,11 @@ bool WSLPeer::_wsl_poll(struct PeerData *p_data) {
 		p_data->destroy = true;
 	}
 	p_data->polling = false;
-	if (p_data->destroy) {
-		wslay_event_context_free(p_data->ctx);
-		memdelete(p_data);
-		return true;
+
+	if (p_data->destroy || (wslay_event_get_close_sent(p_data->ctx) && wslay_event_get_close_received(p_data->ctx))) {
+		bool valid = p_data->valid;
+		_wsl_destroy(&p_data);
+		return valid;
 	}
 	return false;
 }
@@ -64,8 +78,6 @@ ssize_t wsl_recv_callback(wslay_event_context_ptr ctx, uint8_t *data, size_t len
 	int read = 0;
 	Error err = conn->get_partial_data(data, len, read);
 	if (err != OK) {
-		if (err == ERR_FILE_EOF && read > 0) // Got EOF, but with data.
-			return read;
 		WARN_PRINTS(itos(read) + " " + itos(err));
 		wslay_event_set_error(ctx, WSLAY_ERR_CALLBACK_FAILURE);
 		return -1;
@@ -146,10 +158,9 @@ Error WSLPeer::parse_message(const wslay_event_on_msg_recv_arg *arg) {
 			copymem(&buf, arg->msg, arg->msg_length);
 		}
 		close_reason = String(buf);
-		if (_data) {
-			_data->destroy = true;
-			_data->closed = true;
-			_data = NULL;
+		if (!wslay_event_get_close_sent(_data->ctx)) {
+			WSLClient *helper = (WSLClient *)_data->obj;
+			helper->_on_close_request(close_code, close_reason);
 		}
 		return ERR_FILE_EOF;
 	} else if (arg->opcode != WSLAY_BINARY_FRAME) {
@@ -242,48 +253,17 @@ bool WSLPeer::is_connected_to_host() const {
 	return _data != NULL;
 }
 
-String WSLPeer::get_close_reason(void *in, size_t len, int &r_code) {
-	String s;
-	r_code = 0;
-	if (len < 2) // From docs this should not happen
-		return s;
-
-	const uint8_t *b = (const uint8_t *)in;
-	r_code = b[0] << 8 | b[1];
-
-	if (len > 2) {
-		const char *utf8 = (const char *)&b[2];
-		s.parse_utf8(utf8, len - 2);
-	}
-	return s;
-}
-
 void WSLPeer::send_close(int p_code, String p_reason) {
-	if (!_data || _data->closed)
-		return;
-	CharString cs = p_reason.utf8();
-	wslay_event_queue_close(_data->ctx, p_code, (uint8_t *)cs.ptr(), cs.size() - 1);
-	_data->closed = true;
 }
 
 void WSLPeer::close(int p_code, String p_reason) {
-	if (_data) {
-		send_close(p_code, p_reason);
+	if (_data && !wslay_event_get_close_sent(_data->ctx)) {
+		CharString cs = p_reason.utf8();
+		wslay_event_queue_close(_data->ctx, p_code, (uint8_t *)cs.ptr(), cs.size() - 1);
 		wslay_event_send(_data->ctx); // Try to notify close to server at least
-		if (_data->polling)
-			_data->destroy = true;
-		else {
-			wslay_event_context_free(_data->ctx);
-			memdelete(_data);
-		}
-		_data = NULL;
 	}
 
-	close_code = -1;
-	close_reason = "";
 	_in_buffer.clear();
-	_in_size = 0;
-	_is_string = 0;
 	_packet_buffer.resize(0);
 }
 
@@ -310,14 +290,17 @@ void WSLPeer::invalidate() {
 
 WSLPeer::WSLPeer() {
 	_data = NULL;
+	_is_string = 0;
+	close_code = -1;
 	write_mode = WRITE_MODE_BINARY;
-	close();
 }
 
 WSLPeer::~WSLPeer() {
 
-	invalidate();
 	close();
+	invalidate();
+	_wsl_destroy(&_data);
+	_data = NULL;
 }
 
 #endif // JAVASCRIPT_ENABLED

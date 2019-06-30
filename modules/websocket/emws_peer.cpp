@@ -111,25 +111,15 @@ bool EMWSPeer::is_connected_to_host() const {
 	return peer_sock != -1;
 };
 
-void EMWSPeer::send_close(int p_code, String p_reason) {
-	if (peer_sock == -1)
-		return;
-	/* clang-format off */
-	EM_ASM({
-		var sock = Module.IDHandler.get($0);
-		var code = $1;
-		var reason = UTF8ToString($2);
-		sock.close(code, reason);
-	}, peer_sock, p_code, p_reason.utf8().get_data());
-	/* clang-format on */
-}
-
 void EMWSPeer::close(int p_code, String p_reason) {
 
 	if (peer_sock != -1) {
 		/* clang-format off */
-		send_close(p_code, p_reason);
 		EM_ASM({
+			var sock = Module.IDHandler.get($0);
+			var code = $1;
+			var reason = UTF8ToString($2);
+			sock.close(code, reason);
 			Module.IDHandler.remove($0);
 		}, peer_sock, p_code, p_reason.utf8().get_data());
 		/* clang-format on */

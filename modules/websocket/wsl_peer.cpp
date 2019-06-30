@@ -253,9 +253,6 @@ bool WSLPeer::is_connected_to_host() const {
 	return _data != NULL;
 }
 
-void WSLPeer::send_close(int p_code, String p_reason) {
-}
-
 void WSLPeer::close(int p_code, String p_reason) {
 	if (_data && !wslay_event_get_close_sent(_data->ctx)) {
 		CharString cs = p_reason.utf8();

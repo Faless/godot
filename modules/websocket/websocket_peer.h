@@ -58,7 +58,6 @@ public:
 	virtual WriteMode get_write_mode() const = 0;
 	virtual void set_write_mode(WriteMode p_mode) = 0;
 
-	virtual void send_close(int p_code = 1000, String p_reason = "") = 0;
 	virtual void close(int p_code = 1000, String p_reason = "") = 0;
 
 	virtual bool is_connected_to_host() const = 0;

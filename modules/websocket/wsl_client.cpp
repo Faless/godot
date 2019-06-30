@@ -78,7 +78,6 @@ void WSLClient::_do_handshake() {
 					ERR_FAIL();
 				}
 				// Create peer.
-				_peer = Ref<WSLPeer>(memnew(WSLPeer));
 				_peer->make_context(this, _connection, _in_buf_size, _in_pkt_size, _out_buf_size, _out_pkt_size);
 				_on_connect(""); // TODO protocol
 			}
@@ -195,9 +194,7 @@ int WSLClient::get_max_packet_size() const {
 }
 
 void WSLClient::poll() {
-	if (_connection.is_null())
-		return; // Not connected.
-	if (_peer.is_valid()) {
+	if (_peer->is_connected_to_host()) {
 		_peer->poll();
 		if (!_peer->is_connected_to_host()) {
 			_on_disconnect(_peer->close_code != -1);
@@ -205,6 +202,9 @@ void WSLClient::poll() {
 		}
 		return;
 	}
+
+	if (_connection.is_null())
+		return; // Not connected.
 
 	switch (_tcp->get_status()) {
 		case StreamPeerTCP::STATUS_NONE:
@@ -254,12 +254,14 @@ void WSLClient::poll() {
 
 Ref<WebSocketPeer> WSLClient::get_peer(int p_peer_id) const {
 
+	ERR_FAIL_COND_V(p_peer_id != 1, NULL);
+
 	return _peer;
 }
 
 NetworkedMultiplayerPeer::ConnectionStatus WSLClient::get_connection_status() const {
 
-	if (_peer.is_valid() && _peer->is_connected_to_host())
+	if (_peer->is_connected_to_host())
 		return CONNECTION_CONNECTED;
 
 	if (_tcp->is_connected_to_host())
@@ -270,14 +272,9 @@ NetworkedMultiplayerPeer::ConnectionStatus WSLClient::get_connection_status() co
 
 void WSLClient::disconnect_from_host(int p_code, String p_reason) {
 
-	if (_peer.is_valid()) {
-		_peer->close(p_code, p_reason);
-		_peer = Ref<WSLPeer>();
-	}
-	if (_connection.is_valid()) {
-		_connection = Ref<StreamPeer>(NULL);
-		_tcp->disconnect_from_host();
-	}
+	_peer->close(p_code, p_reason);
+	_connection = Ref<StreamPeer>(NULL);
+	_tcp = Ref<StreamPeerTCP>(memnew(StreamPeerTCP));
 	_request = "";
 	_response = "";
 	_key = "";
@@ -314,14 +311,14 @@ WSLClient::WSLClient() {
 	_out_pkt_size = nearest_shift((int)GLOBAL_GET(WSC_OUT_PKT) - 1);
 
 	_ctx = NULL;
+	_peer.instance();
 	_tcp.instance();
 	_requested = false;
 }
 
 WSLClient::~WSLClient() {
 
-	if (_peer.is_valid())
-		_peer->invalidate();
+	_peer->invalidate();
 	disconnect_from_host();
 }
 

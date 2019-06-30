@@ -55,7 +55,7 @@ bool WSLPeer::_wsl_poll(struct PeerData *p_data) {
 	p_data->polling = true;
 	int err = 0;
 	if ((err = wslay_event_recv(p_data->ctx)) != 0 || (err = wslay_event_send(p_data->ctx)) != 0) {
-		WARN_PRINTS("ERROR! " + itos(err));
+		print_verbose("Websocket (wslay) poll error: " + itos(err));
 		p_data->destroy = true;
 	}
 	p_data->polling = false;
@@ -78,7 +78,7 @@ ssize_t wsl_recv_callback(wslay_event_context_ptr ctx, uint8_t *data, size_t len
 	int read = 0;
 	Error err = conn->get_partial_data(data, len, read);
 	if (err != OK) {
-		WARN_PRINTS(itos(read) + " " + itos(err));
+		print_verbose("Websocket get data error: " + itos(err) + ", read (should be 0!): " + itos(read));
 		wslay_event_set_error(ctx, WSLAY_ERR_CALLBACK_FAILURE);
 		return -1;
 	}
@@ -121,7 +121,6 @@ int wsl_genmask_callback(wslay_event_context_ptr ctx, uint8_t *buf, size_t len, 
 }
 
 void wsl_msg_recv_callback(wslay_event_context_ptr ctx, const struct wslay_event_on_msg_recv_arg *arg, void *user_data) {
-	WARN_PRINTS("Received message");
 	struct WSLPeer::PeerData *peer_data = (struct WSLPeer::PeerData *)user_data;
 	if (!peer_data->valid) {
 		return;

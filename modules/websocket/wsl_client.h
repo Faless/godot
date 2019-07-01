@@ -41,8 +41,6 @@
 #include "wsl_peer.h"
 #include "wslay/wslay.h"
 
-#define WSL_MAX_HEADER_SIZE 4096
-
 class WSLClient : public WebSocketClient {
 
 	GDCIIMPL(WSLClient, WebSocketClient);

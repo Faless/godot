@@ -34,6 +34,7 @@
 
 #include "wsl_client.h"
 #include "wsl_helper.h"
+#include "wsl_server.h"
 
 #include "core/math/random_number_generator.h"
 #include "core/os/os.h"
@@ -110,7 +111,6 @@ ssize_t wsl_send_callback(wslay_event_context_ptr ctx, const uint8_t *data, size
 }
 
 int wsl_genmask_callback(wslay_event_context_ptr ctx, uint8_t *buf, size_t len, void *user_data) {
-	WARN_PRINTS("Genmask");
 	RandomNumberGenerator rng;
 	// TODO maybe use crypto in the future?
 	rng.set_seed(OS::get_singleton()->get_unix_time());
@@ -130,8 +130,13 @@ void wsl_msg_recv_callback(wslay_event_context_ptr ctx, const struct wslay_event
 	if (peer->parse_message(arg) != OK)
 		return;
 
-	WSLClient *helper = (WSLClient *)peer_data->obj;
-	helper->_on_peer_packet();
+	if (peer_data->is_server) {
+		WSLServer *helper = (WSLServer *)peer_data->obj;
+		helper->_on_peer_packet(peer_data->id);
+	} else {
+		WSLClient *helper = (WSLClient *)peer_data->obj;
+		helper->_on_peer_packet();
+	}
 }
 
 wslay_event_callbacks wsl_callbacks = {
@@ -150,16 +155,19 @@ Error WSLPeer::parse_message(const wslay_event_on_msg_recv_arg *arg) {
 		is_string = 1;
 	} else if (arg->opcode == WSLAY_CONNECTION_CLOSE) {
 		close_code = arg->status_code;
-		char buf[128];
 		size_t len = arg->msg_length;
-		memset(&buf, 0, sizeof(buf));
-		if (len && len < sizeof(buf)) {
-			copymem(&buf, arg->msg, arg->msg_length);
+		close_reason = "";
+		if (len > 2 /* first 2 bytes = close code */) {
+			close_reason.parse_utf8((char *)arg->msg + 2, len - 2);
 		}
-		close_reason = String(buf);
 		if (!wslay_event_get_close_sent(_data->ctx)) {
-			WSLClient *helper = (WSLClient *)_data->obj;
-			helper->_on_close_request(close_code, close_reason);
+			if (_data->is_server) {
+				WSLServer *helper = (WSLServer *)_data->obj;
+				helper->_on_close_request(_data->id, close_code, close_reason);
+			} else {
+				WSLClient *helper = (WSLClient *)_data->obj;
+				helper->_on_close_request(close_code, close_reason);
+			}
 		}
 		return ERR_FILE_EOF;
 	} else if (arg->opcode != WSLAY_BINARY_FRAME) {
@@ -170,19 +178,23 @@ Error WSLPeer::parse_message(const wslay_event_on_msg_recv_arg *arg) {
 	return OK;
 }
 
-void WSLPeer::make_context(void *p_obj, Ref<StreamPeer> p_connection, unsigned int p_in_buf_size, unsigned int p_in_pkt_size, unsigned int p_out_buf_size, unsigned int p_out_pkt_size) {
+void WSLPeer::make_context(PeerData *p_data, unsigned int p_in_buf_size, unsigned int p_in_pkt_size, unsigned int p_out_buf_size, unsigned int p_out_pkt_size) {
 	ERR_FAIL_COND(_data != NULL);
+	ERR_FAIL_COND(p_data == NULL);
 
 	_in_buffer.resize(p_in_pkt_size, p_in_buf_size);
 	_packet_buffer.resize((1 << MAX(p_in_buf_size, p_out_buf_size)));
-	_data = memnew(struct PeerData);
-	_data->obj = p_obj;
-	_data->valid = true;
+
+	_data = p_data;
 	_data->peer = this;
-	_data->conn = p_connection.ptr();
-	wslay_event_context_client_init(&(_data->ctx), &wsl_callbacks, _data);
+	_data->valid = true;
+	_connection = Ref<StreamPeer>(_data->conn);
+
+	if (_data->is_server)
+		wslay_event_context_server_init(&(_data->ctx), &wsl_callbacks, _data);
+	else
+		wslay_event_context_client_init(&(_data->ctx), &wsl_callbacks, _data);
 	wslay_event_config_set_max_recv_msg_length(_data->ctx, (1 << p_in_buf_size));
-	_connection = p_connection;
 }
 
 void WSLPeer::set_write_mode(WriteMode p_mode) {

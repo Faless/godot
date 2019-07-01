@@ -1,5 +1,5 @@
 /*************************************************************************/
-/*  lws_peer.h                                                           */
+/*  lws_server.h                                                         */
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
@@ -28,90 +28,71 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 
-#ifndef WSLPEER_H
-#define WSLPEER_H
+#ifndef WSLSERVER_H
+#define WSLSERVER_H
 
 #ifndef JAVASCRIPT_ENABLED
 
-#include "core/error_list.h"
-#include "core/io/packet_peer.h"
-#include "core/ring_buffer.h"
-#include "packet_buffer.h"
-#include "websocket_peer.h"
-#include "wslay/wslay.h"
+#include "websocket_server.h"
+#include "wsl_peer.h"
 
-#define WSL_MAX_HEADER_SIZE 4096
+#include "core/io/stream_peer_tcp.h"
+#include "core/io/tcp_server.h"
 
-class WSLPeer : public WebSocketPeer {
+class WSLServer : public WebSocketServer {
 
-	GDCIIMPL(WSLPeer, WebSocketPeer);
-
-public:
-	struct PeerData {
-		bool polling;
-		bool destroy;
-		bool valid;
-		bool is_server;
-		void *obj;
-		void *peer;
-		StreamPeer *conn;
-		int id;
-		wslay_event_context_ptr ctx;
-
-		PeerData() {
-			polling = false;
-			destroy = false;
-			valid = false;
-			is_server = false;
-			id = 1;
-			ctx = NULL;
-			obj = NULL;
-			peer = NULL;
-			conn = NULL;
-		}
-	};
+	GDCIIMPL(WSLServer, WebSocketServer);
 
 private:
-	static bool _wsl_poll(struct PeerData *p_data);
-	static void _wsl_destroy(struct PeerData **p_data);
+	class PendingPeer : public Reference {
 
-	Ref<StreamPeer> _connection;
-	struct PeerData *_data;
-	uint8_t _is_string;
-	// Our packet info is just a boolean (is_string), using uint8_t for it.
-	PacketBuffer<uint8_t> _in_buffer;
+	private:
+		bool _parse_request(String &r_key);
 
-	PoolVector<uint8_t> _packet_buffer;
+	public:
+		Ref<StreamPeer> connection;
 
-	WriteMode write_mode;
+		int time;
+		String request;
+		String key;
+		bool has_request;
+		CharString response;
+		int response_sent;
+
+		PendingPeer() {
+			time = 0;
+			has_request = false;
+			response_sent = 0;
+		}
+
+		Error do_handshake();
+	};
+
+	int _in_buf_size;
+	int _in_pkt_size;
+	int _out_buf_size;
+	int _out_pkt_size;
+
+	List<Ref<PendingPeer> > _pending;
+	Ref<TCP_Server> _server;
 
 public:
-	int close_code;
-	String close_reason;
-	void poll(); // Used by client and server.
+	Error set_buffers(int p_in_buffer, int p_in_packets, int p_out_buffer, int p_out_packets);
+	Error listen(int p_port, PoolVector<String> p_protocols = PoolVector<String>(), bool gd_mp_api = false);
+	void stop();
+	bool is_listening() const;
+	int get_max_packet_size() const;
+	bool has_peer(int p_id) const;
+	Ref<WebSocketPeer> get_peer(int p_id) const;
+	IP_Address get_peer_address(int p_peer_id) const;
+	int get_peer_port(int p_peer_id) const;
+	void disconnect_peer(int p_peer_id, int p_code = 1000, String p_reason = "");
+	virtual void poll();
 
-	virtual int get_available_packet_count() const;
-	virtual Error get_packet(const uint8_t **r_buffer, int &r_buffer_size);
-	virtual Error put_packet(const uint8_t *p_buffer, int p_buffer_size);
-	virtual int get_max_packet_size() const { return _packet_buffer.size(); };
-
-	virtual void close(int p_code = 1000, String p_reason = "");
-	virtual bool is_connected_to_host() const;
-	virtual IP_Address get_connected_host() const;
-	virtual uint16_t get_connected_port() const;
-
-	virtual WriteMode get_write_mode() const;
-	virtual void set_write_mode(WriteMode p_mode);
-	virtual bool was_string_packet() const;
-
-	void make_context(PeerData *p_data, unsigned int p_in_buf_size, unsigned int p_in_pkt_size, unsigned int p_out_buf_size, unsigned int p_out_pkt_size);
-	Error parse_message(const wslay_event_on_msg_recv_arg *arg);
-	void invalidate();
-
-	WSLPeer();
-	~WSLPeer();
+	WSLServer();
+	~WSLServer();
 };
 
 #endif // JAVASCRIPT_ENABLED
 
-#endif // LSWPEER_H
+#endif // WSLSERVER_H

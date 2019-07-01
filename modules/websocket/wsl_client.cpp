@@ -85,7 +85,12 @@ void WSLClient::_do_handshake() {
 					ERR_FAIL();
 				}
 				// Create peer.
-				_peer->make_context(this, _connection, _in_buf_size, _in_pkt_size, _out_buf_size, _out_pkt_size);
+				WSLPeer::PeerData *data = memnew(struct WSLPeer::PeerData);
+				data->obj = this;
+				data->conn = _connection.ptr();
+				data->is_server = false;
+				data->id = 1;
+				_peer->make_context(data, _in_buf_size, _in_pkt_size, _out_buf_size, _out_pkt_size);
 				_on_connect(protocol);
 			}
 		}

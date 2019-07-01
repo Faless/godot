@@ -263,11 +263,16 @@ bool WSLPeer::is_connected_to_host() const {
 	return _data != NULL;
 }
 
+void WSLPeer::close_now() {
+	close(1000, "");
+	_wsl_destroy(&_data);
+}
+
 void WSLPeer::close(int p_code, String p_reason) {
 	if (_data && !wslay_event_get_close_sent(_data->ctx)) {
 		CharString cs = p_reason.utf8();
-		wslay_event_queue_close(_data->ctx, p_code, (uint8_t *)cs.ptr(), cs.size() - 1);
-		wslay_event_send(_data->ctx); // Try to notify close to server at least
+		wslay_event_queue_close(_data->ctx, p_code, (uint8_t *)cs.ptr(), cs.size());
+		wslay_event_send(_data->ctx);
 	}
 
 	_in_buffer.clear();

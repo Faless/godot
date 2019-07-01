@@ -54,7 +54,7 @@ public:
 		bool is_server;
 		void *obj;
 		void *peer;
-		StreamPeer *conn;
+		Ref<StreamPeer> conn;
 		int id;
 		wslay_event_context_ptr ctx;
 
@@ -67,7 +67,6 @@ public:
 			ctx = NULL;
 			obj = NULL;
 			peer = NULL;
-			conn = NULL;
 		}
 	};
 
@@ -95,6 +94,7 @@ public:
 	virtual Error put_packet(const uint8_t *p_buffer, int p_buffer_size);
 	virtual int get_max_packet_size() const { return _packet_buffer.size(); };
 
+	virtual void close_now();
 	virtual void close(int p_code = 1000, String p_reason = "");
 	virtual bool is_connected_to_host() const;
 	virtual IP_Address get_connected_host() const;

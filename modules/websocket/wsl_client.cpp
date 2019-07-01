@@ -87,7 +87,7 @@ void WSLClient::_do_handshake() {
 				// Create peer.
 				WSLPeer::PeerData *data = memnew(struct WSLPeer::PeerData);
 				data->obj = this;
-				data->conn = _connection.ptr();
+				data->conn = _connection;
 				data->is_server = false;
 				data->id = 1;
 				_peer->make_context(data, _in_buf_size, _in_pkt_size, _out_buf_size, _out_pkt_size);
@@ -170,6 +170,7 @@ Error WSLClient::connect_to_host(String p_host, String p_path, uint16_t p_port, 
 
 	ERR_FAIL_COND_V(_connection.is_valid(), ERR_ALREADY_IN_USE);
 
+	_peer = Ref<WSLPeer>(memnew(WSLPeer));
 	IP_Address addr;
 
 	if (!p_host.is_valid_ip_address()) {

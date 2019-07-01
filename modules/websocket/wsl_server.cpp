@@ -168,7 +168,7 @@ void WSLServer::poll() {
 
 		WSLPeer::PeerData *data = memnew(struct WSLPeer::PeerData);
 		data->obj = this;
-		data->conn = ppeer->connection.ptr();
+		data->conn = ppeer->connection;
 		data->is_server = true;
 		data->id = id;
 
@@ -209,6 +209,11 @@ int WSLServer::get_max_packet_size() const {
 
 void WSLServer::stop() {
 	_server->stop();
+	for (Map<int, Ref<WebSocketPeer> >::Element *E = _peer_map.front(); E; E = E->next()) {
+		Ref<WSLPeer> peer = (WSLPeer *)E->get().ptr();
+		peer->close_now();
+	}
+	_pending.clear();
 	_peer_map.clear();
 }
 

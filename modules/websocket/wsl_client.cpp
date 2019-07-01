@@ -37,7 +37,7 @@
 void WSLClient::_do_handshake() {
 	if (_requested < _request.size() - 1) {
 		int sent = 0;
-		Error err = _connection->put_partial_data((const uint8_t *)_request.get_data(), _request.size() - 1, sent);
+		Error err = _connection->put_partial_data(((const uint8_t *)_request.get_data() + _requested), _request.size() - _requested - 1, sent);
 		// Sending handshake failed
 		if (err != OK) {
 			disconnect_from_host();

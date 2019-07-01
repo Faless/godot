@@ -33,7 +33,6 @@
 #include "wsl_peer.h"
 
 #include "wsl_client.h"
-#include "wsl_helper.h"
 #include "wsl_server.h"
 
 #include "core/math/random_number_generator.h"

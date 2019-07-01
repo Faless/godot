@@ -37,7 +37,6 @@
 #include "core/io/stream_peer_ssl.h"
 #include "core/io/stream_peer_tcp.h"
 #include "websocket_client.h"
-#include "wsl_helper.h"
 #include "wsl_peer.h"
 #include "wslay/wslay.h"
 

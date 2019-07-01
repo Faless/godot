@@ -41,6 +41,7 @@
 #include "lws_peer.h"
 #include "lws_server.h"
 #include "wsl_client.h"
+#include "wsl_server.h"
 #endif
 
 void register_websocket_types() {
@@ -67,8 +68,9 @@ void register_websocket_types() {
 #else
 	LWSPeer::make_default();
 	LWSClient::make_default();
-	WSLClient::make_default();
 	LWSServer::make_default();
+	WSLClient::make_default();
+	WSLServer::make_default();
 #endif
 
 	ClassDB::register_virtual_class<WebSocketMultiplayerPeer>();

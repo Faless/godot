@@ -192,6 +192,23 @@ BOOL WINAPI HandlerRoutine(_In_ DWORD dwCtrlType) {
 	}
 }
 
+static LARGE_INTEGER _clock_start = { 0 };
+static LARGE_INTEGER _ticks_per_second = { 0 };
+static void _setup_clock() {
+	// Retrieve the frequency of the performance-counter ("clock").
+	if (!QueryPerformanceFrequency(&_ticks_per_second)) {
+		ERR_PRINT("QueryPerformanceFrequency IS NOT WORKING");
+		// Will likely end up using timeGetTime (milliseconds).
+		_ticks_per_second.QuadPart = 1000;
+	}
+	// Retrieve the performance-counter value at start (starting point for this "clock").
+	if (!QueryPerformanceCounter(&_clock_start)) {
+		ERR_PRINT("QueryPerformanceCounter IS NOT WORKING");
+		// This is bad, timeGetTime is subject to NTP changes.
+		_clock_start.QuadPart = timeGetTime();
+	}
+}
+
 void OS_Windows::initialize_debugging() {
 
 	SetConsoleCtrlHandler(HandlerRoutine, TRUE);
@@ -223,13 +240,8 @@ void OS_Windows::initialize_core() {
 
 	NetSocketPosix::make_default();
 
-	// We need to know how often the clock is updated
-	if (!QueryPerformanceFrequency((LARGE_INTEGER *)&ticks_per_second))
-		ticks_per_second = 1000;
-	// If timeAtGameStart is 0 then we get the time since
-	// the start of the computer when we call GetGameTime()
-	ticks_start = 0;
-	ticks_start = get_ticks_usec();
+	// Setup system clock.
+	_setup_clock();
 
 	// set minimum resolution for periodic timers, otherwise Sleep(n) may wait at least as
 	//  long as the windows scheduler resolution (~16-30ms) even for calls like Sleep(1)
@@ -2286,17 +2298,12 @@ void OS_Windows::delay_usec(uint32_t p_usec) const {
 }
 uint64_t OS_Windows::get_ticks_usec() const {
 
-	uint64_t ticks;
-	uint64_t time;
-	// This is the number of clock ticks since start
-	if (!QueryPerformanceCounter((LARGE_INTEGER *)&ticks))
-		ticks = (UINT64)timeGetTime();
-	// Divide by frequency to get the time in seconds
-	time = ticks * 1000000L / ticks_per_second;
-	// Subtract the time at game start to get
-	// the time since the game started
-	time -= ticks_start;
-	return time;
+	LARGE_INTEGER ticks;
+	// Retrieve current clock time.
+	if (!QueryPerformanceCounter(&ticks))
+		ticks.QuadPart = timeGetTime();
+	// Subtract initial time and divide by frequency to get the elapsed time in seconds.
+	return uint64_t(((ticks.QuadPart - _clock_start.QuadPart) * 1000000L) / _ticks_per_second.QuadPart);
 }
 
 void OS_Windows::process_events() {

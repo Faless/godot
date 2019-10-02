@@ -94,9 +94,6 @@ class OS_Windows : public OS {
 	KeyEvent key_event_buffer[KEY_EVENT_BUFFER_SIZE];
 	int key_event_pos;
 
-	uint64_t ticks_start;
-	uint64_t ticks_per_second;
-
 	bool old_invalid;
 	bool outside;
 	int old_x, old_y;

@@ -66,28 +66,27 @@
 #include <unistd.h>
 
 /// Clock Setup function (used by get_ticks_usec)
-static uint64_t _clock_start = 0;
 #if defined(__APPLE__)
-static double _clock_scale = 0;
+static uint64_t _osx_clock_start = 0;
+static double _osx_clock_scale = 0;
 static void _setup_clock() {
 	mach_timebase_info_data_t info;
 	kern_return_t ret = mach_timebase_info(&info);
 	ERR_EXPLAIN("OS CLOCK IS NOT WORKING!");
 	ERR_FAIL_COND(ret != 0);
-	_clock_scale = ((double)info.numer / (double)info.denom) / 1000.0;
-	_clock_start = mach_absolute_time() * _clock_scale;
+	_osx_clock_scale = ((double)info.numer / (double)info.denom) / 1000.0;
+	_osx_clock_start = mach_absolute_time();
 }
 #else
+static struct timespec _unix_clock_start;
 #if defined(CLOCK_MONOTONIC_RAW) && !defined(JAVASCRIPT_ENABLED) // This is a better clock on Linux.
 #define GODOT_CLOCK CLOCK_MONOTONIC_RAW
 #else
 #define GODOT_CLOCK CLOCK_MONOTONIC
 #endif
 static void _setup_clock() {
-	struct timespec tv_now = { 0, 0 };
 	ERR_EXPLAIN("OS CLOCK IS NOT WORKING!");
-	ERR_FAIL_COND(clock_gettime(GODOT_CLOCK, &tv_now) != 0);
-	_clock_start = ((uint64_t)tv_now.tv_nsec / 1000L) + (uint64_t)tv_now.tv_sec * 1000000L;
+	ERR_FAIL_COND(clock_gettime(GODOT_CLOCK, &_unix_clock_start) != 0);
 }
 #endif
 
@@ -280,17 +279,18 @@ void OS_Unix::delay_usec(uint32_t p_usec) const {
 uint64_t OS_Unix::get_ticks_usec() const {
 
 #if defined(__APPLE__)
-	uint64_t longtime = mach_absolute_time() * _clock_scale;
+	return (mach_absolute_time() - _osx_clock_start) * _osx_clock_scale;
 #else
 	// Unchecked return. Static analyzers might complain.
 	// If _setup_clock() succeeded, we assume clock_gettime() works.
 	struct timespec tv_now = { 0, 0 };
 	clock_gettime(GODOT_CLOCK, &tv_now);
-	uint64_t longtime = ((uint64_t)tv_now.tv_nsec / 1000L) + (uint64_t)tv_now.tv_sec * 1000000L;
+	return uint64_t(
+			// Seconds part. We need to add (or subtract) nanoseconds from here.
+			((tv_now.tv_sec - _unix_clock_start.tv_sec) * 1000000L) +
+			// Nanoseconds part. Difference will be added (or subtracted) from the seconds part.
+			((tv_now.tv_nsec - _unix_clock_start.tv_nsec) / 1000L));
 #endif
-	longtime -= _clock_start;
-
-	return longtime;
 }
 
 Error OS_Unix::execute(const String &p_path, const List<String> &p_arguments, bool p_blocking, ProcessID *r_child_id, String *r_pipe, int *r_exitcode, bool read_stderr) {

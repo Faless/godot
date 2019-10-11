@@ -66,8 +66,8 @@ public:
 		_clear_client();
 	}
 
-	void listen(int p_port, IP_Address p_address) {
-		server->listen(p_port, p_address);
+	Error listen(int p_port, IP_Address p_address) {
+		return server->listen(p_port, p_address);
 	}
 
 	bool is_listening() const {
@@ -201,7 +201,7 @@ public:
 
 	virtual bool poll_export();
 	virtual int get_options_count() const;
-	virtual String get_options_name(int p_index) const { return p_index ? TTR("Stop HTTP Server") : TTR("Run in Browser"); }
+	virtual String get_option_label(int p_index) const { return p_index ? TTR("Stop HTTP Server") : TTR("Run in Browser"); }
 	virtual String get_option_tooltip(int p_index) const { return p_index ? TTR("Stop HTTP Server") : TTR("Run exported HTML in the system's default browser."); }
 	virtual Ref<ImageTexture> get_option_icon(int p_index) const;
 	virtual Error run(const Ref<EditorExportPreset> &p_preset, int p_option, int p_debug_flags);
@@ -535,13 +535,25 @@ Error EditorExportPlatformJavaScript::run(const Ref<EditorExportPreset> &p_prese
 		return err;
 	}
 
-	// Stop/start server
+	IP_Address bind_ip;
+	uint16_t bind_port = EDITOR_GET("export/web/http_port");
+	// Resolve host if needed.
+	String bind_host = EDITOR_GET("export/web/http_host");
+	if (bind_host.is_valid_ip_address()) {
+		bind_ip = bind_host;
+	} else {
+		bind_ip = IP::get_singleton()->resolve_hostname(bind_host);
+	}
+	ERR_FAIL_COND_V_MSG(!bind_ip.is_valid(), ERR_INVALID_PARAMETER, "Invalid editor setting 'export/web/http_host': '" + bind_host + "'. Try using '127.0.0.1'.");
+
+	// Restart server.
 	server_lock->lock();
 	server->stop();
-	server->listen(8060, IP_Address("127.0.0.1"));
+	err = server->listen(bind_port, bind_ip);
 	server_lock->unlock();
+	ERR_FAIL_COND_V_MSG(err != OK, err, "Unable to start HTTP server.");
 
-	OS::get_singleton()->shell_open(String("http://127.0.0.1:8060/tmp_js_export.html"));
+	OS::get_singleton()->shell_open(String("http://" + bind_host + ":" + itos(bind_port) + "/tmp_js_export.html"));
 	// FIXME: Find out how to clean up export files after running the successfully
 	// exported game. Might not be trivial.
 	return OK;
@@ -595,6 +607,10 @@ EditorExportPlatformJavaScript::~EditorExportPlatformJavaScript() {
 }
 
 void register_javascript_exporter() {
+
+	EDITOR_DEF("export/web/http_host", "localhost");
+	EDITOR_DEF("export/web/http_port", 8060);
+	EditorSettings::get_singleton()->add_property_hint(PropertyInfo(Variant::INT, "export/web/http_port", PROPERTY_HINT_RANGE, "1,65535,1"));
 
 	Ref<EditorExportPlatformJavaScript> platform;
 	platform.instance();

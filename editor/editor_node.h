@@ -159,7 +159,6 @@ private:
 
 		RUN_STOP,
 		RUN_PLAY_SCENE,
-		RUN_PLAY_NATIVE,
 		RUN_PLAY_CUSTOM_SCENE,
 		RUN_SCENE_SETTINGS,
 		RUN_SETTINGS,
@@ -495,6 +494,7 @@ private:
 	void _quick_run();
 
 	void _run(bool p_current = false, const String &p_custom = "");
+	void _native_run(Ref<EditorExportPreset> p_platform);
 
 	void _save_optimized();
 	void _import_action(const String &p_action);

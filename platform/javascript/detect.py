@@ -130,6 +130,7 @@ def configure(env):
     env.Append(LIBS=['idbfs.js'])
 
     env.Append(LINKFLAGS=['-s', 'BINARYEN=1'])
+    env.Append(LINKFLAGS=['-s', 'MODULARIZE=1', '-s', 'EXPORT_NAME="Godot"'])
 
     # Only include the JavaScript support code for the web environment
     # (i.e. exclude Node.js and other unused environments).
@@ -157,4 +158,4 @@ def configure(env):
     env.Append(LINKFLAGS=['-s', 'NO_EXIT_RUNTIME=1'])
 
     #adding flag due to issue with emscripten 1.38.41 callMain method https://github.com/emscripten-core/emscripten/blob/incoming/ChangeLog.md#v13841-08072019
-    env.Append(LINKFLAGS=['-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=["callMain"]'])
+    env.Append(LINKFLAGS=['-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=["callMain", "FS", "PATH"]'])

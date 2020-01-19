@@ -1,3 +1,4 @@
+/*
 		// The following is concatenated with generated code, and acts as the end
 		// of a wrapper for said code. See pre.js for the other part of the
 		// wrapper.
@@ -6,7 +7,140 @@
 		return Module;
 	},
 };
+*/
+const EXPORT_NAME = "tmp_js_export";
 
+function loadXHR(resolve, reject, file, tracker) {
+
+	var xhr = new XMLHttpRequest;
+	xhr.open('GET', file);
+	if (!file.endsWith('.js')) {
+		xhr.responseType = 'arraybuffer';
+	}
+	['loadstart', 'progress', 'load', 'error', 'abort'].forEach(function(ev) {
+		xhr.addEventListener(ev, onXHREvent.bind(xhr, resolve, reject, file, tracker));
+	});
+	xhr.send();
+}
+
+function onXHREvent(resolve, reject, file, tracker, ev) {
+
+	if (this.status >= 400) {
+
+		if (this.status < 500 || ++tracker[file].attempts >= DOWNLOAD_ATTEMPTS_MAX) {
+			reject(new Error("Failed loading file '" + file + "': " + this.statusText));
+			this.abort();
+			return;
+		} else {
+			setTimeout(loadXHR.bind(null, resolve, reject, file, tracker), 1000);
+		}
+	}
+
+	switch (ev.type) {
+		case 'loadstart':
+			if (tracker[file] === undefined) {
+				tracker[file] = {
+					total: ev.total,
+					loaded: ev.loaded,
+					attempts: 0,
+					final: false,
+				};
+			}
+			break;
+
+		case 'progress':
+			tracker[file].loaded = ev.loaded;
+			tracker[file].total = ev.total;
+			break;
+
+		case 'load':
+			tracker[file].final = true;
+			resolve(this);
+			break;
+
+		case 'error':
+			if (++tracker[file].attempts >= DOWNLOAD_ATTEMPTS_MAX) {
+				tracker[file].final = true;
+				reject(new Error("Failed loading file '" + file + "'"));
+			} else {
+				setTimeout(loadXHR.bind(null, resolve, reject, file, tracker), 1000);
+			}
+			break;
+
+		case 'abort':
+			tracker[file].final = true;
+			reject(new Error("Loading file '" + file + "' was aborted."));
+			break;
+	}
+}
+
+var loadingFiles = {}
+function loadPromise(file, tracker) {
+	if (tracker === undefined)
+		tracker = loadingFiles;
+	return new Promise(function(resolve, reject) {
+		loadXHR(resolve, reject, file, tracker);
+	});
+}
+
+var preloadedFiles = []
+function preloadFile(pathOrBuffer, destPath) {
+	if (pathOrBuffer instanceof ArrayBuffer) {
+		pathOrBuffer = new Uint8Array(pathOrBuffer);
+	} else if (ArrayBuffer.isView(pathOrBuffer)) {
+		pathOrBuffer = new Uint8Array(pathOrBuffer.buffer);
+	}
+	if (pathOrBuffer instanceof Uint8Array) {
+		preloadedFiles.push({
+			path: destPath,
+			buffer: pathOrBuffer
+		});
+		return Promise.resolve();
+	} else if (typeof pathOrBuffer === 'string') {
+		return loadPromise(pathOrBuffer, preloadProgressTracker).then(function(xhr) {
+			preloadedFiles.push({
+				path: destPath || pathOrBuffer,
+				buffer: xhr.response
+			});
+		});
+	} else {
+		throw Promise.reject("Invalid object for preloading");
+	}
+};
+
+Godot({
+	locateFile: function(file) {
+		console.log("Locate ", file);
+		return file.replace("godot.javascript.opt.debug", EXPORT_NAME);
+	},
+	preRun: function() {
+		console.log("FS", this, arguments);
+	}
+}).then(function(Module) {
+	console.log("initialized!", Module.FS, this);
+
+	preloadedFiles.forEach(function(file) {
+		var dir = file.path.slice(0, file.path.lastIndexOf("/"));
+		try {
+			LIBS.FS.stat(dir);
+		} catch (e) {
+			if (e.code !== 'ENOENT') {
+				throw e;
+			}
+			LIBS.FS.mkdirTree(dir);
+		}
+		// With memory growth, canOwn should be false.
+		LIBS.FS.createDataFile(file.path, null, new Uint8Array(file.buffer), true, true, false);
+	}, this);
+
+	preloadedFiles = null;
+
+	Module.callMain(["--main-pack", EXPORT_NAME + ".pck"]);
+});
+
+})();
+
+/*
 (function() {
 	var engine = Engine;
 
@@ -347,67 +481,5 @@
 		});
 	}
 
-	function loadXHR(resolve, reject, file, tracker) {
-
-		var xhr = new XMLHttpRequest;
-		xhr.open('GET', file);
-		if (!file.endsWith('.js')) {
-			xhr.responseType = 'arraybuffer';
-		}
-		['loadstart', 'progress', 'load', 'error', 'abort'].forEach(function(ev) {
-			xhr.addEventListener(ev, onXHREvent.bind(xhr, resolve, reject, file, tracker));
-		});
-		xhr.send();
-	}
-
-	function onXHREvent(resolve, reject, file, tracker, ev) {
-
-		if (this.status >= 400) {
-
-			if (this.status < 500 || ++tracker[file].attempts >= DOWNLOAD_ATTEMPTS_MAX) {
-				reject(new Error("Failed loading file '" + file + "': " + this.statusText));
-				this.abort();
-				return;
-			} else {
-				setTimeout(loadXHR.bind(null, resolve, reject, file, tracker), 1000);
-			}
-		}
-
-		switch (ev.type) {
-			case 'loadstart':
-				if (tracker[file] === undefined) {
-					tracker[file] = {
-						total: ev.total,
-						loaded: ev.loaded,
-						attempts: 0,
-						final: false,
-					};
-				}
-				break;
-
-			case 'progress':
-				tracker[file].loaded = ev.loaded;
-				tracker[file].total = ev.total;
-				break;
-
-			case 'load':
-				tracker[file].final = true;
-				resolve(this);
-				break;
-
-			case 'error':
-				if (++tracker[file].attempts >= DOWNLOAD_ATTEMPTS_MAX) {
-					tracker[file].final = true;
-					reject(new Error("Failed loading file '" + file + "'"));
-				} else {
-					setTimeout(loadXHR.bind(null, resolve, reject, file, tracker), 1000);
-				}
-				break;
-
-			case 'abort':
-				tracker[file].final = true;
-				reject(new Error("Loading file '" + file + "' was aborted."));
-				break;
-		}
-	}
 })();
+*/

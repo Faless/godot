@@ -1,5 +1,6 @@
 import os
 
+from emscripten_helpers import parse_config, run_closure_compiler, create_engine_file
 
 def is_active():
     return True
@@ -18,6 +19,7 @@ def get_opts():
     return [
         # eval() can be a security concern, so it can be disabled.
         BoolVariable('javascript_eval', 'Enable JavaScript eval interface', True),
+        BoolVariable('threads_enabled', 'Enable WebAssembly Threads support (limited browser support)', False),
     ]
 
 
@@ -37,7 +39,7 @@ def configure(env):
 
     ## Build type
 
-    if env['target'] != 'debug':
+    if env['target'] == 'release':
         # Use -Os to prioritize optimizing for reduced file size. This is
         # particularly valuable for the web platform because it directly
         # decreases download time.
@@ -46,38 +48,50 @@ def configure(env):
         # run-time performance.
         env.Append(CCFLAGS=['-Os'])
         env.Append(LINKFLAGS=['-Os'])
-        if env['target'] == 'release_debug':
-            env.Append(CPPDEFINES=['DEBUG_ENABLED'])
-            # Retain function names for backtraces at the cost of file size.
-            env.Append(LINKFLAGS=['--profiling-funcs'])
-    else:
+        # Enable closure compiler in release builds.
+        env.Append(LINKFLAGS=['--closure', '1'])
+    elif env['target'] == 'release_debug':
+        env.Append(CCFLAGS=['-Os'])
+        env.Append(LINKFLAGS=['-Os'])
+        env.Append(CPPDEFINES=['DEBUG_ENABLED'])
+        # Retain function names for backtraces at the cost of file size.
+        env.Append(LINKFLAGS=['--profiling-funcs'])
+    else: # 'debug'
         env.Append(CPPDEFINES=['DEBUG_ENABLED'])
         env.Append(CCFLAGS=['-O1', '-g'])
         env.Append(LINKFLAGS=['-O1', '-g'])
         env.Append(LINKFLAGS=['-s', 'ASSERTIONS=1'])
 
-    ## Compiler configuration
-
-    env['ENV'] = os.environ
-
-    em_config_file = os.getenv('EM_CONFIG') or os.path.expanduser('~/.emscripten')
-    if not os.path.exists(em_config_file):
-        raise RuntimeError("Emscripten configuration file '%s' does not exist" % em_config_file)
-    with open(em_config_file) as f:
-        em_config = {}
-        try:
-            # Emscripten configuration file is a Python file with simple assignments.
-            exec(f.read(), em_config)
-        except StandardError as e:
-            raise RuntimeError("Emscripten configuration file '%s' is invalid:\n%s" % (em_config_file, e))
-    if 'BINARYEN_ROOT' in em_config and os.path.isdir(os.path.join(em_config.get('BINARYEN_ROOT'), 'emscripten')):
-        # New style, emscripten path as a subfolder of BINARYEN_ROOT
-        env.PrependENVPath('PATH', os.path.join(em_config.get('BINARYEN_ROOT'), 'emscripten'))
-    elif 'EMSCRIPTEN_ROOT' in em_config:
-        # Old style (but can be there as a result from previous activation, so do last)
-        env.PrependENVPath('PATH', em_config.get('EMSCRIPTEN_ROOT'))
+    if env['tools']:
+        if not env['threads_enabled']:
+            raise RuntimeError("Threads must be enabled to build the editor. Please add the 'threads_enabled=yes' option")
+        # Tools need more memory
+        env.Append(LINKFLAGS=['-s', 'TOTAL_MEMORY=33554432'])
     else:
-        raise RuntimeError("'BINARYEN_ROOT' or 'EMSCRIPTEN_ROOT' missing in Emscripten configuration file '%s'" % em_config_file)
+        # Disable exceptions and rtti on non-tools (template) builds
+        # These flags help keep the file size down.
+        env.Append(CCFLAGS=['-fno-exceptions', '-fno-rtti'])
+        # Don't use dynamic_cast, necessary with no-rtti.
+        env.Append(CPPDEFINES=['NO_SAFE_CAST'])
+
+    # LTO
+    if env['use_lto']:
+        env.Append(CCFLAGS=['-s', 'WASM_OBJECT_FILES=0'])
+        env.Append(LINKFLAGS=['-s', 'WASM_OBJECT_FILES=0'])
+        env.Append(LINKFLAGS=['--llvm-lto',  '1'])
+
+    ## Closure compiler builder
+    jscc = env.Builder(generator=run_closure_compiler, suffix='.cc.js', src_suffix='.js')
+    env.Append(BUILDERS = {'BuildJS' : jscc})
+    env.AddMethod(create_engine_file, "CreateEngineFile")
+
+    ## Compiler configuration
+    env['ENV'] = os.environ
+    # Closure compiler extern and support for ecmascript specs (const, let, etc).
+    env['ENV']['EMCC_CLOSURE_ARGS'] = '--language_in ECMASCRIPT6'
+
+    em_config = parse_config()
+    env.PrependENVPath('PATH', em_config['EMCC_ROOT'])
 
     env['CC'] = 'emcc'
     env['CXX'] = 'em++'
@@ -104,44 +118,29 @@ def configure(env):
     env['LIBPREFIXES'] = ['$LIBPREFIX']
     env['LIBSUFFIXES'] = ['$LIBSUFFIX']
 
-    ## Compile flags
-
     env.Prepend(CPPPATH=['#platform/javascript'])
     env.Append(CPPDEFINES=['JAVASCRIPT_ENABLED', 'UNIX_ENABLED'])
-
-    # No multi-threading (SharedArrayBuffer) available yet,
-    # once feasible also consider memory buffer size issues.
-    env.Append(CPPDEFINES=['NO_THREADS'])
-
-    # Disable exceptions and rtti on non-tools (template) builds
-    if not env['tools']:
-        # These flags help keep the file size down.
-        env.Append(CCFLAGS=['-fno-exceptions', '-fno-rtti'])
-        # Don't use dynamic_cast, necessary with no-rtti.
-        env.Append(CPPDEFINES=['NO_SAFE_CAST'])
 
     if env['javascript_eval']:
         env.Append(CPPDEFINES=['JAVASCRIPT_EVAL_ENABLED'])
 
-    ## Link flags
+    # Thread support (via SharedArrayBuffer).
+    if env['threads_enabled']:
+        env.Append(CPPFLAGS=['-s', 'USE_PTHREADS=1']);
+        env.Append(LINKFLAGS=['-s', 'PTHREAD_POOL_SIZE=4'])
+        env.Append(LINKFLAGS=['-s', 'WASM_MEM_MAX=2048MB'])
+        env.Append(CPPDEFINES=['PTHREAD_NO_RENAME'])
+    else:
+        env.Append(CPPDEFINES=['NO_THREADS'])
+        # Reduce code size, not working with threads, not so useful with closure.
+        env.Append(LINKFLAGS=['-s', 'ENVIRONMENT=web,worker'])
 
     # We use IDBFS in javascript_main.cpp. Since Emscripten 1.39.1 it needs to
     # be linked explicitly.
     env.Append(LIBS=['idbfs.js'])
 
     env.Append(LINKFLAGS=['-s', 'BINARYEN=1'])
-
-    # Only include the JavaScript support code for the web environment
-    # (i.e. exclude Node.js and other unused environments).
-    # This makes the JavaScript support code about 4 KB smaller.
-    env.Append(LINKFLAGS=['-s', 'ENVIRONMENT=web'])
-
-    # This needs to be defined for Emscripten using 'fastcomp' (default pre-1.39.0)
-    # and undefined if using 'upstream'. And to make things simple, earlier
-    # Emscripten versions didn't include 'fastcomp' in their path, so we check
-    # against the presence of 'upstream' to conditionally add the flag.
-    if not "upstream" in em_config['EMSCRIPTEN_ROOT']:
-        env.Append(LINKFLAGS=['-s', 'BINARYEN_TRAP_MODE=\'clamp\''])
+    env.Append(LINKFLAGS=['-s', 'MODULARIZE=1', '-s', 'EXPORT_NAME="Godot"'])
 
     # Allow increasing memory buffer size during runtime. This is efficient
     # when using WebAssembly (in comparison to asm.js) and works well for
@@ -154,7 +153,7 @@ def configure(env):
     env.Append(LINKFLAGS=['-s', 'INVOKE_RUN=0'])
 
     # TODO: Reevaluate usage of this setting now that engine.js manages engine runtime.
-    env.Append(LINKFLAGS=['-s', 'NO_EXIT_RUNTIME=1'])
+    #env.Append(LINKFLAGS=['-s', 'NO_EXIT_RUNTIME=1'])
 
     #adding flag due to issue with emscripten 1.38.41 callMain method https://github.com/emscripten-core/emscripten/blob/incoming/ChangeLog.md#v13841-08072019
-    env.Append(LINKFLAGS=['-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=["callMain"]'])
+    env.Append(LINKFLAGS=['-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=["callMain", "FS"]'])

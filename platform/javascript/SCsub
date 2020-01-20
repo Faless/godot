@@ -28,8 +28,9 @@ for module in js_modules:
 env.Depends(build, js_modules)
 
 wrapper_start = env.File('pre.js')
+wrapper_preloader = env.File('preloader.js')
 wrapper_end = env.File('engine.js')
-js_wrapped = env.Textfile('#bin/godot', [wrapper_start, js, wrapper_end], TEXTFILESUFFIX='${PROGSUFFIX}.wrapped.js')
+js_wrapped = env.Textfile('#bin/godot', [wrapper_start, js, wrapper_preloader, wrapper_end], TEXTFILESUFFIX='${PROGSUFFIX}.wrapped.js')
 
 zip_dir = env.Dir('#bin/.javascript_zip')
 zip_files = env.InstallAs([

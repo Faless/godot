@@ -9,133 +9,56 @@
 };
 */
 const EXPORT_NAME = "tmp_js_export";
+const MAIN_PACK = "tmp_js_export.pck";
 
-function loadXHR(resolve, reject, file, tracker) {
+function getPathLeaf(path) {
 
-	var xhr = new XMLHttpRequest;
-	xhr.open('GET', file);
-	if (!file.endsWith('.js')) {
-		xhr.responseType = 'arraybuffer';
-	}
-	['loadstart', 'progress', 'load', 'error', 'abort'].forEach(function(ev) {
-		xhr.addEventListener(ev, onXHREvent.bind(xhr, resolve, reject, file, tracker));
-	});
-	xhr.send();
+	while (path.endsWith('/'))
+		path = path.slice(0, -1);
+	return path.slice(path.lastIndexOf('/') + 1);
 }
 
-function onXHREvent(resolve, reject, file, tracker, ev) {
+function getBasePath(path) {
 
-	if (this.status >= 400) {
-
-		if (this.status < 500 || ++tracker[file].attempts >= DOWNLOAD_ATTEMPTS_MAX) {
-			reject(new Error("Failed loading file '" + file + "': " + this.statusText));
-			this.abort();
-			return;
-		} else {
-			setTimeout(loadXHR.bind(null, resolve, reject, file, tracker), 1000);
-		}
-	}
-
-	switch (ev.type) {
-		case 'loadstart':
-			if (tracker[file] === undefined) {
-				tracker[file] = {
-					total: ev.total,
-					loaded: ev.loaded,
-					attempts: 0,
-					final: false,
-				};
-			}
-			break;
-
-		case 'progress':
-			tracker[file].loaded = ev.loaded;
-			tracker[file].total = ev.total;
-			break;
-
-		case 'load':
-			tracker[file].final = true;
-			resolve(this);
-			break;
-
-		case 'error':
-			if (++tracker[file].attempts >= DOWNLOAD_ATTEMPTS_MAX) {
-				tracker[file].final = true;
-				reject(new Error("Failed loading file '" + file + "'"));
-			} else {
-				setTimeout(loadXHR.bind(null, resolve, reject, file, tracker), 1000);
-			}
-			break;
-
-		case 'abort':
-			tracker[file].final = true;
-			reject(new Error("Loading file '" + file + "' was aborted."));
-			break;
-	}
+	if (path.endsWith('/'))
+		path = path.slice(0, -1);
+	if (path.lastIndexOf('.') > path.lastIndexOf('/'))
+		path = path.slice(0, path.lastIndexOf('.'));
+	return path;
 }
 
-var loadingFiles = {}
-function loadPromise(file, tracker) {
-	if (tracker === undefined)
-		tracker = loadingFiles;
-	return new Promise(function(resolve, reject) {
-		loadXHR(resolve, reject, file, tracker);
-	});
-}
+function getBaseName(path) {
 
-var preloadedFiles = []
-function preloadFile(pathOrBuffer, destPath) {
-	if (pathOrBuffer instanceof ArrayBuffer) {
-		pathOrBuffer = new Uint8Array(pathOrBuffer);
-	} else if (ArrayBuffer.isView(pathOrBuffer)) {
-		pathOrBuffer = new Uint8Array(pathOrBuffer.buffer);
-	}
-	if (pathOrBuffer instanceof Uint8Array) {
-		preloadedFiles.push({
-			path: destPath,
-			buffer: pathOrBuffer
-		});
-		return Promise.resolve();
-	} else if (typeof pathOrBuffer === 'string') {
-		return loadPromise(pathOrBuffer, preloadProgressTracker).then(function(xhr) {
-			preloadedFiles.push({
-				path: destPath || pathOrBuffer,
-				buffer: xhr.response
-			});
-		});
-	} else {
-		throw Promise.reject("Invalid object for preloading");
-	}
-};
+	return getPathLeaf(getBasePath(path));
+}
 
 Godot({
 	locateFile: function(file) {
 		console.log("Locate ", file);
 		return file.replace("godot.javascript.opt.debug", EXPORT_NAME);
-	},
-	preRun: function() {
-		console.log("FS", this, arguments);
 	}
 }).then(function(Module) {
-	console.log("initialized!", Module.FS, this);
-
-	preloadedFiles.forEach(function(file) {
-		var dir = file.path.slice(0, file.path.lastIndexOf("/"));
-		try {
-			LIBS.FS.stat(dir);
-		} catch (e) {
-			if (e.code !== 'ENOENT') {
-				throw e;
+	Promise.all([
+		Preloader.preload(MAIN_PACK, getPathLeaf(MAIN_PACK))
+	]).then(function() {
+		Preloader.preloadedFiles.forEach(function(file) {
+			console.log(file);
+			var dir = file.path.slice(0, file.path.lastIndexOf("/"));
+			console.log(dir);
+			try {
+				Module['FS'].stat(dir);
+			} catch (e) {
+				if (e.code !== 'ENOENT') {
+					console.log(e);
+					throw e;
+				}
+				Module['FS'].mkdirTree(dir);
 			}
-			LIBS.FS.mkdirTree(dir);
-		}
-		// With memory growth, canOwn should be false.
-		LIBS.FS.createDataFile(file.path, null, new Uint8Array(file.buffer), true, true, false);
-	}, this);
-
-	preloadedFiles = null;
-
-	Module.callMain(["--main-pack", EXPORT_NAME + ".pck"]);
+			// With memory growth, canOwn should be false.
+			Module['FS'].createDataFile(file.path, null, new Uint8Array(file.buffer), true, true, false);
+		}, this);
+		Module.callMain(["--main-pack", EXPORT_NAME + ".pck"]);
+	});
 });
 
 })();
@@ -232,31 +155,6 @@ Godot({
 				rtenvProps.engine.rtenv = Engine.RuntimeEnvironment(rtenvProps, LIBS);
 			});
 		}
-
-		this.preloadFile = function(pathOrBuffer, destPath) {
-
-			if (pathOrBuffer instanceof ArrayBuffer) {
-				pathOrBuffer = new Uint8Array(pathOrBuffer);
-			} else if (ArrayBuffer.isView(pathOrBuffer)) {
-				pathOrBuffer = new Uint8Array(pathOrBuffer.buffer);
-			}
-			if (pathOrBuffer instanceof Uint8Array) {
-				preloadedFiles.push({
-					path: destPath,
-					buffer: pathOrBuffer
-				});
-				return Promise.resolve();
-			} else if (typeof pathOrBuffer === 'string') {
-				return loadPromise(pathOrBuffer, preloadProgressTracker).then(function(xhr) {
-					preloadedFiles.push({
-						path: destPath || pathOrBuffer,
-						buffer: xhr.response
-					});
-				});
-			} else {
-				throw Promise.reject("Invalid object for preloading");
-			}
-		};
 
 		this.start = function() {
 
@@ -472,14 +370,5 @@ Godot({
 	Engine.unload = function() {
 		engineLoadPromise = null;
 	};
-
-	function loadPromise(file, tracker) {
-		if (tracker === undefined)
-			tracker = loadingFiles;
-		return new Promise(function(resolve, reject) {
-			loadXHR(resolve, reject, file, tracker);
-		});
-	}
-
 })();
 */

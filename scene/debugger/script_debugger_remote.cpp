@@ -95,21 +95,23 @@ void ScriptDebuggerRemote::_send_video_memory() {
 
 	usage.sort();
 
-	_connection_put_var("message:video_mem");
-	_connection_put_var(usage.size() * 4);
+	Array msg;
+	msg.push_back("message:video_mem");
+	// msg.push_back(usage.size() * 4);
 
 	for (List<ResourceUsage>::Element *E = usage.front(); E; E = E->next()) {
 
-		_connection_put_var(E->get().path);
-		_connection_put_var(E->get().type);
-		_connection_put_var(E->get().format);
-		_connection_put_var(E->get().vram);
+		msg.push_back(E->get().path);
+		msg.push_back(E->get().type);
+		msg.push_back(E->get().format);
+		msg.push_back(E->get().vram);
 	}
+	_connection_put_var(msg);
 }
 
-void ScriptDebuggerRemote::_put_variable(const String &p_name, const Variant &p_variable) {
+void ScriptDebuggerRemote::_put_variable(Array &r_msg, const String &p_name, const Variant &p_variable) {
 
-	_connection_put_var(p_name);
+	r_msg.push_back(p_name);
 
 	Variant var = p_variable;
 	if (p_variable.get_type() == Variant::OBJECT && !ObjectDB::instance_validate(p_variable)) {
@@ -122,9 +124,9 @@ void ScriptDebuggerRemote::_put_variable(const String &p_name, const Variant &p_
 		ERR_PRINT("Failed to encode variant.");
 
 	if (len > _connection_get_max_packet_size()) { //limit to max size
-		_connection_put_var(Variant());
+		r_msg.push_back(Variant());
 	} else {
-		_connection_put_var(var);
+		r_msg.push_back(var);
 	}
 }
 
@@ -152,10 +154,14 @@ void ScriptDebuggerRemote::debug(ScriptLanguage *p_script, bool p_can_continue, 
 	if (!connection->can_block())
 		return;
 
-	_connection_put_var("debug_enter");
-	_connection_put_var(2);
-	_connection_put_var(p_can_continue);
-	_connection_put_var(p_script->debug_get_error());
+	{
+		Array msg;
+		msg.push_back("debug_enter");
+		// msg.push_back(2);
+		msg.push_back(p_can_continue);
+		msg.push_back(p_script->debug_get_error());
+		_connection_put_var(msg);
+	}
 
 	skip_profile_frame = true; // to avoid super long frame time for the frame
 
@@ -173,7 +179,7 @@ void ScriptDebuggerRemote::debug(ScriptLanguage *p_script, bool p_can_continue, 
 
 		_get_output();
 
-		if (_connection_has_packet() > 0) {
+		if (_connection_has_packet()) {
 
 			Variant var;
 			Error err = _connection_get_var(var);
@@ -190,9 +196,10 @@ void ScriptDebuggerRemote::debug(ScriptLanguage *p_script, bool p_can_continue, 
 
 			if (command == "get_stack_dump") {
 
-				_connection_put_var("stack_dump");
+				Array msg;
+				msg.push_back("stack_dump");
 				int slc = p_script->debug_get_stack_level_count();
-				_connection_put_var(slc);
+				// msg.push_back(slc);
 
 				for (int i = 0; i < slc; i++) {
 
@@ -203,8 +210,10 @@ void ScriptDebuggerRemote::debug(ScriptLanguage *p_script, bool p_can_continue, 
 					//d["id"]=p_script->debug_get_stack_level_
 					d["id"] = 0;
 
-					_connection_put_var(d);
+					msg.push_back(d);
 				}
+
+				_connection_put_var(msg);
 
 			} else if (command == "get_stack_frame_vars") {
 
@@ -216,7 +225,7 @@ void ScriptDebuggerRemote::debug(ScriptLanguage *p_script, bool p_can_continue, 
 				List<Variant> member_vals;
 				if (ScriptInstance *inst = p_script->debug_get_stack_level_instance(lv)) {
 					members.push_back("self");
-					member_vals.push_back(inst->get_owner());
+					// member_vals.push_back(inst->get_owner());
 				}
 				p_script->debug_get_stack_level_members(lv, &members, &member_vals);
 				ERR_CONTINUE(members.size() != member_vals.size());
@@ -231,17 +240,18 @@ void ScriptDebuggerRemote::debug(ScriptLanguage *p_script, bool p_can_continue, 
 				p_script->debug_get_globals(&globals, &globals_vals);
 				ERR_CONTINUE(globals.size() != globals_vals.size());
 
-				_connection_put_var("stack_frame_vars");
-				_connection_put_var(3 + (locals.size() + members.size() + globals.size()) * 2);
+				Array msg;
+				msg.push_back("stack_frame_vars");
+				// msg.push_back(3 + (locals.size() + members.size() + globals.size()) * 2);
 
 				{ //locals
-					_connection_put_var(locals.size());
+					msg.push_back(locals.size());
 
 					List<String>::Element *E = locals.front();
 					List<Variant>::Element *F = local_vals.front();
 
 					while (E) {
-						_put_variable(E->get(), F->get());
+						_put_variable(msg, E->get(), F->get());
 
 						E = E->next();
 						F = F->next();
@@ -249,14 +259,13 @@ void ScriptDebuggerRemote::debug(ScriptLanguage *p_script, bool p_can_continue, 
 				}
 
 				{ //members
-					_connection_put_var(members.size());
+					msg.push_back(members.size());
 
 					List<String>::Element *E = members.front();
 					List<Variant>::Element *F = member_vals.front();
 
 					while (E) {
-
-						_put_variable(E->get(), F->get());
+						_put_variable(msg, E->get(), F->get());
 
 						E = E->next();
 						F = F->next();
@@ -264,18 +273,19 @@ void ScriptDebuggerRemote::debug(ScriptLanguage *p_script, bool p_can_continue, 
 				}
 
 				{ //globals
-					_connection_put_var(globals.size());
+					msg.push_back(globals.size());
 
 					List<String>::Element *E = globals.front();
 					List<Variant>::Element *F = globals_vals.front();
 
 					while (E) {
-						_put_variable(E->get(), F->get());
+						_put_variable(msg, E->get(), F->get());
 
 						E = E->next();
 						F = F->next();
 					}
 				}
+				_connection_put_var(msg);
 
 			} else if (command == "step") {
 
@@ -378,8 +388,10 @@ void ScriptDebuggerRemote::debug(ScriptLanguage *p_script, bool p_can_continue, 
 		}
 	}
 
-	_connection_put_var("debug_exit");
-	_connection_put_var(0);
+	Array msg;
+	msg.push_back("debug_exit");
+	// msg.push_back(0);
+	_connection_put_var(msg);
 
 	if (mouse_mode != Input::MOUSE_MODE_VISIBLE)
 		Input::get_singleton()->set_mouse_mode(mouse_mode);
@@ -391,14 +403,16 @@ void ScriptDebuggerRemote::_get_output() {
 	if (output_strings.size()) {
 
 		locking = true;
-		_connection_put_var("output");
-		_connection_put_var(output_strings.size());
+		Array msg;
+		msg.push_back("output");
+		// msg.push_back(output_strings.size());
 
 		while (output_strings.size()) {
 
-			_connection_put_var(output_strings.front()->get());
+			msg.push_back(output_strings.front()->get());
 			output_strings.pop_front();
 		}
+		_connection_put_var(msg);
 		locking = false;
 	}
 
@@ -411,11 +425,13 @@ void ScriptDebuggerRemote::_get_output() {
 
 	while (messages.size()) {
 		locking = true;
-		_connection_put_var("message:" + messages.front()->get().message);
-		_connection_put_var(messages.front()->get().data.size());
+		Array msg;
+		msg.push_back("message:" + messages.front()->get().message);
+		// msg.push_back(messages.front()->get().data.size());
 		for (int i = 0; i < messages.front()->get().data.size(); i++) {
-			_connection_put_var(messages.front()->get().data[i]);
+			msg.push_back(messages.front()->get().data[i]);
 		}
+		_connection_put_var(msg);
 		messages.pop_front();
 		locking = false;
 	}
@@ -450,10 +466,11 @@ void ScriptDebuggerRemote::_get_output() {
 
 	while (errors.size()) {
 		locking = true;
-		_connection_put_var("error");
+		Array msg;
+		msg.push_back("error");
 		OutputError oe = errors.front()->get();
 
-		_connection_put_var(oe.callstack.size() + 2);
+		// msg.push_back(oe.callstack.size() + 2); // XXX who are you? Why there? Why was not breaking before? Who knows....
 
 		Array error_data;
 
@@ -467,12 +484,12 @@ void ScriptDebuggerRemote::_get_output() {
 		error_data.push_back(oe.error);
 		error_data.push_back(oe.error_descr);
 		error_data.push_back(oe.warning);
-		_connection_put_var(error_data);
-		_connection_put_var(oe.callstack.size());
+		msg.push_back(error_data);
+		msg.push_back(oe.callstack.size());
 		for (int i = 0; i < oe.callstack.size(); i++) {
-			_connection_put_var(oe.callstack[i]);
+			msg.push_back(oe.callstack[i]);
 		}
-
+		_connection_put_var(msg);
 		errors.pop_front();
 		locking = false;
 	}
@@ -726,11 +743,13 @@ void ScriptDebuggerRemote::_send_object_id(ObjectID p_id) {
 		send_props.push_back(prop);
 	}
 
-	_connection_put_var("message:inspect_object");
-	_connection_put_var(3);
-	_connection_put_var(p_id);
-	_connection_put_var(obj->get_class());
-	_connection_put_var(send_props);
+	Array msg;
+	msg.push_back("message:inspect_object");
+	// msg.push_back(3);
+	msg.push_back(p_id);
+	msg.push_back(obj->get_class());
+	msg.push_back(send_props);
+	_connection_put_var(msg);
 }
 
 void ScriptDebuggerRemote::_set_object_property(ObjectID p_id, const String &p_property, const Variant &p_value) {
@@ -909,10 +928,12 @@ void ScriptDebuggerRemote::_send_profiling_data(bool p_for_frame) {
 		if (!profiler_function_signature_map.has(profile_info_ptrs[i]->signature)) {
 
 			int idx = profiler_function_signature_map.size();
-			_connection_put_var("profile_sig");
-			_connection_put_var(2);
-			_connection_put_var(profile_info_ptrs[i]->signature);
-			_connection_put_var(idx);
+			Array msg;
+			msg.push_back("profile_sig");
+			// msg.push_back(2);
+			msg.push_back(profile_info_ptrs[i]->signature);
+			msg.push_back(idx);
+			_connection_put_var(msg);
 
 			profiler_function_signature_map[profile_info_ptrs[i]->signature] = idx;
 		}
@@ -922,34 +943,35 @@ void ScriptDebuggerRemote::_send_profiling_data(bool p_for_frame) {
 
 	//send frames then
 
+	Array msg;
 	if (p_for_frame) {
-		_connection_put_var("profile_frame");
-		_connection_put_var(8 + profile_frame_data.size() * 2 + to_send * 4);
+		msg.push_back("profile_frame");
+		// msg.push_back(8 + profile_frame_data.size() * 2 + to_send * 4);
 	} else {
-		_connection_put_var("profile_total");
-		_connection_put_var(8 + to_send * 4);
+		msg.push_back("profile_total");
+		// msg.push_back(8 + to_send * 4);
 	}
 
-	_connection_put_var(Engine::get_singleton()->get_frames_drawn()); //total frame time
-	_connection_put_var(frame_time); //total frame time
-	_connection_put_var(idle_time); //idle frame time
-	_connection_put_var(physics_time); //fixed frame time
-	_connection_put_var(physics_frame_time); //fixed frame time
+	msg.push_back(Engine::get_singleton()->get_frames_drawn()); //total frame time
+	msg.push_back(frame_time); //total frame time
+	msg.push_back(idle_time); //idle frame time
+	msg.push_back(physics_time); //fixed frame time
+	msg.push_back(physics_frame_time); //fixed frame time
 
-	_connection_put_var(USEC_TO_SEC(total_script_time)); //total script execution time
+	msg.push_back(USEC_TO_SEC(total_script_time)); //total script execution time
 
 	if (p_for_frame) {
 
-		_connection_put_var(profile_frame_data.size()); //how many profile framedatas to send
-		_connection_put_var(to_send); //how many script functions to send
+		msg.push_back(profile_frame_data.size()); //how many profile framedatas to send
+		msg.push_back(to_send); //how many script functions to send
 		for (int i = 0; i < profile_frame_data.size(); i++) {
 
-			_connection_put_var(profile_frame_data[i].name);
-			_connection_put_var(profile_frame_data[i].data);
+			msg.push_back(profile_frame_data[i].name);
+			msg.push_back(profile_frame_data[i].data);
 		}
 	} else {
-		_connection_put_var(0); //how many script functions to send
-		_connection_put_var(to_send); //how many script functions to send
+		msg.push_back(0); //how many script functions to send
+		msg.push_back(to_send); //how many script functions to send
 	}
 
 	for (int i = 0; i < to_send; i++) {
@@ -960,11 +982,12 @@ void ScriptDebuggerRemote::_send_profiling_data(bool p_for_frame) {
 			sig_id = profiler_function_signature_map[profile_info_ptrs[i]->signature];
 		}
 
-		_connection_put_var(sig_id);
-		_connection_put_var(profile_info_ptrs[i]->call_count);
-		_connection_put_var(profile_info_ptrs[i]->total_time / 1000000.0);
-		_connection_put_var(profile_info_ptrs[i]->self_time / 1000000.0);
+		msg.push_back(sig_id);
+		msg.push_back(profile_info_ptrs[i]->call_count);
+		msg.push_back(profile_info_ptrs[i]->total_time / 1000000.0);
+		msg.push_back(profile_info_ptrs[i]->self_time / 1000000.0);
 	}
+	_connection_put_var(msg);
 
 	if (p_for_frame) {
 		profile_frame_data.clear();
@@ -980,8 +1003,10 @@ void ScriptDebuggerRemote::idle_poll() {
 
 	if (requested_quit) {
 
-		_connection_put_var("kill_me");
-		_connection_put_var(0);
+		Array msg;
+		msg.push_back("kill_me");
+		// msg.push_back(0);
+		_connection_put_var(msg);
 		requested_quit = false;
 	}
 
@@ -997,9 +1022,11 @@ void ScriptDebuggerRemote::idle_poll() {
 			for (int i = 0; i < max; i++) {
 				arr[i] = performance->call("get_monitor", i);
 			}
-			_connection_put_var("performance");
-			_connection_put_var(1);
-			_connection_put_var(arr);
+			Array msg;
+			msg.push_back("performance");
+			// msg.push_back(1);
+			msg.push_back(arr);
+			_connection_put_var(msg);
 		}
 	}
 
@@ -1041,16 +1068,18 @@ void ScriptDebuggerRemote::_send_network_profiling_data() {
 
 	int n_nodes = multiplayer->get_profiling_frame(&network_profile_info.write[0]);
 
-	_connection_put_var("network_profile");
-	_connection_put_var(n_nodes * 6);
+	Array msg;
+	msg.push_back("network_profile");
+	// msg.push_back(n_nodes * 6);
 	for (int i = 0; i < n_nodes; ++i) {
-		_connection_put_var(network_profile_info[i].node);
-		_connection_put_var(network_profile_info[i].node_path);
-		_connection_put_var(network_profile_info[i].incoming_rpc);
-		_connection_put_var(network_profile_info[i].incoming_rset);
-		_connection_put_var(network_profile_info[i].outgoing_rpc);
-		_connection_put_var(network_profile_info[i].outgoing_rset);
+		msg.push_back(network_profile_info[i].node);
+		msg.push_back(network_profile_info[i].node_path);
+		msg.push_back(network_profile_info[i].incoming_rpc);
+		msg.push_back(network_profile_info[i].incoming_rset);
+		msg.push_back(network_profile_info[i].outgoing_rpc);
+		msg.push_back(network_profile_info[i].outgoing_rset);
 	}
+	_connection_put_var(msg);
 }
 
 void ScriptDebuggerRemote::_send_network_bandwidth_usage() {
@@ -1059,10 +1088,12 @@ void ScriptDebuggerRemote::_send_network_bandwidth_usage() {
 	int incoming_bandwidth = multiplayer->get_incoming_bandwidth_usage();
 	int outgoing_bandwidth = multiplayer->get_outgoing_bandwidth_usage();
 
-	_connection_put_var("network_bandwidth");
-	_connection_put_var(2);
-	_connection_put_var(incoming_bandwidth);
-	_connection_put_var(outgoing_bandwidth);
+	Array msg;
+	msg.push_back("network_bandwidth");
+	// msg.push_back(2);
+	msg.push_back(incoming_bandwidth);
+	msg.push_back(outgoing_bandwidth);
+	_connection_put_var(msg);
 }
 
 void ScriptDebuggerRemote::send_message(const String &p_message, const Array &p_args) {

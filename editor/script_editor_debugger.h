@@ -188,10 +188,10 @@ private:
 
 	Ref<ScriptEditorDebuggerServer> server;
 
-	Error _server_put_var(const Variant &p_variant);
+	Error _queue_msg(const Array &p_variant);
 	Error _server_get_var(Variant &r_variant);
 	bool _server_has_peer();
-	int _server_get_available_packet_count();
+	bool _server_has_packets();
 
 	void _performance_draw();
 	void _performance_select();

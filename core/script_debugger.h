@@ -8,6 +8,62 @@
 
 class ScriptDebugger {
 
+public:
+
+	class FrameInfo {
+	public:
+		StringName name;
+		float self_time;
+		float total_time;
+
+		FrameInfo() {
+			self_time = 0;
+			total_time = 0;
+		}
+	};
+
+	class FrameFunction {
+	public:
+		int sig_id;
+		int call_count;
+		StringName name;
+		float self_time;
+		float total_time;
+
+		FrameFunction() {
+			sig_id = -1;
+			call_count = 0;
+			self_time = 0;
+			total_time = 0;
+		}
+	};
+
+	class ProfilerFrame {
+	public:
+
+		int frame_number;
+		float frame_time;
+		float idle_time;
+		float physics_time;
+		float physics_frame_time;
+		// float script_time; // XXX Removed?
+
+		Vector<FrameInfo> frame_data;
+		Vector<FrameFunction> frame_functions;
+
+		ProfilerFrame() {
+			frame_number = 0;
+			frame_time = 0;
+			idle_time = 0;
+			physics_time = 0;
+			physics_frame_time = 0;
+		}
+
+		void serialize(Array &r_arr);
+		void deserialize();
+	};
+
+protected:
 	int lines_left;
 	int depth;
 
@@ -17,6 +73,7 @@ class ScriptDebugger {
 	ScriptLanguage *break_lang;
 
 public:
+
 	_FORCE_INLINE_ static ScriptDebugger *get_singleton() { return singleton; }
 	void set_lines_left(int p_left);
 	int get_lines_left() const;

@@ -1,5 +1,31 @@
 #include "core/script_debugger.h"
 
+void ScriptDebugger::ProfilerFrame::serialize(Array &r_arr) {
+	r_arr.push_back(frame_number);
+	r_arr.push_back(frame_time);
+	r_arr.push_back(idle_time);
+	r_arr.push_back(physics_time);
+	r_arr.push_back(physics_frame_time);
+	// r_arr.push_back(USEC_TO_SEC(total_script_time)); // XXX this seems unused
+	// TODO I don't think we need these two.
+	r_arr.push_back(frame_data.size());
+	r_arr.push_back(frame_functions.size());
+	// END TODO
+	for (int i = 0; i < frame_data.size(); i++) {
+		r_arr.push_back(frame_data[i].name);
+		r_arr.push_back(frame_data[i].self_time);
+	}
+	for (int i = 0; i < frame_functions.size(); i++) {
+		r_arr.push_back(frame_functions[i].sig_id);
+		r_arr.push_back(frame_functions[i].call_count);
+		r_arr.push_back(frame_functions[i].self_time);
+		r_arr.push_back(frame_functions[i].total_time);
+	}
+}
+
+void ScriptDebugger::ProfilerFrame::deserialize() {
+}
+
 ScriptDebugger *ScriptDebugger::singleton = NULL;
 
 void ScriptDebugger::set_lines_left(int p_left) {

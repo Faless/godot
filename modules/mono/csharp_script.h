@@ -34,6 +34,7 @@
 #include "core/io/resource_loader.h"
 #include "core/io/resource_saver.h"
 #include "core/script_language.h"
+#include "core/script_debugger.h"
 #include "core/self_list.h"
 
 #include "mono_gc_handle.h"

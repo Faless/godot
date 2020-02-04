@@ -37,6 +37,7 @@
 #include "core/ordered_hash_map.h"
 #include "core/os/thread_safe.h"
 #include "core/resource.h"
+#include "core/script_debugger.h"
 #include "core/script_language.h"
 #include "core/self_list.h"
 #include "scene/main/node.h"

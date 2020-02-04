@@ -35,6 +35,7 @@
 #include "core/io/stream_peer_tcp.h"
 #include "core/list.h"
 #include "core/os/os.h"
+#include "core/script_debugger.h"
 #include "core/script_language.h"
 
 class SceneTree;

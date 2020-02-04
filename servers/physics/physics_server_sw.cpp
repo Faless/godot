@@ -33,7 +33,7 @@
 #include "broad_phase_basic.h"
 #include "broad_phase_octree.h"
 #include "core/os/os.h"
-#include "core/script_language.h"
+#include "core/script_debugger.h"
 #include "joints/cone_twist_joint_sw.h"
 #include "joints/generic_6dof_joint_sw.h"
 #include "joints/hinge_joint_sw.h"

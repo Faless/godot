@@ -34,6 +34,7 @@
 #include "core/io/resource_loader.h"
 #include "core/io/resource_saver.h"
 #include "core/script_language.h"
+#include "core/script_debugger.h"
 #include "gdscript_function.h"
 
 class GDScriptNativeClass : public Reference {

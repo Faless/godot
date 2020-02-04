@@ -32,6 +32,7 @@
 #define SCRIPT_DEBUGGER_LOCAL_H
 
 #include "core/list.h"
+#include "core/script_debugger.h"
 #include "core/script_language.h"
 
 class ScriptDebuggerLocal : public ScriptDebugger {

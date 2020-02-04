@@ -34,6 +34,7 @@
 #include "os_windows.h"
 
 #include "core/io/marshalls.h"
+#include "core/script_debugger.h"
 #include "core/version_generated.gen.h"
 #include "drivers/gles2/rasterizer_gles2.h"
 #include "drivers/gles3/rasterizer_gles3.h"

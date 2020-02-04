@@ -1,5 +1,62 @@
 #include "core/script_debugger.h"
 
+void ScriptDebugger::ScriptStackDump::serialize(Array &r_arr) {
+	r_arr.push_back(frames.size());
+	for (int i = 0; i < frames.size(); i++) {
+		r_arr.push_back(frames[i].file);
+		r_arr.push_back(frames[i].line);
+		r_arr.push_back(frames[i].function);
+	}
+}
+
+void ScriptDebugger::ScriptStackDump::deserialize() {
+
+}
+
+void ScriptDebugger::OutputError::serialize(Array &r_arr) {
+	r_arr.push_back(hr);
+	r_arr.push_back(min);
+	r_arr.push_back(sec);
+	r_arr.push_back(msec);
+	r_arr.push_back(source_func);
+	r_arr.push_back(source_file);
+	r_arr.push_back(source_line);
+	r_arr.push_back(error);
+	r_arr.push_back(error_descr);
+	r_arr.push_back(warning);
+
+	r_arr.push_back(callstack.size());
+	for (int i = 0; i < callstack.size(); i++) {
+		r_arr.push_back(callstack[i]);
+	}
+}
+
+void ScriptDebugger::Message::serialize(Array &r_arr) {
+	r_arr.push_back(message);
+	r_arr.push_back(data);
+}
+
+void ScriptDebugger::Message::deserialize() {
+}
+
+void ScriptDebugger::OutputError::deserialize() {
+}
+
+void ScriptDebugger::ResourceUsage::serialize(Array &r_arr) {
+	infos.sort();
+
+	r_arr.push_back(infos.size() * 4);
+	for (List<ResourceInfo>::Element *E = infos.front(); E; E = E->next()) {
+		r_arr.push_back(E->get().path);
+		r_arr.push_back(E->get().type);
+		r_arr.push_back(E->get().format);
+		r_arr.push_back(E->get().vram);
+	}
+}
+
+void ScriptDebugger::ResourceUsage::deserialize() {
+}
+
 void ScriptDebugger::ProfilerFrame::serialize(Array &r_arr) {
 	r_arr.push_back(frame_number);
 	r_arr.push_back(frame_time);

@@ -10,6 +10,19 @@ class ScriptDebugger {
 
 public:
 
+	class ResourceInfo {
+	public:
+		String path;
+		String format;
+		String type;
+		RID id;
+		int vram;
+		bool operator<(const ResourceInfo &p_img) const { return vram == p_img.vram ? id < p_img.id : vram > p_img.vram; }
+		ResourceInfo() {
+			vram = 0;
+		}
+	};
+
 	class FrameInfo {
 	public:
 		StringName name;
@@ -36,6 +49,81 @@ public:
 			self_time = 0;
 			total_time = 0;
 		}
+	};
+
+	class ScriptStackFrame {
+	public:
+		String file;
+		int line;
+		String function;
+
+		ScriptStackFrame() {
+			line = -1;
+		}
+	};
+
+	class ScriptStackDump {
+	public:
+		List<ScriptStackFrame> frames;
+		ScriptStackDump() {}
+
+		void serialize(Array &r_arr);
+		void deserialize();
+	};
+
+	class Message {
+
+	public:
+		String message;
+		Array data;
+
+		void serialize(Array &r_arr);
+		void deserialize();
+
+		Message() {}
+	};
+
+	class OutputError {
+	public:
+		int hr;
+		int min;
+		int sec;
+		int msec;
+		String source_file;
+		String source_func;
+		int source_line;
+		String error;
+		String error_descr;
+		bool warning;
+		Array callstack;
+
+		OutputError() {
+			hr = -1;
+			min = -1;
+			sec = -1;
+			msec = -1;
+			source_line = -1;
+			warning = false;
+		}
+
+		void serialize(Array &r_arr);
+		void deserialize();
+	};
+
+	/*
+	class ScriptStackVars {
+	public:
+		ScriptStackVars() {
+		}
+	};
+	*/
+
+	class ResourceUsage {
+	public:
+		List<ResourceInfo> infos;
+
+		void serialize(Array &r_arr);
+		void deserialize();
 	};
 
 	class ProfilerFrame {

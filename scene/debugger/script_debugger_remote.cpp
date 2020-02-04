@@ -42,80 +42,6 @@
 #include "scene/resources/packed_scene.h"
 #include "servers/visual_server.h"
 
-struct ProfilerFrame {
-
-public:
-
-	struct FrameData {
-	public:
-		StringName name;
-		float self_time;
-		float total_time;
-
-		FrameData() {
-			self_time = 0;
-			total_time = 0;
-		}
-	};
-
-	struct FrameFunction {
-	public:
-		int sig_id;
-		int call_count;
-		StringName name;
-		float self_time;
-		float total_time;
-
-		FrameFunction() {
-			sig_id = -1;
-			call_count = 0;
-			self_time = 0;
-			total_time = 0;
-		}
-	};
-
-	int frame_number;
-	float frame_time;
-	float idle_time;
-	float physics_time;
-	float physics_frame_time;
-	// float script_time; // XXX Removed?
-
-	Vector<FrameData> frame_data;
-	Vector<FrameFunction> frame_functions;
-
-	ProfilerFrame() {
-		frame_number = 0;
-		frame_time = 0;
-		idle_time = 0;
-		physics_time = 0;
-		physics_frame_time = 0;
-	}
-
-	void serialize(Array &r_arr) {
-		r_arr.push_back(frame_number);
-		r_arr.push_back(frame_time);
-		r_arr.push_back(idle_time);
-		r_arr.push_back(physics_time);
-		r_arr.push_back(physics_frame_time);
-		// r_arr.push_back(USEC_TO_SEC(total_script_time)); // XXX this seems unused
-		// TODO I don't think we need these two.
-		r_arr.push_back(frame_data.size());
-		r_arr.push_back(frame_functions.size());
-		// END TODO
-		for (int i = 0; i < frame_data.size(); i++) {
-			r_arr.push_back(frame_data[i].name);
-			r_arr.push_back(frame_data[i].self_time);
-		}
-		for (int i = 0; i < frame_functions.size(); i++) {
-			r_arr.push_back(frame_functions[i].sig_id);
-			r_arr.push_back(frame_functions[i].call_count);
-			r_arr.push_back(frame_functions[i].self_time);
-			r_arr.push_back(frame_functions[i].total_time);
-		}
-	}
-};
-
 ScriptDebuggerConnection *(*ScriptDebuggerConnection::_create)() = NULL;
 
 ScriptDebuggerConnection *ScriptDebuggerConnection::create() {
@@ -1016,30 +942,17 @@ void ScriptDebuggerRemote::_send_profiling_data(bool p_for_frame) {
 	}
 
 	//send frames then
-
-	Array msg;
-	if (p_for_frame) {
-		msg.push_back("profile_frame");
-		// msg.push_back(8 + profile_frame_data.size() * 2 + to_send * 4);
-	} else {
-		msg.push_back("profile_total");
-		// msg.push_back(8 + to_send * 4);
-	}
-
-	struct ProfilerFrame metric;
+	ProfilerFrame metric;
 	metric.frame_number = Engine::get_singleton()->get_frames_drawn(); // Frame number
 	metric.frame_time = frame_time;
 	metric.idle_time = idle_time;
 	metric.physics_time = physics_time;
 	metric.physics_frame_time = physics_frame_time;
-	// metric.script_time = USEC_TO_SEC(total_script_time); //total script execution time
 
 	if (p_for_frame) {
 
-		//msg.push_back(profile_frame_data.size()); //how many profile framedatas to send
-		//msg.push_back(to_send); //how many script functions to send
 		metric.frame_data.resize(profile_frame_data.size());
-		struct ProfilerFrame::FrameData *w = metric.frame_data.ptrw();
+		FrameInfo *w = metric.frame_data.ptrw();
 		for (int i = 0; i < profile_frame_data.size(); i++) {
 
 			w[i].name = profile_frame_data[i].name;
@@ -1047,30 +960,20 @@ void ScriptDebuggerRemote::_send_profiling_data(bool p_for_frame) {
 				w[i].name = profile_frame_data[i].data[2 * j];
 				w[i].self_time = profile_frame_data[i].data[2 * j + 1];
 			}
-			//msg.push_back(profile_frame_data[i].data);
 		}
-	} else {
-		// msg.push_back(0); //how many script functions to send
-		// msg.push_back(to_send); //how many script functions to send
 	}
 
 	metric.frame_functions.resize(to_send);
-	struct ProfilerFrame::FrameFunction *w = metric.frame_functions.ptrw();
+	FrameFunction *w = metric.frame_functions.ptrw();
 	for (int i = 0; i < to_send; i++) {
-
-		//int sig_id = -1;
 
 		if (profiler_function_signature_map.has(profile_info_ptrs[i]->signature)) {
 			w[i].sig_id = profiler_function_signature_map[profile_info_ptrs[i]->signature];
 		}
 
-		//msg.push_back(sig_id);
 		w[i].call_count = profile_info_ptrs[i]->call_count;
 		w[i].total_time = profile_info_ptrs[i]->total_time / 1000000.0;
 		w[i].self_time = profile_info_ptrs[i]->self_time / 1000000.0;
-		//msg.push_back(profile_info_ptrs[i]->call_count);
-		//msg.push_back(profile_info_ptrs[i]->total_time / 1000000.0);
-		//msg.push_back(profile_info_ptrs[i]->self_time / 1000000.0);
 	}
 	Array arr;
 	if (p_for_frame) {

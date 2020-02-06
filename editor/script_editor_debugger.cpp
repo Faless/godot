@@ -710,18 +710,20 @@ void ScriptEditorDebugger::_parse_message(const String &p_msg, const Array &p_da
 
 	} else if (p_msg == "stack_dump") {
 
+		ScriptDebugger::ScriptStackDump stack;
+		stack.deserialize(p_data);
+
 		stack_dump->clear();
 		TreeItem *r = stack_dump->create_item();
 
-		for (int i = 0; i < p_data.size(); i++) {
+		for (int i = 0; i < stack.frames.size(); i++) {
 
-			Dictionary d = p_data[i];
-			ERR_CONTINUE(!d.has("function"));
-			ERR_CONTINUE(!d.has("file"));
-			ERR_CONTINUE(!d.has("line"));
-			ERR_CONTINUE(!d.has("id"));
 			TreeItem *s = stack_dump->create_item(r);
+			Dictionary d;
 			d["frame"] = i;
+			d["file"] = stack.frames[i].file;
+			d["function"] = stack.frames[i].func;
+			d["line"] = stack.frames[i].line;
 			s->set_metadata(0, d);
 
 			String line = itos(i) + " - " + String(d["file"]) + ":" + itos(d["line"]) + " - at function: " + d["function"];

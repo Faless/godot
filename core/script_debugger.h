@@ -56,7 +56,7 @@ public:
 		ScriptStackDump() {}
 
 		void serialize(Array &r_arr);
-		void deserialize();
+		bool deserialize(Array p_arr);
 	};
 
 	class Message {

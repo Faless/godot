@@ -11,7 +11,18 @@ void ScriptDebugger::ScriptStackDump::serialize(Array &r_arr) {
 	}
 }
 
-void ScriptDebugger::ScriptStackDump::deserialize() {
+bool ScriptDebugger::ScriptStackDump::deserialize(Array p_arr) {
+	CHECK_SIZE(p_arr, 1, "ScriptStackDump");
+	uint32_t size = p_arr.pop_front();
+	CHECK_SIZE(p_arr, size * 3, "ScriptStackDump");
+	for (int i = 0; i < size; i++) {
+		ScriptLanguage::StackInfo sf;
+		sf.file = p_arr.pop_front();
+		sf.line = p_arr.pop_front();
+		sf.func = p_arr.pop_front();
+		frames.push_back(sf);
+	}
+	return true;
 }
 
 void ScriptDebugger::OutputError::serialize(Array &r_arr) {

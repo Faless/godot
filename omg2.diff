@@ -1,0 +1,441 @@
+diff --git a/core/script_debugger.cpp b/core/script_debugger.cpp
+index 8e53e13b97..a22ca01b55 100644
+--- a/core/script_debugger.cpp
++++ b/core/script_debugger.cpp
+@@ -24,22 +24,49 @@ void ScriptDebugger::OutputError::serialize(Array &r_arr) {
+ 	r_arr.push_back(error);
+ 	r_arr.push_back(error_descr);
+ 	r_arr.push_back(warning);
+-
+-	r_arr.push_back(callstack.size());
++	unsigned int size = callstack.size();
++	const ScriptLanguage::StackInfo *r = callstack.ptr();
++	r_arr.push_back(size);
++	printf(itos(size).utf8.get_data());
+ 	for (int i = 0; i < callstack.size(); i++) {
+-		r_arr.push_back(callstack[i]);
++		r_arr.push_back(r[i].file);
++		r_arr.push_back(r[i].func);
++		r_arr.push_back(r[i].line);
+ 	}
+ }
+ 
++bool ScriptDebugger::OutputError::deserialize(Array p_data) {
++	ERR_FAIL_COND_V_MSG(p_data.size() < 11, false, "Malformed error message from script debugger. Received size: " + itos(p_data.size()));
++	hr = p_data.pop_front();
++	min = p_data.pop_front();
++	sec = p_data.pop_front();
++	msec = p_data.pop_front();
++	source_file = p_data.pop_front();
++	source_func = p_data.pop_front();
++	source_line = p_data.pop_front();
++	error = p_data.pop_front();
++	error_descr = p_data.pop_front();
++	warning = p_data.pop_front();
++	unsigned int stack_size = p_data.pop_front();
++	ERR_FAIL_COND_V_MSG((unsigned int)p_data.size() < 3 * stack_size, false, "Malformed error message from script debugger, message too short. Exptected size: " + itos(stack_size * 3) + ", actual size: " + itos(p_data.size()));
++	callstack.resize(stack_size);
++	ScriptLanguage::StackInfo *w = callstack.ptrw();
++	for (unsigned int i = 0; i < stack_size; i++) {
++		w[i].file = p_data.pop_front();
++		w[i].func = p_data.pop_front();
++		w[i].line = p_data.pop_front();
++	}
++	ERR_FAIL_COND_V_MSG(p_data.size() > 0, false, "Malformed error message from script debugger, message too long. Size left after parsing: " + itos(p_data.size()));
++	return true;
++}
++
+ void ScriptDebugger::Message::serialize(Array &r_arr) {
+ 	r_arr.push_back(message);
+ 	r_arr.push_back(data);
+ }
+ 
+ void ScriptDebugger::Message::deserialize() {
+-}
+ 
+-void ScriptDebugger::OutputError::deserialize() {
+ }
+ 
+ void ScriptDebugger::ResourceUsage::serialize(Array &r_arr) {
+diff --git a/core/script_debugger.h b/core/script_debugger.h
+index 7c475b345a..4f63c46292 100644
+--- a/core/script_debugger.h
++++ b/core/script_debugger.h
+@@ -95,7 +95,7 @@ public:
+ 		String error;
+ 		String error_descr;
+ 		bool warning;
+-		Array callstack;
++		Vector<ScriptLanguage::StackInfo> callstack;
+ 
+ 		OutputError() {
+ 			hr = -1;
+@@ -107,7 +107,7 @@ public:
+ 		}
+ 
+ 		void serialize(Array &r_arr);
+-		void deserialize();
++		bool deserialize(Array p_data);
+ 	};
+ 
+ 	/*
+diff --git a/editor/script_editor_debugger.cpp b/editor/script_editor_debugger.cpp
+index 0621b48aba..9b0ea39c28 100644
+--- a/editor/script_editor_debugger.cpp
++++ b/editor/script_editor_debugger.cpp
+@@ -32,6 +32,7 @@
+ 
+ #include "core/io/marshalls.h"
+ #include "core/project_settings.h"
++#include "core/script_debugger.h"
+ #include "core/ustring.h"
+ #include "editor/editor_scale.h"
+ #include "editor/plugins/canvas_item_editor_plugin.h"
+@@ -850,37 +851,25 @@ void ScriptEditorDebugger::_parse_message(const String &p_msg, const Array &p_da
+ 
+ 	} else if (p_msg == "error") {
+ 
+-		// Should have at least two elements, error array and stack items count.
+-		ERR_FAIL_COND_MSG(p_data.size() < 2, "Malformed error message from script debugger. Received size: " + itos(p_data.size()));
+-
+-		// Error or warning data.
+-		Array err = p_data[0];
+-		ERR_FAIL_COND_MSG(err.size() < 10, "Malformed error message from script debugger. Received size: " + itos(err.size()));
++		ScriptDebugger::OutputError oe;
++		ERR_FAIL_COND_MSG(oe.deserialize(p_data) == false, "Failed to deserialize error message");
+ 
+ 		// Format time.
+ 		Array time_vals;
+-		time_vals.push_back(err[0]);
+-		time_vals.push_back(err[1]);
+-		time_vals.push_back(err[2]);
+-		time_vals.push_back(err[3]);
++		time_vals.push_back(oe.hr);
++		time_vals.push_back(oe.min);
++		time_vals.push_back(oe.sec);
++		time_vals.push_back(oe.msec);
+ 		bool e;
+ 		String time = String("%d:%02d:%02d:%04d").sprintf(time_vals, &e);
+ 
+ 		// Rest of the error data.
+-		String method = err[4];
+-		String source_file = err[5];
+-		String source_line = err[6];
+-		String error_cond = err[7];
+-		String error_msg = err[8];
+-		bool is_warning = err[9];
+-		bool has_method = !method.empty();
+-		bool has_error_msg = !error_msg.empty();
+-		bool source_is_project_file = source_file.begins_with("res://");
++		bool source_is_project_file = oe.source_file.begins_with("res://");
+ 
+ 		// Metadata to highlight error line in scripts.
+ 		Array source_meta;
+-		source_meta.push_back(source_file);
+-		source_meta.push_back(source_line);
++		source_meta.push_back(oe.source_file);
++		source_meta.push_back(oe.source_line);
+ 
+ 		// Create error tree to display above error or warning details.
+ 		TreeItem *r = error_tree->get_root();
+@@ -890,40 +879,42 @@ void ScriptEditorDebugger::_parse_message(const String &p_msg, const Array &p_da
+ 
+ 		// Also provide the relevant details as tooltip to quickly check without
+ 		// uncollapsing the tree.
+-		String tooltip = is_warning ? TTR("Warning:") : TTR("Error:");
++		String tooltip = oe.warning ? TTR("Warning:") : TTR("Error:");
+ 
+ 		TreeItem *error = error_tree->create_item(r);
+ 		error->set_collapsed(true);
+ 
+-		error->set_icon(0, get_icon(is_warning ? "Warning" : "Error", "EditorIcons"));
++		error->set_icon(0, get_icon(oe.warning ? "Warning" : "Error", "EditorIcons"));
+ 		error->set_text(0, time);
+ 		error->set_text_align(0, TreeItem::ALIGN_LEFT);
+ 
+ 		String error_title;
+ 		// Include method name, when given, in error title.
+-		if (has_method)
+-			error_title += method + ": ";
++		if (!oe.source_func.empty())
++			error_title += oe.source_func + ": ";
+ 		// If we have a (custom) error message, use it as title, and add a C++ Error
+ 		// item with the original error condition.
+-		error_title += error_msg.empty() ? error_cond : error_msg;
++		error_title += oe.error_descr.empty() ? oe.error : oe.error_descr;
+ 		error->set_text(1, error_title);
+ 		tooltip += " " + error_title + "\n";
+ 
+-		if (has_error_msg) {
++		if (!oe.error_descr.empty()) {
+ 			// Add item for C++ error condition.
+ 			TreeItem *cpp_cond = error_tree->create_item(error);
+ 			cpp_cond->set_text(0, "<" + TTR("C++ Error") + ">");
+-			cpp_cond->set_text(1, error_cond);
++			cpp_cond->set_text(1, oe.error);
+ 			cpp_cond->set_text_align(0, TreeItem::ALIGN_LEFT);
+-			tooltip += TTR("C++ Error:") + " " + error_cond + "\n";
++			tooltip += TTR("C++ Error:") + " " + oe.error + "\n";
+ 			if (source_is_project_file)
+ 				cpp_cond->set_metadata(0, source_meta);
+ 		}
++		Vector<uint8_t> v;
++		v.resize(100);
+ 
+ 		// Source of the error.
+-		String source_txt = (source_is_project_file ? source_file.get_file() : source_file) + ":" + source_line;
+-		if (has_method)
+-			source_txt += " @ " + method + "()";
++		String source_txt = (source_is_project_file ? oe.source_file.get_file() : oe.source_file) + ":" + itos(oe.source_line);
++		if (!oe.source_func.empty())
++			source_txt += " @ " + oe.source_func + "()";
+ 
+ 		TreeItem *cpp_source = error_tree->create_item(error);
+ 		cpp_source->set_text(0, "<" + (source_is_project_file ? TTR("Source") : TTR("C++ Source")) + ">");
+@@ -943,17 +934,14 @@ void ScriptEditorDebugger::_parse_message(const String &p_msg, const Array &p_da
+ 		// Format stack trace.
+ 		// stack_items_count is the number of elements to parse, with 3 items per frame
+ 		// of the stack trace (script, method, line).
+-		int stack_items_count = p_data[1];
++		const ScriptLanguage::StackInfo *infos = oe.callstack.ptr();
++		for (unsigned int i = 0; i < (unsigned int)oe.callstack.size(); i++) {
+ 
+-		for (int i = 0; i < stack_items_count; i += 3) {
+-			String script = p_data[2 + i];
+-			String method2 = p_data[3 + i];
+-			int line = p_data[4 + i];
+ 			TreeItem *stack_trace = error_tree->create_item(error);
+ 
+ 			Array meta;
+-			meta.push_back(script);
+-			meta.push_back(line);
++			meta.push_back(infos[i].file);
++			meta.push_back(infos[i].line);
+ 			stack_trace->set_metadata(0, meta);
+ 
+ 			if (i == 0) {
+@@ -961,10 +949,10 @@ void ScriptEditorDebugger::_parse_message(const String &p_msg, const Array &p_da
+ 				stack_trace->set_text_align(0, TreeItem::ALIGN_LEFT);
+ 				error->set_metadata(0, meta);
+ 			}
+-			stack_trace->set_text(1, script.get_file() + ":" + itos(line) + " @ " + method2 + "()");
++			stack_trace->set_text(1, infos[i].file.get_file() + ":" + itos(infos[i].line) + " @ " + infos[i].func + "()");
+ 		}
+ 
+-		if (is_warning)
++		if (oe.warning)
+ 			warning_count++;
+ 		else
+ 			error_count++;
+diff --git a/scene/debugger/script_debugger_remote.cpp b/scene/debugger/script_debugger_remote.cpp
+index c6ea926c73..daffd0270d 100644
+--- a/scene/debugger/script_debugger_remote.cpp
++++ b/scene/debugger/script_debugger_remote.cpp
+@@ -89,23 +89,13 @@ Error ScriptDebuggerRemote::connect_to_host(const String &p_host, uint16_t p_por
+ 
+ void ScriptDebuggerRemote::_send_video_memory() {
+ 
+-	List<ResourceUsage> usage;
++	ResourceUsage usage;
+ 	if (resource_usage_func)
+ 		resource_usage_func(&usage);
+ 
+-	usage.sort();
+-
+ 	Array msg;
+ 	msg.push_back("message:video_mem");
+-	// msg.push_back(usage.size() * 4);
+-
+-	for (List<ResourceUsage>::Element *E = usage.front(); E; E = E->next()) {
+-
+-		msg.push_back(E->get().path);
+-		msg.push_back(E->get().type);
+-		msg.push_back(E->get().format);
+-		msg.push_back(E->get().vram);
+-	}
++	usage.serialize(msg);
+ 	_connection_put_var(msg);
+ }
+ 
+@@ -198,21 +188,18 @@ void ScriptDebuggerRemote::debug(ScriptLanguage *p_script, bool p_can_continue,
+ 
+ 				Array msg;
+ 				msg.push_back("stack_dump");
++				ScriptStackDump dump;
+ 				int slc = p_script->debug_get_stack_level_count();
+-				// msg.push_back(slc);
+ 
+ 				for (int i = 0; i < slc; i++) {
+ 
+-					Dictionary d;
+-					d["file"] = p_script->debug_get_stack_level_source(i);
+-					d["line"] = p_script->debug_get_stack_level_line(i);
+-					d["function"] = p_script->debug_get_stack_level_function(i);
+-					//d["id"]=p_script->debug_get_stack_level_
+-					d["id"] = 0;
+-
+-					msg.push_back(d);
++					ScriptStackFrame frame;
++					frame.file = p_script->debug_get_stack_level_source(i);
++					frame.line = p_script->debug_get_stack_level_line(i);
++					frame.function = p_script->debug_get_stack_level_function(i);
++					dump.frames.push_back(frame);
+ 				}
+-
++				dump.serialize(msg);
+ 				_connection_put_var(msg);
+ 
+ 			} else if (command == "get_stack_frame_vars") {
+@@ -427,10 +414,7 @@ void ScriptDebuggerRemote::_get_output() {
+ 		locking = true;
+ 		Array msg;
+ 		msg.push_back("message:" + messages.front()->get().message);
+-		// msg.push_back(messages.front()->get().data.size());
+-		for (int i = 0; i < messages.front()->get().data.size(); i++) {
+-			msg.push_back(messages.front()->get().data[i]);
+-		}
++		messages.front()->get().serialize(msg);
+ 		_connection_put_var(msg);
+ 		messages.pop_front();
+ 		locking = false;
+@@ -469,26 +453,7 @@ void ScriptDebuggerRemote::_get_output() {
+ 		Array msg;
+ 		msg.push_back("error");
+ 		OutputError oe = errors.front()->get();
+-
+-		// msg.push_back(oe.callstack.size() + 2); // XXX who are you? Why there? Why was not breaking before? Who knows....
+-
+-		Array error_data;
+-
+-		error_data.push_back(oe.hr);
+-		error_data.push_back(oe.min);
+-		error_data.push_back(oe.sec);
+-		error_data.push_back(oe.msec);
+-		error_data.push_back(oe.source_func);
+-		error_data.push_back(oe.source_file);
+-		error_data.push_back(oe.source_line);
+-		error_data.push_back(oe.error);
+-		error_data.push_back(oe.error_descr);
+-		error_data.push_back(oe.warning);
+-		msg.push_back(error_data);
+-		msg.push_back(oe.callstack.size());
+-		for (int i = 0; i < oe.callstack.size(); i++) {
+-			msg.push_back(oe.callstack[i]);
+-		}
++		oe.serialize(msg);
+ 		_connection_put_var(msg);
+ 		errors.pop_front();
+ 		locking = false;
+@@ -1122,7 +1087,6 @@ void ScriptDebuggerRemote::send_error(const String &p_func, const String &p_file
+ 	oe.min = (time / 60000) % 60;
+ 	oe.sec = (time / 1000) % 60;
+ 	oe.msec = time % 1000;
+-	Array cstack;
+ 
+ 	uint64_t ticks = OS::get_singleton()->get_ticks_usec() / 1000;
+ 	msec_count += ticks - last_msec;
+@@ -1137,14 +1101,9 @@ void ScriptDebuggerRemote::send_error(const String &p_func, const String &p_file
+ 		n_warnings_dropped = 0;
+ 	}
+ 
+-	cstack.resize(p_stack_info.size() * 3);
+-	for (int i = 0; i < p_stack_info.size(); i++) {
+-		cstack[i * 3 + 0] = p_stack_info[i].file;
+-		cstack[i * 3 + 1] = p_stack_info[i].func;
+-		cstack[i * 3 + 2] = p_stack_info[i].line;
+-	}
++	printf(itos(p_stack_info.size()).utf8().get_data());
++	oe.callstack.append_array(p_stack_info);
+ 
+-	oe.callstack = cstack;
+ 	if (oe.warning) {
+ 		warn_count++;
+ 	} else {
+diff --git a/scene/debugger/script_debugger_remote.h b/scene/debugger/script_debugger_remote.h
+index fbb51901c2..980b70dcfb 100644
+--- a/scene/debugger/script_debugger_remote.h
++++ b/scene/debugger/script_debugger_remote.h
+@@ -59,12 +59,6 @@ public:
+ class ScriptDebuggerRemote : public ScriptDebugger {
+ 
+ private:
+-	struct Message {
+-
+-		String message;
+-		Array data;
+-	};
+-
+ 	struct ProfileInfoSort {
+ 
+ 		bool operator()(ScriptLanguage::ProfilingInfo *A, ScriptLanguage::ProfilingInfo *B) const {
+@@ -92,21 +86,6 @@ private:
+ 	bool requested_quit;
+ 	Mutex *mutex;
+ 
+-	struct OutputError {
+-
+-		int hr;
+-		int min;
+-		int sec;
+-		int msec;
+-		String source_file;
+-		String source_func;
+-		int source_line;
+-		String error;
+-		String error_descr;
+-		bool warning;
+-		Array callstack;
+-	};
+-
+ 	List<String> output_strings;
+ 	List<Message> messages;
+ 	int max_messages_per_frame;
+@@ -174,17 +153,8 @@ private:
+ 	Ref<ScriptDebuggerConnection> connection;
+ 
+ public:
+-	struct ResourceUsage {
+-
+-		String path;
+-		String format;
+-		String type;
+-		RID id;
+-		int vram;
+-		bool operator<(const ResourceUsage &p_img) const { return vram == p_img.vram ? id < p_img.id : vram > p_img.vram; }
+-	};
+ 
+-	typedef void (*ResourceUsageFunc)(List<ResourceUsage> *);
++	typedef void (*ResourceUsageFunc)(ResourceUsage *);
+ 
+ 	static ResourceUsageFunc resource_usage_func;
+ 
+diff --git a/servers/register_server_types.cpp b/servers/register_server_types.cpp
+index 3ff736ad82..3e6643e637 100644
+--- a/servers/register_server_types.cpp
++++ b/servers/register_server_types.cpp
+@@ -65,14 +65,14 @@
+ #include "visual/shader_types.h"
+ #include "visual_server.h"
+ 
+-static void _debugger_get_resource_usage(List<ScriptDebuggerRemote::ResourceUsage> *r_usage) {
++static void _debugger_get_resource_usage(ScriptDebugger::ResourceUsage *r_usage) {
+ 
+ 	List<VS::TextureInfo> tinfo;
+ 	VS::get_singleton()->texture_debug_usage(&tinfo);
+ 
+ 	for (List<VS::TextureInfo>::Element *E = tinfo.front(); E; E = E->next()) {
+ 
+-		ScriptDebuggerRemote::ResourceUsage usage;
++		ScriptDebugger::ResourceInfo usage;
+ 		usage.path = E->get().path;
+ 		usage.vram = E->get().bytes;
+ 		usage.id = E->get().texture;
+@@ -82,7 +82,7 @@ static void _debugger_get_resource_usage(List<ScriptDebuggerRemote::ResourceUsag
+ 		} else {
+ 			usage.format = itos(E->get().width) + "x" + itos(E->get().height) + "x" + itos(E->get().depth) + " " + Image::get_format_name(E->get().format);
+ 		}
+-		r_usage->push_back(usage);
++		r_usage->infos.push_back(usage);
+ 	}
+ }
+ 

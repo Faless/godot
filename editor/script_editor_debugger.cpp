@@ -32,6 +32,7 @@
 
 #include "core/io/marshalls.h"
 #include "core/project_settings.h"
+#include "core/script_debugger.h"
 #include "core/ustring.h"
 #include "editor/editor_scale.h"
 #include "editor/plugins/canvas_item_editor_plugin.h"
@@ -684,18 +685,20 @@ void ScriptEditorDebugger::_parse_message(const String &p_msg, const Array &p_da
 
 		vmem_tree->clear();
 		TreeItem *root = vmem_tree->create_item();
+		ScriptDebugger::ResourceUsage usage;
+		usage.deserialize(p_data);
 
 		int total = 0;
 
-		for (int i = 0; i < p_data.size(); i += 4) {
+		for (List<ScriptDebugger::ResourceInfo>::Element *E = usage.infos.front(); E; E = E->next()) {
 
 			TreeItem *it = vmem_tree->create_item(root);
-			String type = p_data[i + 1];
-			int bytes = p_data[i + 3].operator int();
-			it->set_text(0, p_data[i + 0]); //path
-			it->set_text(1, type); //type
-			it->set_text(2, p_data[i + 2]); //type
-			it->set_text(3, String::humanize_size(bytes)); //type
+			String type = E->get().type;
+			int bytes = E->get().vram;
+			it->set_text(0, E->get().path);
+			it->set_text(1, type);
+			it->set_text(2, E->get().format);
+			it->set_text(3, String::humanize_size(bytes));
 			total += bytes;
 
 			if (has_icon(type, "EditorIcons"))
@@ -850,37 +853,25 @@ void ScriptEditorDebugger::_parse_message(const String &p_msg, const Array &p_da
 
 	} else if (p_msg == "error") {
 
-		// Should have at least two elements, error array and stack items count.
-		ERR_FAIL_COND_MSG(p_data.size() < 2, "Malformed error message from script debugger. Received size: " + itos(p_data.size()));
-
-		// Error or warning data.
-		Array err = p_data[0];
-		ERR_FAIL_COND_MSG(err.size() < 10, "Malformed error message from script debugger. Received size: " + itos(err.size()));
+		ScriptDebugger::OutputError oe;
+		ERR_FAIL_COND_MSG(oe.deserialize(p_data) == false, "Failed to deserialize error message");
 
 		// Format time.
 		Array time_vals;
-		time_vals.push_back(err[0]);
-		time_vals.push_back(err[1]);
-		time_vals.push_back(err[2]);
-		time_vals.push_back(err[3]);
+		time_vals.push_back(oe.hr);
+		time_vals.push_back(oe.min);
+		time_vals.push_back(oe.sec);
+		time_vals.push_back(oe.msec);
 		bool e;
 		String time = String("%d:%02d:%02d:%04d").sprintf(time_vals, &e);
 
 		// Rest of the error data.
-		String method = err[4];
-		String source_file = err[5];
-		String source_line = err[6];
-		String error_cond = err[7];
-		String error_msg = err[8];
-		bool is_warning = err[9];
-		bool has_method = !method.empty();
-		bool has_error_msg = !error_msg.empty();
-		bool source_is_project_file = source_file.begins_with("res://");
+		bool source_is_project_file = oe.source_file.begins_with("res://");
 
 		// Metadata to highlight error line in scripts.
 		Array source_meta;
-		source_meta.push_back(source_file);
-		source_meta.push_back(source_line);
+		source_meta.push_back(oe.source_file);
+		source_meta.push_back(oe.source_line);
 
 		// Create error tree to display above error or warning details.
 		TreeItem *r = error_tree->get_root();
@@ -890,40 +881,42 @@ void ScriptEditorDebugger::_parse_message(const String &p_msg, const Array &p_da
 
 		// Also provide the relevant details as tooltip to quickly check without
 		// uncollapsing the tree.
-		String tooltip = is_warning ? TTR("Warning:") : TTR("Error:");
+		String tooltip = oe.warning ? TTR("Warning:") : TTR("Error:");
 
 		TreeItem *error = error_tree->create_item(r);
 		error->set_collapsed(true);
 
-		error->set_icon(0, get_icon(is_warning ? "Warning" : "Error", "EditorIcons"));
+		error->set_icon(0, get_icon(oe.warning ? "Warning" : "Error", "EditorIcons"));
 		error->set_text(0, time);
 		error->set_text_align(0, TreeItem::ALIGN_LEFT);
 
 		String error_title;
 		// Include method name, when given, in error title.
-		if (has_method)
-			error_title += method + ": ";
+		if (!oe.source_func.empty())
+			error_title += oe.source_func + ": ";
 		// If we have a (custom) error message, use it as title, and add a C++ Error
 		// item with the original error condition.
-		error_title += error_msg.empty() ? error_cond : error_msg;
+		error_title += oe.error_descr.empty() ? oe.error : oe.error_descr;
 		error->set_text(1, error_title);
 		tooltip += " " + error_title + "\n";
 
-		if (has_error_msg) {
+		if (!oe.error_descr.empty()) {
 			// Add item for C++ error condition.
 			TreeItem *cpp_cond = error_tree->create_item(error);
 			cpp_cond->set_text(0, "<" + TTR("C++ Error") + ">");
-			cpp_cond->set_text(1, error_cond);
+			cpp_cond->set_text(1, oe.error);
 			cpp_cond->set_text_align(0, TreeItem::ALIGN_LEFT);
-			tooltip += TTR("C++ Error:") + " " + error_cond + "\n";
+			tooltip += TTR("C++ Error:") + " " + oe.error + "\n";
 			if (source_is_project_file)
 				cpp_cond->set_metadata(0, source_meta);
 		}
+		Vector<uint8_t> v;
+		v.resize(100);
 
 		// Source of the error.
-		String source_txt = (source_is_project_file ? source_file.get_file() : source_file) + ":" + source_line;
-		if (has_method)
-			source_txt += " @ " + method + "()";
+		String source_txt = (source_is_project_file ? oe.source_file.get_file() : oe.source_file) + ":" + itos(oe.source_line);
+		if (!oe.source_func.empty())
+			source_txt += " @ " + oe.source_func + "()";
 
 		TreeItem *cpp_source = error_tree->create_item(error);
 		cpp_source->set_text(0, "<" + (source_is_project_file ? TTR("Source") : TTR("C++ Source")) + ">");
@@ -943,17 +936,14 @@ void ScriptEditorDebugger::_parse_message(const String &p_msg, const Array &p_da
 		// Format stack trace.
 		// stack_items_count is the number of elements to parse, with 3 items per frame
 		// of the stack trace (script, method, line).
-		int stack_items_count = p_data[1];
+		const ScriptLanguage::StackInfo *infos = oe.callstack.ptr();
+		for (unsigned int i = 0; i < (unsigned int)oe.callstack.size(); i++) {
 
-		for (int i = 0; i < stack_items_count; i += 3) {
-			String script = p_data[2 + i];
-			String method2 = p_data[3 + i];
-			int line = p_data[4 + i];
 			TreeItem *stack_trace = error_tree->create_item(error);
 
 			Array meta;
-			meta.push_back(script);
-			meta.push_back(line);
+			meta.push_back(infos[i].file);
+			meta.push_back(infos[i].line);
 			stack_trace->set_metadata(0, meta);
 
 			if (i == 0) {
@@ -961,10 +951,10 @@ void ScriptEditorDebugger::_parse_message(const String &p_msg, const Array &p_da
 				stack_trace->set_text_align(0, TreeItem::ALIGN_LEFT);
 				error->set_metadata(0, meta);
 			}
-			stack_trace->set_text(1, script.get_file() + ":" + itos(line) + " @ " + method2 + "()");
+			stack_trace->set_text(1, infos[i].file.get_file() + ":" + itos(infos[i].line) + " @ " + infos[i].func + "()");
 		}
 
-		if (is_warning)
+		if (oe.warning)
 			warning_count++;
 		else
 			error_count++;

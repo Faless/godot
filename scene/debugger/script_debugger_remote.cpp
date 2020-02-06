@@ -89,23 +89,13 @@ Error ScriptDebuggerRemote::connect_to_host(const String &p_host, uint16_t p_por
 
 void ScriptDebuggerRemote::_send_video_memory() {
 
-	List<ResourceUsage> usage;
+	ResourceUsage usage;
 	if (resource_usage_func)
 		resource_usage_func(&usage);
 
-	usage.sort();
-
 	Array msg;
 	msg.push_back("message:video_mem");
-	// msg.push_back(usage.size() * 4);
-
-	for (List<ResourceUsage>::Element *E = usage.front(); E; E = E->next()) {
-
-		msg.push_back(E->get().path);
-		msg.push_back(E->get().type);
-		msg.push_back(E->get().format);
-		msg.push_back(E->get().vram);
-	}
+	usage.serialize(msg);
 	_connection_put_var(msg);
 }
 
@@ -198,21 +188,18 @@ void ScriptDebuggerRemote::debug(ScriptLanguage *p_script, bool p_can_continue, 
 
 				Array msg;
 				msg.push_back("stack_dump");
+				ScriptStackDump dump;
 				int slc = p_script->debug_get_stack_level_count();
-				// msg.push_back(slc);
 
 				for (int i = 0; i < slc; i++) {
 
-					Dictionary d;
-					d["file"] = p_script->debug_get_stack_level_source(i);
-					d["line"] = p_script->debug_get_stack_level_line(i);
-					d["function"] = p_script->debug_get_stack_level_function(i);
-					//d["id"]=p_script->debug_get_stack_level_
-					d["id"] = 0;
-
-					msg.push_back(d);
+					ScriptLanguage::StackInfo frame;
+					frame.file = p_script->debug_get_stack_level_source(i);
+					frame.line = p_script->debug_get_stack_level_line(i);
+					frame.func = p_script->debug_get_stack_level_function(i);
+					dump.frames.push_back(frame);
 				}
-
+				dump.serialize(msg);
 				_connection_put_var(msg);
 
 			} else if (command == "get_stack_frame_vars") {
@@ -427,10 +414,7 @@ void ScriptDebuggerRemote::_get_output() {
 		locking = true;
 		Array msg;
 		msg.push_back("message:" + messages.front()->get().message);
-		// msg.push_back(messages.front()->get().data.size());
-		for (int i = 0; i < messages.front()->get().data.size(); i++) {
-			msg.push_back(messages.front()->get().data[i]);
-		}
+		messages.front()->get().serialize(msg);
 		_connection_put_var(msg);
 		messages.pop_front();
 		locking = false;
@@ -469,26 +453,7 @@ void ScriptDebuggerRemote::_get_output() {
 		Array msg;
 		msg.push_back("error");
 		OutputError oe = errors.front()->get();
-
-		// msg.push_back(oe.callstack.size() + 2); // XXX who are you? Why there? Why was not breaking before? Who knows....
-
-		Array error_data;
-
-		error_data.push_back(oe.hr);
-		error_data.push_back(oe.min);
-		error_data.push_back(oe.sec);
-		error_data.push_back(oe.msec);
-		error_data.push_back(oe.source_func);
-		error_data.push_back(oe.source_file);
-		error_data.push_back(oe.source_line);
-		error_data.push_back(oe.error);
-		error_data.push_back(oe.error_descr);
-		error_data.push_back(oe.warning);
-		msg.push_back(error_data);
-		msg.push_back(oe.callstack.size());
-		for (int i = 0; i < oe.callstack.size(); i++) {
-			msg.push_back(oe.callstack[i]);
-		}
+		oe.serialize(msg);
 		_connection_put_var(msg);
 		errors.pop_front();
 		locking = false;
@@ -1122,7 +1087,6 @@ void ScriptDebuggerRemote::send_error(const String &p_func, const String &p_file
 	oe.min = (time / 60000) % 60;
 	oe.sec = (time / 1000) % 60;
 	oe.msec = time % 1000;
-	Array cstack;
 
 	uint64_t ticks = OS::get_singleton()->get_ticks_usec() / 1000;
 	msec_count += ticks - last_msec;
@@ -1137,14 +1101,8 @@ void ScriptDebuggerRemote::send_error(const String &p_func, const String &p_file
 		n_warnings_dropped = 0;
 	}
 
-	cstack.resize(p_stack_info.size() * 3);
-	for (int i = 0; i < p_stack_info.size(); i++) {
-		cstack[i * 3 + 0] = p_stack_info[i].file;
-		cstack[i * 3 + 1] = p_stack_info[i].func;
-		cstack[i * 3 + 2] = p_stack_info[i].line;
-	}
+	oe.callstack.append_array(p_stack_info);
 
-	oe.callstack = cstack;
 	if (oe.warning) {
 		warn_count++;
 	} else {

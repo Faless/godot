@@ -59,12 +59,6 @@ public:
 class ScriptDebuggerRemote : public ScriptDebugger {
 
 private:
-	struct Message {
-
-		String message;
-		Array data;
-	};
-
 	struct ProfileInfoSort {
 
 		bool operator()(ScriptLanguage::ProfilingInfo *A, ScriptLanguage::ProfilingInfo *B) const {
@@ -91,21 +85,6 @@ private:
 	Object *performance;
 	bool requested_quit;
 	Mutex *mutex;
-
-	struct OutputError {
-
-		int hr;
-		int min;
-		int sec;
-		int msec;
-		String source_file;
-		String source_func;
-		int source_line;
-		String error;
-		String error_descr;
-		bool warning;
-		Array callstack;
-	};
 
 	List<String> output_strings;
 	List<Message> messages;
@@ -174,17 +153,7 @@ private:
 	Ref<ScriptDebuggerConnection> connection;
 
 public:
-	struct ResourceUsage {
-
-		String path;
-		String format;
-		String type;
-		RID id;
-		int vram;
-		bool operator<(const ResourceUsage &p_img) const { return vram == p_img.vram ? id < p_img.id : vram > p_img.vram; }
-	};
-
-	typedef void (*ResourceUsageFunc)(List<ResourceUsage> *);
+	typedef void (*ResourceUsageFunc)(ResourceUsage *);
 
 	static ResourceUsageFunc resource_usage_func;
 

@@ -9,7 +9,6 @@
 class ScriptDebugger {
 
 public:
-
 	class ResourceInfo {
 	public:
 		String path;
@@ -51,20 +50,9 @@ public:
 		}
 	};
 
-	class ScriptStackFrame {
-	public:
-		String file;
-		int line;
-		String function;
-
-		ScriptStackFrame() {
-			line = -1;
-		}
-	};
-
 	class ScriptStackDump {
 	public:
-		List<ScriptStackFrame> frames;
+		List<ScriptLanguage::StackInfo> frames;
 		ScriptStackDump() {}
 
 		void serialize(Array &r_arr);
@@ -95,7 +83,7 @@ public:
 		String error;
 		String error_descr;
 		bool warning;
-		Array callstack;
+		Vector<ScriptLanguage::StackInfo> callstack;
 
 		OutputError() {
 			hr = -1;
@@ -107,7 +95,7 @@ public:
 		}
 
 		void serialize(Array &r_arr);
-		void deserialize();
+		bool deserialize(Array p_data);
 	};
 
 	/*
@@ -123,12 +111,11 @@ public:
 		List<ResourceInfo> infos;
 
 		void serialize(Array &r_arr);
-		void deserialize();
+		bool deserialize(Array p_arr);
 	};
 
 	class ProfilerFrame {
 	public:
-
 		int frame_number;
 		float frame_time;
 		float idle_time;
@@ -161,7 +148,6 @@ protected:
 	ScriptLanguage *break_lang;
 
 public:
-
 	_FORCE_INLINE_ static ScriptDebugger *get_singleton() { return singleton; }
 	void set_lines_left(int p_left);
 	int get_lines_left() const;
@@ -203,4 +189,3 @@ public:
 };
 
 #endif // SCRIPT_DEBUGGER_H
-

@@ -967,17 +967,16 @@ void ScriptEditorDebugger::_parse_message(const String &p_msg, const Array &p_da
 		ERR_FAIL_COND(p_data.size() < 8);
 
 		EditorProfiler::Metric metric;
+		ScriptDebugger::ProfilerFrame frame;
+		frame.deserialize(p_data);
 		metric.valid = true;
-		metric.frame_number = p_data[0];
-		metric.frame_time = p_data[1];
-		metric.idle_time = p_data[2];
-		metric.physics_time = p_data[3];
-		metric.physics_frame_time = p_data[4];
-		// XXX What is 5 ?!? Total script time apparently!
-		int frame_data_amount = p_data[6];
-		int frame_function_amount = p_data[7];
-
-		ERR_FAIL_COND(p_data.size() < 8 + (frame_data_amount * 2) + (frame_function_amount * 4));
+		metric.frame_number = frame.frame_number;
+		metric.frame_time = frame.frame_time;
+		metric.idle_time = frame.idle_time;
+		metric.physics_time = frame.physics_time;
+		metric.physics_frame_time = frame.physics_frame_time;
+		int frame_data_amount = frame.frames_data.size();
+		int frame_function_amount = frame.frame_functions.size();
 
 		if (frame_data_amount) {
 			EditorProfiler::Metric::Category frame_time;
@@ -1013,12 +1012,11 @@ void ScriptEditorDebugger::_parse_message(const String &p_msg, const Array &p_da
 			metric.categories.push_back(frame_time);
 		}
 
-		int idx = 8;
 		for (int i = 0; i < frame_data_amount; i++) {
 
 			EditorProfiler::Metric::Category c;
-			String name = p_data[idx++];
-			Array values = p_data[idx++];
+			String name = frame.frames_data[i].name;
+			Array values = frame.frames_data[i].data;
 			c.name = name.capitalize();
 			c.items.resize(values.size() / 2);
 			c.total_time = 0;
@@ -1040,16 +1038,16 @@ void ScriptEditorDebugger::_parse_message(const String &p_msg, const Array &p_da
 		}
 
 		EditorProfiler::Metric::Category funcs;
-		funcs.total_time = p_data[5]; //script time
+		funcs.total_time = frame.script_time;
 		funcs.items.resize(frame_function_amount);
 		funcs.name = "Script Functions";
 		funcs.signature = "script_functions";
 		for (int i = 0; i < frame_function_amount; i++) {
 
-			int signature = p_data[idx++];
-			int calls = p_data[idx++];
-			float total = p_data[idx++];
-			float self = p_data[idx++];
+			int signature = frame.frame_functions[i].sig_id;
+			int calls = frame.frame_functions[i].call_count;
+			float total = frame.frame_functions[i].total_time;
+			float self = frame.frame_functions[i].self_time;
 
 			EditorProfiler::Metric::Category::Item item;
 			if (profiler_signature.has(signature)) {

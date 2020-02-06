@@ -101,14 +101,20 @@ void ScriptDebugger::ProfilerFrame::serialize(Array &r_arr) {
 	r_arr.push_back(idle_time);
 	r_arr.push_back(physics_time);
 	r_arr.push_back(physics_frame_time);
-	// r_arr.push_back(USEC_TO_SEC(total_script_time)); // XXX this seems unused
-	// TODO I don't think we need these two.
-	r_arr.push_back(frame_data.size());
+	r_arr.push_back(USEC_TO_SEC(script_time));
+
+	r_arr.push_back(frames_data.size());
 	r_arr.push_back(frame_functions.size());
-	// END TODO
-	for (int i = 0; i < frame_data.size(); i++) {
-		r_arr.push_back(frame_data[i].name);
-		r_arr.push_back(frame_data[i].self_time);
+
+	// Servers profiling info. XXX Awful to parse.
+	for (int i = 0; i < frames_data.size(); i++) {
+		// TODO how shitty is this?!? (Kept as reference and commenting)
+		r_arr.push_back(frames_data[i].name); // Type (physics/process/audio/...)
+		r_arr.push_back(frames_data[i].data.size());
+		for (int j = 0; j < frames_data[i].data.size() / 2; j++) {
+			r_arr.push_back(frames_data[i].data[2 * j]); // NAME
+			r_arr.push_back(frames_data[i].data[2 * j + 1]); // TIME
+		}
 	}
 	for (int i = 0; i < frame_functions.size(); i++) {
 		r_arr.push_back(frame_functions[i].sig_id);
@@ -118,7 +124,40 @@ void ScriptDebugger::ProfilerFrame::serialize(Array &r_arr) {
 	}
 }
 
-void ScriptDebugger::ProfilerFrame::deserialize() {
+bool ScriptDebugger::ProfilerFrame::deserialize(Array p_arr) {
+	CHECK_SIZE(p_arr, 8, "ProfilerFrame");
+	frame_number = p_arr.pop_front();
+	frame_time = p_arr.pop_front();
+	idle_time = p_arr.pop_front();
+	physics_time = p_arr.pop_front();
+	physics_frame_time = p_arr.pop_front();
+	script_time = p_arr.pop_front();
+	uint32_t frame_data_size = p_arr.pop_front();
+	int frame_func_size = p_arr.pop_front();
+	while (frame_data_size) {
+		CHECK_SIZE(p_arr, 2, "ProfilerFrame");
+		frame_data_size--;
+		FrameData fd;
+		fd.name = p_arr.pop_front();
+		int sub_data_size = p_arr.pop_front();
+		CHECK_SIZE(p_arr, sub_data_size, "ProfilerFrame");
+		// TODO XXX see above.
+		for (int j = 0; j < sub_data_size / 2; j++) {
+			fd.data.push_back(p_arr.pop_front()); // NAME
+			fd.data.push_back(p_arr.pop_front()); // TIME
+		}
+		frames_data.push_back(fd);
+	}
+	CHECK_SIZE(p_arr, frame_func_size * 4, "ProfilerFrame");
+	for (int i = 0; i < frame_func_size; i++) {
+		FrameFunction ff;
+		ff.sig_id = p_arr.pop_front();
+		ff.call_count = p_arr.pop_front();
+		ff.self_time = p_arr.pop_front();
+		ff.total_time = p_arr.pop_front();
+		frame_functions.push_back(ff);
+	}
+	return true;
 }
 
 ScriptDebugger *ScriptDebugger::singleton = NULL;

@@ -136,12 +136,6 @@ private:
 	void _send_network_profiling_data();
 	void _send_network_bandwidth_usage();
 
-	struct FrameData {
-
-		StringName name;
-		Array data;
-	};
-
 	Vector<FrameData> profile_frame_data;
 
 	void _put_variable(Array &r_arr, const String &p_name, const Variant &p_variable);

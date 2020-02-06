@@ -98,20 +98,18 @@ public:
 		bool deserialize(Array p_data);
 	};
 
-	/*
-	class ScriptStackVars {
-	public:
-		ScriptStackVars() {
-		}
-	};
-	*/
-
 	class ResourceUsage {
 	public:
 		List<ResourceInfo> infos;
 
 		void serialize(Array &r_arr);
 		bool deserialize(Array p_arr);
+	};
+
+	struct FrameData {
+
+		StringName name;
+		Array data;
 	};
 
 	class ProfilerFrame {
@@ -121,9 +119,9 @@ public:
 		float idle_time;
 		float physics_time;
 		float physics_frame_time;
-		// float script_time; // XXX Removed?
+		float script_time;
 
-		Vector<FrameInfo> frame_data;
+		Vector<FrameData> frames_data;
 		Vector<FrameFunction> frame_functions;
 
 		ProfilerFrame() {
@@ -135,7 +133,7 @@ public:
 		}
 
 		void serialize(Array &r_arr);
-		void deserialize();
+		bool deserialize(Array p_arr);
 	};
 
 protected:

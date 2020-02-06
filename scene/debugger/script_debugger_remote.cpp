@@ -908,26 +908,14 @@ void ScriptDebuggerRemote::_send_profiling_data(bool p_for_frame) {
 
 	//send frames then
 	ProfilerFrame metric;
-	metric.frame_number = Engine::get_singleton()->get_frames_drawn(); // Frame number
+	metric.frame_number = Engine::get_singleton()->get_frames_drawn();
 	metric.frame_time = frame_time;
 	metric.idle_time = idle_time;
 	metric.physics_time = physics_time;
 	metric.physics_frame_time = physics_frame_time;
+	metric.script_time = total_script_time;
 
-	if (p_for_frame) {
-
-		metric.frame_data.resize(profile_frame_data.size());
-		FrameInfo *w = metric.frame_data.ptrw();
-		for (int i = 0; i < profile_frame_data.size(); i++) {
-
-			w[i].name = profile_frame_data[i].name;
-			for (int j = 0; j < profile_frame_data[i].data.size() / 2; j++) { // TODO how shitty is this?!?
-				w[i].name = profile_frame_data[i].data[2 * j];
-				w[i].self_time = profile_frame_data[i].data[2 * j + 1];
-			}
-		}
-	}
-
+	// Add script functions information.
 	metric.frame_functions.resize(to_send);
 	FrameFunction *w = metric.frame_functions.ptrw();
 	for (int i = 0; i < to_send; i++) {
@@ -943,15 +931,15 @@ void ScriptDebuggerRemote::_send_profiling_data(bool p_for_frame) {
 	Array arr;
 	if (p_for_frame) {
 		arr.push_back("profile_frame");
+		// Add profile frame data information.
+		metric.frames_data.append_array(profile_frame_data);
+		metric.serialize(arr);
+		profile_frame_data.clear();
 	} else {
 		arr.push_back("profile_total");
+		metric.serialize(arr);
 	}
-	metric.serialize(arr);
-	//_connection_put_var(arr);
-
-	if (p_for_frame) {
-		profile_frame_data.clear();
-	}
+	_connection_put_var(arr);
 }
 
 void ScriptDebuggerRemote::idle_poll() {

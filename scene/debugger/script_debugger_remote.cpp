@@ -212,7 +212,7 @@ void ScriptDebuggerRemote::debug(ScriptLanguage *p_script, bool p_can_continue, 
 				List<Variant> member_vals;
 				if (ScriptInstance *inst = p_script->debug_get_stack_level_instance(lv)) {
 					members.push_back("self");
-					// member_vals.push_back(inst->get_owner());
+					member_vals.push_back(inst->get_owner());
 				}
 				p_script->debug_get_stack_level_members(lv, &members, &member_vals);
 				ERR_CONTINUE(members.size() != member_vals.size());
@@ -229,16 +229,22 @@ void ScriptDebuggerRemote::debug(ScriptLanguage *p_script, bool p_can_continue, 
 
 				Array msg;
 				msg.push_back("stack_frame_vars");
-				// msg.push_back(3 + (locals.size() + members.size() + globals.size()) * 2);
+				_connection_put_var(msg);
 
+				Array var_msg;
+				ScriptDebugger::ScriptStackVariable stack_var;
 				{ //locals
-					msg.push_back(locals.size());
-
 					List<String>::Element *E = locals.front();
 					List<Variant>::Element *F = local_vals.front();
 
 					while (E) {
-						_put_variable(msg, E->get(), F->get());
+						var_msg.clear();
+						var_msg.push_back("stack_frame_var");
+						stack_var.name = E->get();
+						stack_var.value = F->get();
+						stack_var.type = 0;
+						stack_var.serialize(var_msg);
+						_connection_put_var(var_msg);
 
 						E = E->next();
 						F = F->next();
@@ -246,13 +252,18 @@ void ScriptDebuggerRemote::debug(ScriptLanguage *p_script, bool p_can_continue, 
 				}
 
 				{ //members
-					msg.push_back(members.size());
 
 					List<String>::Element *E = members.front();
 					List<Variant>::Element *F = member_vals.front();
 
 					while (E) {
-						_put_variable(msg, E->get(), F->get());
+						var_msg.clear();
+						var_msg.push_back("stack_frame_var");
+						stack_var.name = E->get();
+						stack_var.value = F->get();
+						stack_var.type = 1;
+						stack_var.serialize(var_msg);
+						_connection_put_var(var_msg);
 
 						E = E->next();
 						F = F->next();
@@ -260,19 +271,23 @@ void ScriptDebuggerRemote::debug(ScriptLanguage *p_script, bool p_can_continue, 
 				}
 
 				{ //globals
-					msg.push_back(globals.size());
 
 					List<String>::Element *E = globals.front();
 					List<Variant>::Element *F = globals_vals.front();
 
 					while (E) {
-						_put_variable(msg, E->get(), F->get());
+						var_msg.clear();
+						var_msg.push_back("stack_frame_var");
+						stack_var.name = E->get();
+						stack_var.value = F->get();
+						stack_var.type = 2;
+						stack_var.serialize(var_msg);
+						_connection_put_var(var_msg);
 
 						E = E->next();
 						F = F->next();
 					}
 				}
-				_connection_put_var(msg);
 
 			} else if (command == "step") {
 

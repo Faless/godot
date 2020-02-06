@@ -736,68 +736,37 @@ void ScriptEditorDebugger::_parse_message(const String &p_msg, const Array &p_da
 
 		variables->clear();
 
-		int ofs = 0;
-		int mcount = p_data[ofs];
-		ofs++;
-		for (int i = 0; i < mcount; i++) {
+	} else if (p_msg == "stack_frame_var") {
 
-			String n = p_data[ofs + i * 2 + 0];
-			Variant v = p_data[ofs + i * 2 + 1];
+		ScriptDebugger::ScriptStackVariable var;
+		var.deserialize(p_data);
+		String n = var.name;
+		Variant v = var.value;
 
-			PropertyHint h = PROPERTY_HINT_NONE;
-			String hs = String();
+		PropertyHint h = PROPERTY_HINT_NONE;
+		String hs = String();
 
-			if (v.get_type() == Variant::OBJECT) {
-				v = Object::cast_to<EncodedObjectAsID>(v)->get_object_id();
-				h = PROPERTY_HINT_OBJECT_ID;
-				hs = "Object";
-			}
-
-			variables->add_property("Locals/" + n, v, h, hs);
+		if (v.get_type() == Variant::OBJECT) {
+			v = Object::cast_to<EncodedObjectAsID>(v)->get_object_id();
+			h = PROPERTY_HINT_OBJECT_ID;
+			hs = "Object";
+		}
+		String type;
+		switch (var.type) {
+			case 0:
+				type = "Locals/";
+				break;
+			case 1:
+				type = "Members/";
+				break;
+			case 2:
+				type = "Globals/";
+				break;
+			default:
+				type = "Unknown/";
 		}
 
-		ofs += mcount * 2;
-		mcount = p_data[ofs];
-		ofs++;
-		for (int i = 0; i < mcount; i++) {
-
-			String n = p_data[ofs + i * 2 + 0];
-			Variant v = p_data[ofs + i * 2 + 1];
-			PropertyHint h = PROPERTY_HINT_NONE;
-			String hs = String();
-
-			if (v.get_type() == Variant::OBJECT) {
-				v = Object::cast_to<EncodedObjectAsID>(v)->get_object_id();
-				h = PROPERTY_HINT_OBJECT_ID;
-				hs = "Object";
-			}
-
-			variables->add_property("Members/" + n, v, h, hs);
-
-			if (n == "self") {
-				_scene_tree_property_select_object(v);
-			}
-		}
-
-		ofs += mcount * 2;
-		mcount = p_data[ofs];
-		ofs++;
-		for (int i = 0; i < mcount; i++) {
-
-			String n = p_data[ofs + i * 2 + 0];
-			Variant v = p_data[ofs + i * 2 + 1];
-			PropertyHint h = PROPERTY_HINT_NONE;
-			String hs = String();
-
-			if (v.get_type() == Variant::OBJECT) {
-				v = Object::cast_to<EncodedObjectAsID>(v)->get_object_id();
-				h = PROPERTY_HINT_OBJECT_ID;
-				hs = "Object";
-			}
-
-			variables->add_property("Globals/" + n, v, h, hs);
-		}
-
+		variables->add_property(type + n, v, h, hs);
 		variables->update();
 		inspector->edit(variables);
 

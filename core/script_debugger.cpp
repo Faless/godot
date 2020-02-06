@@ -1,4 +1,6 @@
-#include "core/script_debugger.h"
+#include "script_debugger.h"
+
+#include "core/io/marshalls.h"
 
 #define CHECK_SIZE(arr, expected, what) ERR_FAIL_COND_V_MSG((uint32_t)arr.size() < (uint32_t)(expected), false, String("Malformed ") + what + " message from script debugger, message too short. Exptected size: " + itos(expected) + ", actual size: " + itos(arr.size()))
 
@@ -15,13 +17,42 @@ bool ScriptDebugger::ScriptStackDump::deserialize(Array p_arr) {
 	CHECK_SIZE(p_arr, 1, "ScriptStackDump");
 	uint32_t size = p_arr.pop_front();
 	CHECK_SIZE(p_arr, size * 3, "ScriptStackDump");
-	for (int i = 0; i < size; i++) {
+	for (uint32_t i = 0; i < size; i++) {
 		ScriptLanguage::StackInfo sf;
 		sf.file = p_arr.pop_front();
 		sf.line = p_arr.pop_front();
 		sf.func = p_arr.pop_front();
 		frames.push_back(sf);
 	}
+	return true;
+}
+
+void ScriptDebugger::ScriptStackVariable::serialize(Array &r_arr, int max_size) {
+	r_arr.push_back(name);
+	r_arr.push_back(type);
+
+	Variant var = value;
+	if (value.get_type() == Variant::OBJECT && !ObjectDB::instance_validate(value)) {
+		var = Variant();
+	}
+
+	int len = 0;
+	Error err = encode_variant(var, NULL, len, true);
+	if (err != OK)
+		ERR_PRINT("Failed to encode variant.");
+
+	if (len > max_size) {
+		r_arr.push_back(Variant());
+	} else {
+		r_arr.push_back(var);
+	}
+}
+
+bool ScriptDebugger::ScriptStackVariable::deserialize(Array p_arr) {
+	CHECK_SIZE(p_arr, 3, "ScriptStackVariable");
+	name = p_arr.pop_front();
+	type = p_arr.pop_front();
+	value = p_arr.pop_front();
 	return true;
 }
 

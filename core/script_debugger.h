@@ -50,6 +50,19 @@ public:
 		}
 	};
 
+	class ScriptStackVariable {
+	public:
+		String name;
+		Variant value;
+		int type;
+		ScriptStackVariable() {
+			type = -1;
+		}
+
+		void serialize(Array &r_arr, int max_size = 1 << 20); // 1 MiB default.
+		bool deserialize(Array p_arr);
+	};
+
 	class ScriptStackDump {
 	public:
 		List<ScriptLanguage::StackInfo> frames;

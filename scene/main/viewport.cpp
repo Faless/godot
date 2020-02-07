@@ -34,6 +34,7 @@
 #include "core/os/input.h"
 #include "core/os/os.h"
 #include "core/project_settings.h"
+#include "core/script_debugger.h"
 #include "scene/2d/collision_object_2d.h"
 #include "scene/3d/camera.h"
 #include "scene/3d/collision_object.h"

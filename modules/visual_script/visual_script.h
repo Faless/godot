@@ -32,6 +32,7 @@
 #define VISUAL_SCRIPT_H
 
 #include "core/os/thread.h"
+#include "core/script_debugger.h"
 #include "core/script_language.h"
 
 class VisualScriptInstance;

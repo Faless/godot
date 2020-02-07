@@ -34,6 +34,7 @@
 #include "collision_solver_2d_sw.h"
 #include "core/os/os.h"
 #include "core/project_settings.h"
+#include "core/script_debugger.h"
 #include "core/script_language.h"
 
 #define FLUSH_QUERY_CHECK(m_object) \

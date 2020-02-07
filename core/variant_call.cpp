@@ -36,6 +36,7 @@
 #include "core/io/compression.h"
 #include "core/object.h"
 #include "core/os/os.h"
+#include "core/script_debugger.h"
 #include "core/script_language.h"
 
 typedef void (*VariantFunc)(Variant &r_ret, Variant &p_self, const Variant **p_args);

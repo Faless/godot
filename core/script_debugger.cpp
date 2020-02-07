@@ -1,5 +1,5 @@
 /*************************************************************************/
-/*  script_debugger_local.h                                              */
+/*  script_debugger.cpp                                                  */
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
@@ -28,41 +28,87 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 
-#ifndef SCRIPT_DEBUGGER_LOCAL_H
-#define SCRIPT_DEBUGGER_LOCAL_H
+#include "script_debugger.h"
 
-#include "core/list.h"
-#include "core/script_debugger.h"
-#include "core/script_language.h"
+ScriptDebugger *ScriptDebugger::singleton = NULL;
 
-class ScriptDebuggerLocal : public ScriptDebugger {
+void ScriptDebugger::set_lines_left(int p_left) {
 
-	bool profiling;
-	float frame_time, idle_time, physics_time, physics_frame_time;
-	uint64_t idle_accum;
-	String target_function;
-	Map<String, String> options;
+	lines_left = p_left;
+}
 
-	Vector<ScriptLanguage::ProfilingInfo> pinfo;
+int ScriptDebugger::get_lines_left() const {
 
-	Pair<String, int> to_breakpoint(const String &p_line);
-	void print_variables(const List<String> &names, const List<Variant> &values, const String &variable_prefix);
+	return lines_left;
+}
 
-public:
-	void debug(ScriptLanguage *p_script, bool p_can_continue, bool p_is_error_breakpoint);
-	virtual void send_message(const String &p_message, const Array &p_args);
-	virtual void send_error(const String &p_func, const String &p_file, int p_line, const String &p_err, const String &p_descr, ErrorHandlerType p_type, const Vector<ScriptLanguage::StackInfo> &p_stack_info);
+void ScriptDebugger::set_depth(int p_depth) {
 
-	virtual bool is_profiling() const { return profiling; }
-	virtual void add_profiling_frame_data(const StringName &p_name, const Array &p_data) {}
+	depth = p_depth;
+}
 
-	virtual void idle_poll();
+int ScriptDebugger::get_depth() const {
 
-	virtual void profiling_start();
-	virtual void profiling_end();
-	virtual void profiling_set_frame_times(float p_frame_time, float p_idle_time, float p_physics_time, float p_physics_frame_time);
+	return depth;
+}
 
-	ScriptDebuggerLocal();
-};
+void ScriptDebugger::insert_breakpoint(int p_line, const StringName &p_source) {
 
-#endif // SCRIPT_DEBUGGER_LOCAL_H
+	if (!breakpoints.has(p_line))
+		breakpoints[p_line] = Set<StringName>();
+	breakpoints[p_line].insert(p_source);
+}
+
+void ScriptDebugger::remove_breakpoint(int p_line, const StringName &p_source) {
+
+	if (!breakpoints.has(p_line))
+		return;
+
+	breakpoints[p_line].erase(p_source);
+	if (breakpoints[p_line].size() == 0)
+		breakpoints.erase(p_line);
+}
+bool ScriptDebugger::is_breakpoint(int p_line, const StringName &p_source) const {
+
+	if (!breakpoints.has(p_line))
+		return false;
+	return breakpoints[p_line].has(p_source);
+}
+bool ScriptDebugger::is_breakpoint_line(int p_line) const {
+
+	return breakpoints.has(p_line);
+}
+
+String ScriptDebugger::breakpoint_find_source(const String &p_source) const {
+
+	return p_source;
+}
+
+void ScriptDebugger::clear_breakpoints() {
+
+	breakpoints.clear();
+}
+
+void ScriptDebugger::idle_poll() {
+}
+
+void ScriptDebugger::line_poll() {
+}
+
+void ScriptDebugger::set_break_language(ScriptLanguage *p_lang) {
+
+	break_lang = p_lang;
+}
+
+ScriptLanguage *ScriptDebugger::get_break_language() const {
+
+	return break_lang;
+}
+
+ScriptDebugger::ScriptDebugger() {
+
+	singleton = this;
+	lines_left = -1;
+	depth = -1;
+	break_lang = NULL;
+}

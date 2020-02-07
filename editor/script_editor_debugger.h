@@ -228,6 +228,8 @@ private:
 	void _item_menu_id_pressed(int p_option);
 	void _tab_changed(int p_tab);
 
+	void _put_msg(String p_message, Array p_data);
+	bool is_peer_connected() { return connection.is_valid() && connection->is_connected_to_host(); };
 	void _export_csv();
 
 	void _clear_execution();

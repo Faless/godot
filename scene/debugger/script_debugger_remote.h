@@ -42,12 +42,6 @@ class SceneTree;
 
 class ScriptDebuggerRemote : public ScriptDebugger {
 
-	struct Message {
-
-		String message;
-		Array data;
-	};
-
 	struct ProfileInfoSort {
 
 		bool operator()(ScriptLanguage::ProfilingInfo *A, ScriptLanguage::ProfilingInfo *B) const {
@@ -78,21 +72,6 @@ class ScriptDebuggerRemote : public ScriptDebugger {
 	bool requested_quit;
 	Mutex *mutex;
 
-	struct OutputError {
-
-		int hr;
-		int min;
-		int sec;
-		int msec;
-		String source_file;
-		String source_func;
-		int source_line;
-		String error;
-		String error_descr;
-		bool warning;
-		Array callstack;
-	};
-
 	List<String> output_strings;
 	List<Message> messages;
 	int max_messages_per_frame;
@@ -121,7 +100,7 @@ class ScriptDebuggerRemote : public ScriptDebugger {
 
 	SceneTree *scene_tree;
 
-	bool _parse_live_edit(const Array &p_command);
+	void _parse_message(const String p_command, const Array &p_data, ScriptLanguage *p_script = NULL);
 
 	void _set_object_property(ObjectID p_id, const String &p_property, const Variant &p_value);
 
@@ -133,36 +112,19 @@ class ScriptDebuggerRemote : public ScriptDebugger {
 	ErrorHandlerList eh;
 	static void _err_handler(void *, const char *, const char *, int p_line, const char *, const char *, ErrorHandlerType p_type);
 
+	void _put_msg(String p_message, Array p_data);
 	void _send_profiling_data(bool p_for_frame);
 	void _send_network_profiling_data();
 	void _send_network_bandwidth_usage();
 
-	struct FrameData {
-
-		StringName name;
-		Array data;
-	};
-
 	Vector<FrameData> profile_frame_data;
-
-	void _put_variable(const String &p_name, const Variant &p_variable);
 
 	void _save_node(ObjectID id, const String &p_path);
 
 	bool skip_breakpoints;
 
 public:
-	struct ResourceUsage {
-
-		String path;
-		String format;
-		String type;
-		RID id;
-		int vram;
-		bool operator<(const ResourceUsage &p_img) const { return vram == p_img.vram ? id < p_img.id : vram > p_img.vram; }
-	};
-
-	typedef void (*ResourceUsageFunc)(List<ResourceUsage> *);
+	typedef void (*ResourceUsageFunc)(ResourceUsage *);
 
 	static ResourceUsageFunc resource_usage_func;
 

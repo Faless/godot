@@ -42,24 +42,20 @@
 #include "scene/resources/packed_scene.h"
 #include "servers/visual_server.h"
 
+void ScriptDebuggerRemote::_put_msg(String p_message, Array p_data) {
+	Array msg;
+	msg.push_back(p_message);
+	msg.push_back(p_data);
+	packet_peer_stream->put_var(msg);
+}
+
 void ScriptDebuggerRemote::_send_video_memory() {
 
-	List<ResourceUsage> usage;
+	ResourceUsage usage;
 	if (resource_usage_func)
 		resource_usage_func(&usage);
 
-	usage.sort();
-
-	packet_peer_stream->put_var("message:video_mem");
-	packet_peer_stream->put_var(usage.size() * 4);
-
-	for (List<ResourceUsage>::Element *E = usage.front(); E; E = E->next()) {
-
-		packet_peer_stream->put_var(E->get().path);
-		packet_peer_stream->put_var(E->get().type);
-		packet_peer_stream->put_var(E->get().format);
-		packet_peer_stream->put_var(E->get().vram);
-	}
+	_put_msg("message:video_mem", usage.serialize());
 }
 
 Error ScriptDebuggerRemote::connect_to_host(const String &p_host, uint16_t p_port) {
@@ -101,27 +97,6 @@ Error ScriptDebuggerRemote::connect_to_host(const String &p_host, uint16_t p_por
 	return OK;
 }
 
-void ScriptDebuggerRemote::_put_variable(const String &p_name, const Variant &p_variable) {
-
-	packet_peer_stream->put_var(p_name);
-
-	Variant var = p_variable;
-	if (p_variable.get_type() == Variant::OBJECT && !ObjectDB::instance_validate(p_variable)) {
-		var = Variant();
-	}
-
-	int len = 0;
-	Error err = encode_variant(var, NULL, len, true);
-	if (err != OK)
-		ERR_PRINT("Failed to encode variant.");
-
-	if (len > packet_peer_stream->get_output_buffer_max_size()) { //limit to max size
-		packet_peer_stream->put_var(Variant());
-	} else {
-		packet_peer_stream->put_var(var);
-	}
-}
-
 void ScriptDebuggerRemote::_save_node(ObjectID id, const String &p_path) {
 
 	Node *node = Object::cast_to<Node>(ObjectDB::get_instance(id));
@@ -130,6 +105,266 @@ void ScriptDebuggerRemote::_save_node(ObjectID id, const String &p_path) {
 	Ref<PackedScene> ps = memnew(PackedScene);
 	ps->pack(node);
 	ResourceSaver::save(p_path, ps);
+}
+
+void ScriptDebuggerRemote::_parse_message(const String p_command, const Array &p_data, ScriptLanguage *p_script) {
+
+	if (p_command == "request_scene_tree") {
+#ifdef DEBUG_ENABLED
+		if (scene_tree)
+			scene_tree->_debugger_request_tree();
+#endif
+	} else if (p_command == "request_video_mem") {
+		_send_video_memory();
+
+	} else if (p_command == "inspect_object") {
+		ERR_FAIL_COND(p_data.size() < 1);
+		ObjectID id = p_data[0];
+		_send_object_id(id);
+
+	} else if (p_command == "set_object_property") {
+		ERR_FAIL_COND(p_data.size() < 3);
+		_set_object_property(p_data[0], p_data[1], p_data[2]);
+
+	} else if (command == "save_node") {
+		ERR_FAIL_COND(p_data.size() < 2);
+		_save_node(cmd[1], cmd[2]);
+	} else if (p_command == "start_profiling") {
+		ERR_FAIL_COND(p_data.size() < 1);
+
+		for (int i = 0; i < ScriptServer::get_language_count(); i++) {
+			ScriptServer::get_language(i)->profiling_start();
+		}
+
+		max_frame_functions = p_data[0];
+		profiler_function_signature_map.clear();
+		profiling = true;
+		frame_time = 0;
+		idle_time = 0;
+		physics_time = 0;
+		physics_frame_time = 0;
+		print_line("PROFILING ALRIGHT!");
+
+	} else if (p_command == "stop_profiling") {
+		for (int i = 0; i < ScriptServer::get_language_count(); i++) {
+			ScriptServer::get_language(i)->profiling_stop();
+		}
+		profiling = false;
+		_send_profiling_data(false);
+		print_line("PROFILING END!");
+
+	} else if (p_command == "start_network_profiling") {
+		multiplayer->profiling_start();
+		profiling_network = true;
+
+	} else if (p_command == "stop_network_profiling") {
+		multiplayer->profiling_end();
+		profiling_network = false;
+
+	} else if (p_command == "override_camera_2D:set") {
+		ERR_FAIL_COND(p_data.size() < 1);
+		bool enforce = p_data[0];
+
+		if (scene_tree) {
+			scene_tree->get_root()->enable_canvas_transform_override(enforce);
+		}
+
+	} else if (p_command == "override_camera_2D:transform") {
+		ERR_FAIL_COND(p_data.size() < 1);
+		Transform2D transform = p_data[1];
+		if (scene_tree) {
+			scene_tree->get_root()->set_canvas_transform_override(transform);
+		}
+
+	} else if (p_command == "override_camera_3D:set") {
+		ERR_FAIL_COND(p_data.size() < 1);
+		bool enable = p_data[0];
+		if (scene_tree) {
+			scene_tree->get_root()->enable_camera_override(enable);
+		}
+
+	} else if (p_command == "override_camera_3D:transform") {
+		ERR_FAIL_COND(p_data.size() < 5);
+		Transform transform = p_data[0];
+		bool is_perspective = p_data[1];
+		float size_or_fov = p_data[2];
+		float near = p_data[3];
+		float far = p_data[4];
+		if (scene_tree) {
+			if (is_perspective) {
+				scene_tree->get_root()->set_camera_override_perspective(size_or_fov, near, far);
+			} else {
+				scene_tree->get_root()->set_camera_override_orthogonal(size_or_fov, near, far);
+			}
+			scene_tree->get_root()->set_camera_override_transform(transform);
+		}
+
+	} else if (p_command == "reload_scripts") {
+		reload_all_scripts = true;
+
+	} else if (p_command == "breakpoint") {
+		ERR_FAIL_COND(p_data.size() < 3);
+		bool set = p_data[2];
+		if (set)
+			insert_breakpoint(p_data[1], p_data[0]);
+		else
+			remove_breakpoint(p_data[1], p_data[0]);
+
+	} else if (p_command == "set_skip_breakpoints") {
+		ERR_FAIL_COND(p_data.size() < 1);
+		skip_breakpoints = p_data[0];
+
+	} else if (p_command == "get_stack_dump") {
+		ERR_FAIL_COND(!p_script);
+		ScriptStackDump dump;
+		int slc = p_script->debug_get_stack_level_count();
+		for (int i = 0; i < slc; i++) {
+			ScriptLanguage::StackInfo frame;
+			frame.file = p_script->debug_get_stack_level_source(i);
+			frame.line = p_script->debug_get_stack_level_line(i);
+			frame.func = p_script->debug_get_stack_level_function(i);
+			dump.frames.push_back(frame);
+		}
+		_put_msg("stack_dump", dump.serialize());
+
+	} else if (p_command == "get_stack_frame_vars") {
+		ERR_FAIL_COND(p_data.size() != 1);
+		ERR_FAIL_COND(!p_script);
+		int lv = p_data[0];
+
+		List<String> members;
+		List<Variant> member_vals;
+		if (ScriptInstance *inst = p_script->debug_get_stack_level_instance(lv)) {
+			members.push_back("self");
+			member_vals.push_back(inst->get_owner());
+		}
+		p_script->debug_get_stack_level_members(lv, &members, &member_vals);
+		ERR_FAIL_COND(members.size() != member_vals.size());
+
+		List<String> locals;
+		List<Variant> local_vals;
+		p_script->debug_get_stack_level_locals(lv, &locals, &local_vals);
+		ERR_FAIL_COND(locals.size() != local_vals.size());
+
+		List<String> globals;
+		List<Variant> globals_vals;
+		p_script->debug_get_globals(&globals, &globals_vals);
+		ERR_FAIL_COND(globals.size() != globals_vals.size());
+
+		_put_msg("stack_frame_vars", Array());
+
+		ScriptDebugger::ScriptStackVariable stvar;
+		{ //locals
+			List<String>::Element *E = locals.front();
+			List<Variant>::Element *F = local_vals.front();
+			while (E) {
+				stvar.name = E->get();
+				stvar.value = F->get();
+				stvar.type = 0;
+				_put_msg("stack_frame_var", stvar.serialize());
+
+				E = E->next();
+				F = F->next();
+			}
+		}
+
+		{ //members
+			List<String>::Element *E = members.front();
+			List<Variant>::Element *F = member_vals.front();
+			while (E) {
+				stvar.name = E->get();
+				stvar.value = F->get();
+				stvar.type = 1;
+				_put_msg("stack_frame_var", stvar.serialize());
+
+				E = E->next();
+				F = F->next();
+			}
+		}
+
+		{ //globals
+			List<String>::Element *E = globals.front();
+			List<Variant>::Element *F = globals_vals.front();
+			while (E) {
+				stvar.name = E->get();
+				stvar.value = F->get();
+				stvar.type = 2;
+				_put_msg("stack_frame_var", stvar.serialize());
+
+				E = E->next();
+				F = F->next();
+			}
+		}
+
+	} else if (scene_tree && p_command.begins_with("live_")) {
+		// Live edit commands
+#ifdef DEBUG_ENABLED
+		if (p_command == "live_set_root") {
+			ERR_FAIL_COND(p_data.size() < 2);
+			scene_tree->_live_edit_root_func(p_data[0], p_data[1]);
+
+		} else if (p_command == "live_node_path") {
+			ERR_FAIL_COND(p_data.size() < 2);
+			scene_tree->_live_edit_node_path_func(p_data[0], p_data[1]);
+
+		} else if (p_command == "live_res_path") {
+			ERR_FAIL_COND(p_data.size() < 2);
+			scene_tree->_live_edit_res_path_func(p_data[0], p_data[1]);
+
+		} else if (p_command == "live_node_prop_res") {
+			ERR_FAIL_COND(p_data.size() < 3);
+			scene_tree->_live_edit_node_set_res_func(p_data[0], p_data[1], p_data[2]);
+
+		} else if (p_command == "live_node_prop") {
+			ERR_FAIL_COND(p_data.size() < 3);
+			scene_tree->_live_edit_node_set_func(p_data[0], p_data[1], p_data[2]);
+
+		} else if (p_command == "live_res_prop_res") {
+			ERR_FAIL_COND(p_data.size() < 3);
+			scene_tree->_live_edit_res_set_res_func(p_data[0], p_data[1], p_data[2]);
+
+		} else if (p_command == "live_res_prop") {
+			ERR_FAIL_COND(p_data.size() < 3);
+			scene_tree->_live_edit_res_set_func(p_data[0], p_data[1], p_data[2]);
+
+		} else if (p_command == "live_node_call") {
+			ERR_FAIL_COND(p_data.size() < 7);
+			scene_tree->_live_edit_node_call_func(p_data[0], p_data[1], p_data[2], p_data[3], p_data[4], p_data[5], p_data[6]);
+
+		} else if (p_command == "live_res_call") {
+			ERR_FAIL_COND(p_data.size() < 7);
+			scene_tree->_live_edit_res_call_func(p_data[0], p_data[1], p_data[2], p_data[3], p_data[4], p_data[5], p_data[6]);
+
+		} else if (p_command == "live_create_node") {
+			ERR_FAIL_COND(p_data.size() < 3);
+			scene_tree->_live_edit_create_node_func(p_data[0], p_data[1], p_data[2]);
+
+		} else if (p_command == "live_instance_node") {
+			ERR_FAIL_COND(p_data.size() < 3);
+			scene_tree->_live_edit_instance_node_func(p_data[0], p_data[1], p_data[2]);
+
+		} else if (p_command == "live_remove_node") {
+			ERR_FAIL_COND(p_data.size() < 1);
+			scene_tree->_live_edit_remove_node_func(p_data[0]);
+
+		} else if (p_command == "live_remove_and_keep_node") {
+			ERR_FAIL_COND(p_data.size() < 2);
+			scene_tree->_live_edit_remove_and_keep_node_func(p_data[0], p_data[1]);
+
+		} else if (p_command == "live_restore_node") {
+			ERR_FAIL_COND(p_data.size() < 3);
+			scene_tree->_live_edit_restore_node_func(p_data[0], p_data[1], p_data[2]);
+
+		} else if (p_command == "live_duplicate_node") {
+			ERR_FAIL_COND(p_data.size() < 2);
+			scene_tree->_live_edit_duplicate_node_func(p_data[0], p_data[1]);
+
+		} else if (p_command == "live_reparent_node") {
+			ERR_FAIL_COND(p_data.size() < 4);
+			scene_tree->_live_edit_reparent_node_func(p_data[0], p_data[1], p_data[2], p_data[3]);
+		}
+#endif
+	}
 }
 
 void ScriptDebuggerRemote::debug(ScriptLanguage *p_script, bool p_can_continue, bool p_is_error_breakpoint) {
@@ -142,10 +377,10 @@ void ScriptDebuggerRemote::debug(ScriptLanguage *p_script, bool p_can_continue, 
 
 	ERR_FAIL_COND_MSG(!tcp_client->is_connected_to_host(), "Script Debugger failed to connect, but being used anyway.");
 
-	packet_peer_stream->put_var("debug_enter");
-	packet_peer_stream->put_var(2);
-	packet_peer_stream->put_var(p_can_continue);
-	packet_peer_stream->put_var(p_script->debug_get_error());
+	Array msg;
+	msg.push_back(p_can_continue);
+	msg.push_back(p_script->debug_get_error());
+	_put_msg("debug_enter", msg);
 
 	skip_profile_frame = true; // to avoid super long frame time for the frame
 
@@ -170,101 +405,13 @@ void ScriptDebuggerRemote::debug(ScriptLanguage *p_script, bool p_can_continue, 
 
 			Array cmd = var;
 
-			ERR_CONTINUE(cmd.size() == 0);
+			ERR_CONTINUE(cmd.size() != 2);
 			ERR_CONTINUE(cmd[0].get_type() != Variant::STRING);
+			ERR_CONTINUE(cmd[1].get_type() != Variant::ARRAY);
 
 			String command = cmd[0];
-
-			if (command == "get_stack_dump") {
-
-				packet_peer_stream->put_var("stack_dump");
-				int slc = p_script->debug_get_stack_level_count();
-				packet_peer_stream->put_var(slc);
-
-				for (int i = 0; i < slc; i++) {
-
-					Dictionary d;
-					d["file"] = p_script->debug_get_stack_level_source(i);
-					d["line"] = p_script->debug_get_stack_level_line(i);
-					d["function"] = p_script->debug_get_stack_level_function(i);
-					//d["id"]=p_script->debug_get_stack_level_
-					d["id"] = 0;
-
-					packet_peer_stream->put_var(d);
-				}
-
-			} else if (command == "get_stack_frame_vars") {
-
-				cmd.remove(0);
-				ERR_CONTINUE(cmd.size() != 1);
-				int lv = cmd[0];
-
-				List<String> members;
-				List<Variant> member_vals;
-				if (ScriptInstance *inst = p_script->debug_get_stack_level_instance(lv)) {
-					members.push_back("self");
-					member_vals.push_back(inst->get_owner());
-				}
-				p_script->debug_get_stack_level_members(lv, &members, &member_vals);
-				ERR_CONTINUE(members.size() != member_vals.size());
-
-				List<String> locals;
-				List<Variant> local_vals;
-				p_script->debug_get_stack_level_locals(lv, &locals, &local_vals);
-				ERR_CONTINUE(locals.size() != local_vals.size());
-
-				List<String> globals;
-				List<Variant> globals_vals;
-				p_script->debug_get_globals(&globals, &globals_vals);
-				ERR_CONTINUE(globals.size() != globals_vals.size());
-
-				packet_peer_stream->put_var("stack_frame_vars");
-				packet_peer_stream->put_var(3 + (locals.size() + members.size() + globals.size()) * 2);
-
-				{ //locals
-					packet_peer_stream->put_var(locals.size());
-
-					List<String>::Element *E = locals.front();
-					List<Variant>::Element *F = local_vals.front();
-
-					while (E) {
-						_put_variable(E->get(), F->get());
-
-						E = E->next();
-						F = F->next();
-					}
-				}
-
-				{ //members
-					packet_peer_stream->put_var(members.size());
-
-					List<String>::Element *E = members.front();
-					List<Variant>::Element *F = member_vals.front();
-
-					while (E) {
-
-						_put_variable(E->get(), F->get());
-
-						E = E->next();
-						F = F->next();
-					}
-				}
-
-				{ //globals
-					packet_peer_stream->put_var(globals.size());
-
-					List<String>::Element *E = globals.front();
-					List<Variant>::Element *F = globals_vals.front();
-
-					while (E) {
-						_put_variable(E->get(), F->get());
-
-						E = E->next();
-						F = F->next();
-					}
-				}
-
-			} else if (command == "step") {
+			Array data = cmd[1];
+			if (command == "step") {
 
 				set_depth(-1);
 				set_lines_left(1);
@@ -283,75 +430,9 @@ void ScriptDebuggerRemote::debug(ScriptLanguage *p_script, bool p_can_continue, 
 			} else if (command == "break") {
 				ERR_PRINT("Got break when already broke!");
 				break;
-			} else if (command == "request_scene_tree") {
-
-#ifdef DEBUG_ENABLED
-				if (scene_tree)
-					scene_tree->_debugger_request_tree();
-#endif
-			} else if (command == "request_video_mem") {
-
-				_send_video_memory();
-			} else if (command == "inspect_object") {
-
-				ObjectID id = cmd[1];
-				_send_object_id(id);
-			} else if (command == "set_object_property") {
-
-				_set_object_property(cmd[1], cmd[2], cmd[3]);
-
-			} else if (command == "override_camera_2D:set") {
-				bool enforce = cmd[1];
-
-				if (scene_tree) {
-					scene_tree->get_root()->enable_canvas_transform_override(enforce);
-				}
-			} else if (command == "override_camera_2D:transform") {
-				Transform2D transform = cmd[1];
-
-				if (scene_tree) {
-					scene_tree->get_root()->set_canvas_transform_override(transform);
-				}
-			} else if (command == "override_camera_3D:set") {
-				bool enable = cmd[1];
-
-				if (scene_tree) {
-					scene_tree->get_root()->enable_camera_override(enable);
-				}
-			} else if (command == "override_camera_3D:transform") {
-				Transform transform = cmd[1];
-				bool is_perspective = cmd[2];
-				float size_or_fov = cmd[3];
-				float near = cmd[4];
-				float far = cmd[5];
-
-				if (scene_tree) {
-					if (is_perspective) {
-						scene_tree->get_root()->set_camera_override_perspective(size_or_fov, near, far);
-					} else {
-						scene_tree->get_root()->set_camera_override_orthogonal(size_or_fov, near, far);
-					}
-					scene_tree->get_root()->set_camera_override_transform(transform);
-				}
-
-			} else if (command == "reload_scripts") {
-				reload_all_scripts = true;
-			} else if (command == "breakpoint") {
-
-				bool set = cmd[3];
-				if (set)
-					insert_breakpoint(cmd[2], cmd[1]);
-				else
-					remove_breakpoint(cmd[2], cmd[1]);
-
-			} else if (command == "save_node") {
-				_save_node(cmd[1], cmd[2]);
-			} else if (command == "set_skip_breakpoints") {
-				skip_breakpoints = cmd[1];
-			} else {
-				_parse_live_edit(cmd);
 			}
 
+			_parse_message(command, data, p_script);
 		} else {
 			OS::get_singleton()->delay_usec(10000);
 			OS::get_singleton()->process_and_drop_events();
@@ -365,8 +446,7 @@ void ScriptDebuggerRemote::debug(ScriptLanguage *p_script, bool p_can_continue, 
 		}
 	}
 
-	packet_peer_stream->put_var("debug_exit");
-	packet_peer_stream->put_var(0);
+	_put_msg("debug_exit", Array());
 
 	if (mouse_mode != Input::MOUSE_MODE_VISIBLE)
 		Input::get_singleton()->set_mouse_mode(mouse_mode);
@@ -378,12 +458,12 @@ void ScriptDebuggerRemote::_get_output() {
 	if (output_strings.size()) {
 
 		locking = true;
-		packet_peer_stream->put_var("output");
-		packet_peer_stream->put_var(output_strings.size());
 
 		while (output_strings.size()) {
 
-			packet_peer_stream->put_var(output_strings.front()->get());
+			Array arr;
+			arr.push_back(output_strings.front()->get());
+			_put_msg("output", arr);
 			output_strings.pop_front();
 		}
 		locking = false;
@@ -398,11 +478,8 @@ void ScriptDebuggerRemote::_get_output() {
 
 	while (messages.size()) {
 		locking = true;
-		packet_peer_stream->put_var("message:" + messages.front()->get().message);
-		packet_peer_stream->put_var(messages.front()->get().data.size());
-		for (int i = 0; i < messages.front()->get().data.size(); i++) {
-			packet_peer_stream->put_var(messages.front()->get().data[i]);
-		}
+		Message msg = messages.front()->get();
+		_put_msg("message:" + msg.message, msg.data);
 		messages.pop_front();
 		locking = false;
 	}
@@ -437,29 +514,8 @@ void ScriptDebuggerRemote::_get_output() {
 
 	while (errors.size()) {
 		locking = true;
-		packet_peer_stream->put_var("error");
 		OutputError oe = errors.front()->get();
-
-		packet_peer_stream->put_var(oe.callstack.size() + 2);
-
-		Array error_data;
-
-		error_data.push_back(oe.hr);
-		error_data.push_back(oe.min);
-		error_data.push_back(oe.sec);
-		error_data.push_back(oe.msec);
-		error_data.push_back(oe.source_func);
-		error_data.push_back(oe.source_file);
-		error_data.push_back(oe.source_line);
-		error_data.push_back(oe.error);
-		error_data.push_back(oe.error_descr);
-		error_data.push_back(oe.warning);
-		packet_peer_stream->put_var(error_data);
-		packet_peer_stream->put_var(oe.callstack.size());
-		for (int i = 0; i < oe.callstack.size(); i++) {
-			packet_peer_stream->put_var(oe.callstack[i]);
-		}
-
+		_put_msg("error", oe.serialize());
 		errors.pop_front();
 		locking = false;
 	}
@@ -490,90 +546,6 @@ void ScriptDebuggerRemote::_err_handler(void *ud, const char *p_func, const char
 
 	ScriptDebuggerRemote *sdr = (ScriptDebuggerRemote *)ud;
 	sdr->send_error(p_func, p_file, p_line, p_err, p_descr, p_type, si);
-}
-
-bool ScriptDebuggerRemote::_parse_live_edit(const Array &p_command) {
-
-#ifdef DEBUG_ENABLED
-
-	String cmdstr = p_command[0];
-	if (!scene_tree || !cmdstr.begins_with("live_"))
-		return false;
-
-	if (cmdstr == "live_set_root") {
-
-		scene_tree->_live_edit_root_func(p_command[1], p_command[2]);
-
-	} else if (cmdstr == "live_node_path") {
-
-		scene_tree->_live_edit_node_path_func(p_command[1], p_command[2]);
-
-	} else if (cmdstr == "live_res_path") {
-
-		scene_tree->_live_edit_res_path_func(p_command[1], p_command[2]);
-
-	} else if (cmdstr == "live_node_prop_res") {
-
-		scene_tree->_live_edit_node_set_res_func(p_command[1], p_command[2], p_command[3]);
-
-	} else if (cmdstr == "live_node_prop") {
-
-		scene_tree->_live_edit_node_set_func(p_command[1], p_command[2], p_command[3]);
-
-	} else if (cmdstr == "live_res_prop_res") {
-
-		scene_tree->_live_edit_res_set_res_func(p_command[1], p_command[2], p_command[3]);
-
-	} else if (cmdstr == "live_res_prop") {
-
-		scene_tree->_live_edit_res_set_func(p_command[1], p_command[2], p_command[3]);
-
-	} else if (cmdstr == "live_node_call") {
-
-		scene_tree->_live_edit_node_call_func(p_command[1], p_command[2], p_command[3], p_command[4], p_command[5], p_command[6], p_command[7]);
-
-	} else if (cmdstr == "live_res_call") {
-
-		scene_tree->_live_edit_res_call_func(p_command[1], p_command[2], p_command[3], p_command[4], p_command[5], p_command[6], p_command[7]);
-
-	} else if (cmdstr == "live_create_node") {
-
-		scene_tree->_live_edit_create_node_func(p_command[1], p_command[2], p_command[3]);
-
-	} else if (cmdstr == "live_instance_node") {
-
-		scene_tree->_live_edit_instance_node_func(p_command[1], p_command[2], p_command[3]);
-
-	} else if (cmdstr == "live_remove_node") {
-
-		scene_tree->_live_edit_remove_node_func(p_command[1]);
-
-	} else if (cmdstr == "live_remove_and_keep_node") {
-
-		scene_tree->_live_edit_remove_and_keep_node_func(p_command[1], p_command[2]);
-
-	} else if (cmdstr == "live_restore_node") {
-
-		scene_tree->_live_edit_restore_node_func(p_command[1], p_command[2], p_command[3]);
-
-	} else if (cmdstr == "live_duplicate_node") {
-
-		scene_tree->_live_edit_duplicate_node_func(p_command[1], p_command[2]);
-
-	} else if (cmdstr == "live_reparent_node") {
-
-		scene_tree->_live_edit_reparent_node_func(p_command[1], p_command[2], p_command[3], p_command[4]);
-
-	} else {
-
-		return false;
-	}
-
-	return true;
-#else
-
-	return false;
-#endif
 }
 
 void ScriptDebuggerRemote::_send_object_id(ObjectID p_id) {
@@ -713,11 +685,11 @@ void ScriptDebuggerRemote::_send_object_id(ObjectID p_id) {
 		send_props.push_back(prop);
 	}
 
-	packet_peer_stream->put_var("message:inspect_object");
-	packet_peer_stream->put_var(3);
-	packet_peer_stream->put_var(p_id);
-	packet_peer_stream->put_var(obj->get_class());
-	packet_peer_stream->put_var(send_props);
+	Array arr;
+	arr.push_back(p_id);
+	arr.push_back(obj->get_class());
+	arr.push_back(send_props);
+	_put_msg("message:inspect_object", arr);
 }
 
 void ScriptDebuggerRemote::_set_object_property(ObjectID p_id, const String &p_property, const Variant &p_value) {
@@ -754,112 +726,19 @@ void ScriptDebuggerRemote::_poll_events() {
 
 		Array cmd = var;
 
-		ERR_CONTINUE(cmd.size() == 0);
+		ERR_CONTINUE(cmd.size() < 2);
 		ERR_CONTINUE(cmd[0].get_type() != Variant::STRING);
+		ERR_CONTINUE(cmd[1].get_type() != Variant::ARRAY);
 
 		String command = cmd[0];
-		//cmd.remove(0);
+		Array data = cmd[1];
 
 		if (command == "break") {
 
 			if (get_break_language())
 				debug(get_break_language());
-		} else if (command == "request_scene_tree") {
-
-#ifdef DEBUG_ENABLED
-			if (scene_tree)
-				scene_tree->_debugger_request_tree();
-#endif
-		} else if (command == "request_video_mem") {
-
-			_send_video_memory();
-		} else if (command == "inspect_object") {
-
-			ObjectID id = cmd[1];
-			_send_object_id(id);
-		} else if (command == "set_object_property") {
-
-			_set_object_property(cmd[1], cmd[2], cmd[3]);
-
-		} else if (command == "start_profiling") {
-
-			for (int i = 0; i < ScriptServer::get_language_count(); i++) {
-				ScriptServer::get_language(i)->profiling_start();
-			}
-
-			max_frame_functions = cmd[1];
-			profiler_function_signature_map.clear();
-			profiling = true;
-			frame_time = 0;
-			idle_time = 0;
-			physics_time = 0;
-			physics_frame_time = 0;
-
-			print_line("PROFILING ALRIGHT!");
-
-		} else if (command == "stop_profiling") {
-
-			for (int i = 0; i < ScriptServer::get_language_count(); i++) {
-				ScriptServer::get_language(i)->profiling_stop();
-			}
-			profiling = false;
-			_send_profiling_data(false);
-			print_line("PROFILING END!");
-		} else if (command == "start_network_profiling") {
-
-			multiplayer->profiling_start();
-			profiling_network = true;
-		} else if (command == "stop_network_profiling") {
-
-			multiplayer->profiling_end();
-			profiling_network = false;
-		} else if (command == "override_camera_2D:set") {
-			bool enforce = cmd[1];
-
-			if (scene_tree) {
-				scene_tree->get_root()->enable_canvas_transform_override(enforce);
-			}
-		} else if (command == "override_camera_2D:transform") {
-			Transform2D transform = cmd[1];
-
-			if (scene_tree) {
-				scene_tree->get_root()->set_canvas_transform_override(transform);
-			}
-		} else if (command == "override_camera_3D:set") {
-			bool enable = cmd[1];
-
-			if (scene_tree) {
-				scene_tree->get_root()->enable_camera_override(enable);
-			}
-		} else if (command == "override_camera_3D:transform") {
-			Transform transform = cmd[1];
-			bool is_perspective = cmd[2];
-			float size_or_fov = cmd[3];
-			float near = cmd[4];
-			float far = cmd[5];
-
-			if (scene_tree) {
-				if (is_perspective) {
-					scene_tree->get_root()->set_camera_override_perspective(size_or_fov, near, far);
-				} else {
-					scene_tree->get_root()->set_camera_override_orthogonal(size_or_fov, near, far);
-				}
-				scene_tree->get_root()->set_camera_override_transform(transform);
-			}
-
-		} else if (command == "reload_scripts") {
-			reload_all_scripts = true;
-		} else if (command == "breakpoint") {
-
-			bool set = cmd[3];
-			if (set)
-				insert_breakpoint(cmd[2], cmd[1]);
-			else
-				remove_breakpoint(cmd[2], cmd[1]);
-		} else if (command == "set_skip_breakpoints") {
-			skip_breakpoints = cmd[1];
 		} else {
-			_parse_live_edit(cmd);
+			_parse_message(command, data);
 		}
 	}
 }
@@ -892,11 +771,10 @@ void ScriptDebuggerRemote::_send_profiling_data(bool p_for_frame) {
 		if (!profiler_function_signature_map.has(profile_info_ptrs[i]->signature)) {
 
 			int idx = profiler_function_signature_map.size();
-			packet_peer_stream->put_var("profile_sig");
-			packet_peer_stream->put_var(2);
-			packet_peer_stream->put_var(profile_info_ptrs[i]->signature);
-			packet_peer_stream->put_var(idx);
-
+			ProfilerSignature sig;
+			sig.name = profile_info_ptrs[i]->signature;
+			sig.id = idx;
+			_put_msg("profile_sig", sig.serialize());
 			profiler_function_signature_map[profile_info_ptrs[i]->signature] = idx;
 		}
 
@@ -904,53 +782,34 @@ void ScriptDebuggerRemote::_send_profiling_data(bool p_for_frame) {
 	}
 
 	//send frames then
+	ProfilerFrame metric;
+	metric.frame_number = Engine::get_singleton()->get_frames_drawn();
+	metric.frame_time = frame_time;
+	metric.idle_time = idle_time;
+	metric.physics_time = physics_time;
+	metric.physics_frame_time = physics_frame_time;
+	metric.script_time = total_script_time;
 
-	if (p_for_frame) {
-		packet_peer_stream->put_var("profile_frame");
-		packet_peer_stream->put_var(8 + profile_frame_data.size() * 2 + to_send * 4);
-	} else {
-		packet_peer_stream->put_var("profile_total");
-		packet_peer_stream->put_var(8 + to_send * 4);
-	}
-
-	packet_peer_stream->put_var(Engine::get_singleton()->get_frames_drawn()); //total frame time
-	packet_peer_stream->put_var(frame_time); //total frame time
-	packet_peer_stream->put_var(idle_time); //idle frame time
-	packet_peer_stream->put_var(physics_time); //fixed frame time
-	packet_peer_stream->put_var(physics_frame_time); //fixed frame time
-
-	packet_peer_stream->put_var(USEC_TO_SEC(total_script_time)); //total script execution time
-
-	if (p_for_frame) {
-
-		packet_peer_stream->put_var(profile_frame_data.size()); //how many profile framedatas to send
-		packet_peer_stream->put_var(to_send); //how many script functions to send
-		for (int i = 0; i < profile_frame_data.size(); i++) {
-
-			packet_peer_stream->put_var(profile_frame_data[i].name);
-			packet_peer_stream->put_var(profile_frame_data[i].data);
-		}
-	} else {
-		packet_peer_stream->put_var(0); //how many script functions to send
-		packet_peer_stream->put_var(to_send); //how many script functions to send
-	}
-
+	// Add script functions information.
+	metric.frame_functions.resize(to_send);
+	FrameFunction *w = metric.frame_functions.ptrw();
 	for (int i = 0; i < to_send; i++) {
 
-		int sig_id = -1;
-
 		if (profiler_function_signature_map.has(profile_info_ptrs[i]->signature)) {
-			sig_id = profiler_function_signature_map[profile_info_ptrs[i]->signature];
+			w[i].sig_id = profiler_function_signature_map[profile_info_ptrs[i]->signature];
 		}
 
-		packet_peer_stream->put_var(sig_id);
-		packet_peer_stream->put_var(profile_info_ptrs[i]->call_count);
-		packet_peer_stream->put_var(profile_info_ptrs[i]->total_time / 1000000.0);
-		packet_peer_stream->put_var(profile_info_ptrs[i]->self_time / 1000000.0);
+		w[i].call_count = profile_info_ptrs[i]->call_count;
+		w[i].total_time = profile_info_ptrs[i]->total_time / 1000000.0;
+		w[i].self_time = profile_info_ptrs[i]->self_time / 1000000.0;
 	}
-
 	if (p_for_frame) {
+		// Add profile frame data information.
+		metric.frames_data.append_array(profile_frame_data);
+		_put_msg("profile_frame", metric.serialize());
 		profile_frame_data.clear();
+	} else {
+		_put_msg("profile_total", metric.serialize());
 	}
 }
 
@@ -963,8 +822,7 @@ void ScriptDebuggerRemote::idle_poll() {
 
 	if (requested_quit) {
 
-		packet_peer_stream->put_var("kill_me");
-		packet_peer_stream->put_var(0);
+		_put_msg("kill_me", Array());
 		requested_quit = false;
 	}
 
@@ -980,9 +838,7 @@ void ScriptDebuggerRemote::idle_poll() {
 			for (int i = 0; i < max; i++) {
 				arr[i] = performance->call("get_monitor", i);
 			}
-			packet_peer_stream->put_var("performance");
-			packet_peer_stream->put_var(1);
-			packet_peer_stream->put_var(arr);
+			_put_msg("performance", arr);
 		}
 	}
 
@@ -1024,16 +880,11 @@ void ScriptDebuggerRemote::_send_network_profiling_data() {
 
 	int n_nodes = multiplayer->get_profiling_frame(&network_profile_info.write[0]);
 
-	packet_peer_stream->put_var("network_profile");
-	packet_peer_stream->put_var(n_nodes * 6);
-	for (int i = 0; i < n_nodes; ++i) {
-		packet_peer_stream->put_var(network_profile_info[i].node);
-		packet_peer_stream->put_var(network_profile_info[i].node_path);
-		packet_peer_stream->put_var(network_profile_info[i].incoming_rpc);
-		packet_peer_stream->put_var(network_profile_info[i].incoming_rset);
-		packet_peer_stream->put_var(network_profile_info[i].outgoing_rpc);
-		packet_peer_stream->put_var(network_profile_info[i].outgoing_rset);
+	NetworkProfilerFrame frame;
+	for (int i = 0; i < n_nodes; i++) {
+		frame.infos.push_back(network_profile_info[i]);
 	}
+	_put_msg("network_profile", frame.serialize());
 }
 
 void ScriptDebuggerRemote::_send_network_bandwidth_usage() {
@@ -1042,10 +893,10 @@ void ScriptDebuggerRemote::_send_network_bandwidth_usage() {
 	int incoming_bandwidth = multiplayer->get_incoming_bandwidth_usage();
 	int outgoing_bandwidth = multiplayer->get_outgoing_bandwidth_usage();
 
-	packet_peer_stream->put_var("network_bandwidth");
-	packet_peer_stream->put_var(2);
-	packet_peer_stream->put_var(incoming_bandwidth);
-	packet_peer_stream->put_var(outgoing_bandwidth);
+	Array arr;
+	arr.push_back(incoming_bandwidth);
+	arr.push_back(outgoing_bandwidth);
+	_put_msg("network_bandwidth", arr);
 }
 
 void ScriptDebuggerRemote::send_message(const String &p_message, const Array &p_args) {
@@ -1101,7 +952,7 @@ void ScriptDebuggerRemote::send_error(const String &p_func, const String &p_file
 		cstack[i * 3 + 2] = p_stack_info[i].line;
 	}
 
-	oe.callstack = cstack;
+	//oe.callstack = cstack;
 	if (oe.warning) {
 		warn_count++;
 	} else {

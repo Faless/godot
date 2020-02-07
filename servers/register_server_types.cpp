@@ -65,14 +65,14 @@
 #include "visual/shader_types.h"
 #include "visual_server.h"
 
-static void _debugger_get_resource_usage(List<ScriptDebuggerRemote::ResourceUsage> *r_usage) {
+static void _debugger_get_resource_usage(ScriptDebugger::ResourceUsage *r_usage) {
 
 	List<VS::TextureInfo> tinfo;
 	VS::get_singleton()->texture_debug_usage(&tinfo);
 
 	for (List<VS::TextureInfo>::Element *E = tinfo.front(); E; E = E->next()) {
 
-		ScriptDebuggerRemote::ResourceUsage usage;
+		ScriptDebugger::ResourceInfo usage;
 		usage.path = E->get().path;
 		usage.vram = E->get().bytes;
 		usage.id = E->get().texture;
@@ -82,7 +82,7 @@ static void _debugger_get_resource_usage(List<ScriptDebuggerRemote::ResourceUsag
 		} else {
 			usage.format = itos(E->get().width) + "x" + itos(E->get().height) + "x" + itos(E->get().depth) + " " + Image::get_format_name(E->get().format);
 		}
-		r_usage->push_back(usage);
+		r_usage->infos.push_back(usage);
 	}
 }
 

@@ -38,6 +38,167 @@
 
 class ScriptDebugger {
 
+public:
+	class ResourceInfo {
+	public:
+		String path;
+		String format;
+		String type;
+		RID id;
+		int vram;
+		bool operator<(const ResourceInfo &p_img) const { return vram == p_img.vram ? id < p_img.id : vram > p_img.vram; }
+		ResourceInfo() {
+			vram = 0;
+		}
+	};
+
+	class ResourceUsage {
+	public:
+		List<ResourceInfo> infos;
+
+		Array serialize();
+		bool deserialize(Array p_arr);
+	};
+
+	class FrameInfo {
+	public:
+		StringName name;
+		float self_time;
+		float total_time;
+
+		FrameInfo() {
+			self_time = 0;
+			total_time = 0;
+		}
+	};
+
+	class FrameFunction {
+	public:
+		int sig_id;
+		int call_count;
+		StringName name;
+		float self_time;
+		float total_time;
+
+		FrameFunction() {
+			sig_id = -1;
+			call_count = 0;
+			self_time = 0;
+			total_time = 0;
+		}
+	};
+
+	class ScriptStackVariable {
+	public:
+		String name;
+		Variant value;
+		int type;
+		ScriptStackVariable() {
+			type = -1;
+		}
+
+		Array serialize(int max_size = 1 << 20); // 1 MiB default.
+		bool deserialize(Array p_arr);
+	};
+
+	class ScriptStackDump {
+	public:
+		List<ScriptLanguage::StackInfo> frames;
+		ScriptStackDump() {}
+
+		Array serialize();
+		bool deserialize(Array p_arr);
+	};
+
+	class Message {
+
+	public:
+		String message;
+		Array data;
+
+		Message() {}
+	};
+
+	class OutputError {
+	public:
+		int hr;
+		int min;
+		int sec;
+		int msec;
+		String source_file;
+		String source_func;
+		int source_line;
+		String error;
+		String error_descr;
+		bool warning;
+		Vector<ScriptLanguage::StackInfo> callstack;
+
+		OutputError() {
+			hr = -1;
+			min = -1;
+			sec = -1;
+			msec = -1;
+			source_line = -1;
+			warning = false;
+		}
+
+		Array serialize();
+		bool deserialize(Array p_data);
+	};
+
+	struct FrameData {
+
+		StringName name;
+		Array data;
+	};
+
+	class ProfilerSignature {
+	public:
+		StringName name;
+		int id;
+
+		Array serialize();
+		bool deserialize(Array p_arr);
+
+		ProfilerSignature() {
+			id = -1;
+		};
+	};
+
+	class ProfilerFrame {
+	public:
+		int frame_number;
+		float frame_time;
+		float idle_time;
+		float physics_time;
+		float physics_frame_time;
+		float script_time;
+
+		Vector<FrameData> frames_data;
+		Vector<FrameFunction> frame_functions;
+
+		ProfilerFrame() {
+			frame_number = 0;
+			frame_time = 0;
+			idle_time = 0;
+			physics_time = 0;
+			physics_frame_time = 0;
+		}
+
+		Array serialize();
+		bool deserialize(Array p_arr);
+	};
+
+	class NetworkProfilerFrame {
+	public:
+		Vector<MultiplayerAPI::ProfilingInfo> infos;
+
+		Array serialize();
+		bool deserialize(Array p_arr);
+
+		NetworkProfilerFrame(){};
+	};
+
 protected:
 	int lines_left;
 	int depth;

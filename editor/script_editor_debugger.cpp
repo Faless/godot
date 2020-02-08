@@ -57,6 +57,45 @@
 #include "scene/gui/tree.h"
 #include "scene/resources/packed_scene.h"
 
+EditorDebuggerNode::EditorDebuggerNode(EditorNode *p_editor) {
+	debugger = memnew(ScriptEditorDebugger(p_editor));
+	debugger->set_name("Debugger");
+	debugger->connect("goto_script_line", this, "_goto_script_line");
+	debugger->connect("set_execution", this, "_set_execution");
+	debugger->connect("clear_execution", this, "_clear_execution");
+	debugger->connect("breaked", this, "_breaked");
+	debugger->connect("show_debugger", this, "_show_debugger");
+	add_child(debugger);
+}
+
+void EditorDebuggerNode::_bind_methods() {
+	ClassDB::bind_method("_goto_script_line", &EditorDebuggerNode::_goto_script_line);
+	ClassDB::bind_method("_set_execution", &EditorDebuggerNode::_set_execution);
+	ClassDB::bind_method("_clear_execution", &EditorDebuggerNode::_clear_execution);
+	ClassDB::bind_method("_breaked", &EditorDebuggerNode::_breaked);
+	ClassDB::bind_method("_show_debugger", &EditorDebuggerNode::_show_debugger);
+
+	ADD_SIGNAL(MethodInfo("goto_script_line"));
+	ADD_SIGNAL(MethodInfo("set_execution", PropertyInfo("script"), PropertyInfo(Variant::INT, "line")));
+	ADD_SIGNAL(MethodInfo("clear_execution", PropertyInfo("script")));
+	ADD_SIGNAL(MethodInfo("breaked", PropertyInfo(Variant::BOOL, "reallydid"), PropertyInfo(Variant::BOOL, "can_debug")));
+	ADD_SIGNAL(MethodInfo("show_debugger", PropertyInfo(Variant::BOOL, "reallydid")));
+}
+
+Error EditorDebuggerNode::start() {
+	if (is_visible_in_tree()) {
+		EditorNode::get_singleton()->make_bottom_panel_item_visible(this);
+	}
+	debugger->start();
+	return OK;
+}
+
+void EditorDebuggerNode::_breaked(bool p_breaked, bool p_can_debug) {
+	EditorNode::get_singleton()->get_pause_button()->set_pressed(true);
+	EditorNode::get_singleton()->make_bottom_panel_item_visible(this);
+	emit_signal("breaked", p_breaked, p_can_debug);
+}
+
 class ScriptEditorDebuggerVariables : public Object {
 
 	GDCLASS(ScriptEditorDebuggerVariables, Object);
@@ -500,8 +539,6 @@ void ScriptEditorDebugger::_parse_message(const String &p_msg, const Array &p_da
 			tabs->set_current_tab(0);
 		}
 		profiler->set_enabled(false);
-		EditorNode::get_singleton()->get_pause_button()->set_pressed(true);
-		EditorNode::get_singleton()->make_bottom_panel_item_visible(this);
 		_clear_remote_objects();
 
 	} else if (p_msg == "debug_exit") {
@@ -1328,7 +1365,8 @@ void ScriptEditorDebugger::start() {
 	stop();
 
 	if (is_visible_in_tree()) {
-		EditorNode::get_singleton()->make_bottom_panel_item_visible(this);
+		// TODO show tab?
+		//EditorNode::get_singleton()->make_bottom_panel_item_visible(this);
 	}
 
 	perf_history.clear();

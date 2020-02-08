@@ -291,11 +291,6 @@ void ScriptEditor::_breaked(bool p_breaked, bool p_can_debug) {
 	}
 }
 
-void ScriptEditor::_show_debugger(bool p_show) {
-
-	//debug_menu->get_popup()->set_item_checked( debug_menu->get_popup()->get_item_index(DEBUG_SHOW), p_show);
-}
-
 void ScriptEditor::_script_created(Ref<Script> p_script) {
 	editor->push_item(p_script.operator->());
 }
@@ -2976,6 +2971,10 @@ bool ScriptEditor::script_goto_method(Ref<Script> p_script, const String &p_meth
 	return edit(p_script, line, 0);
 }
 
+ScriptEditorDebugger *ScriptEditor::get_debugger() {
+	return debugger->get_debugger();
+}
+
 void ScriptEditor::set_live_auto_reload_running_scripts(bool p_enabled) {
 
 	auto_reload_running_scripts = p_enabled;
@@ -3125,7 +3124,6 @@ void ScriptEditor::_bind_methods() {
 	ClassDB::bind_method("_copy_script_path", &ScriptEditor::_copy_script_path);
 
 	ClassDB::bind_method("_breaked", &ScriptEditor::_breaked);
-	ClassDB::bind_method("_show_debugger", &ScriptEditor::_show_debugger);
 	ClassDB::bind_method("_get_debug_tooltip", &ScriptEditor::_get_debug_tooltip);
 	ClassDB::bind_method("_autosave_scripts", &ScriptEditor::_autosave_scripts);
 	ClassDB::bind_method("_update_autosave_timer", &ScriptEditor::_update_autosave_timer);
@@ -3428,11 +3426,10 @@ ScriptEditor::ScriptEditor(EditorNode *p_editor) {
 	error_dialog = memnew(AcceptDialog);
 	add_child(error_dialog);
 
-	debugger = memnew(ScriptEditorDebugger(editor));
+	debugger = memnew(EditorDebuggerNode(editor));
 	debugger->connect("goto_script_line", this, "_goto_script_line");
 	debugger->connect("set_execution", this, "_set_execution");
 	debugger->connect("clear_execution", this, "_clear_execution");
-	debugger->connect("show_debugger", this, "_show_debugger");
 
 	disk_changed = memnew(ConfirmationDialog);
 	{

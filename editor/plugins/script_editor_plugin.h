@@ -73,6 +73,7 @@ public:
 	ScriptEditorQuickOpen();
 };
 
+class EditorDebuggerNode;
 class ScriptEditorDebugger;
 
 class ScriptEditorBase : public VBoxContainer {
@@ -232,7 +233,7 @@ class ScriptEditor : public PanelContainer {
 	AcceptDialog *error_dialog;
 	ConfirmationDialog *erase_tab_confirm;
 	ScriptCreateDialog *script_create_dialog;
-	ScriptEditorDebugger *debugger;
+	EditorDebuggerNode *debugger;
 	ToolButton *scripts_visible;
 
 	String current_theme;
@@ -334,7 +335,6 @@ class ScriptEditor : public PanelContainer {
 	void _set_execution(REF p_script, int p_line);
 	void _clear_execution(REF p_script);
 	void _breaked(bool p_breaked, bool p_can_debug);
-	void _show_debugger(bool p_show);
 	void _update_window_menu();
 	void _script_created(Ref<Script> p_script);
 
@@ -455,7 +455,7 @@ public:
 
 	VSplitContainer *get_left_list_split() { return list_split; }
 
-	ScriptEditorDebugger *get_debugger() { return debugger; }
+	ScriptEditorDebugger *get_debugger();
 	void set_live_auto_reload_running_scripts(bool p_enabled);
 
 	static void register_create_syntax_highlighter_function(CreateSyntaxHighlighterFunc p_func);

@@ -58,14 +58,21 @@
 #include "scene/resources/packed_scene.h"
 
 EditorDebuggerNode::EditorDebuggerNode(EditorNode *p_editor) {
-	debugger = memnew(ScriptEditorDebugger(p_editor));
-	debugger->set_name("Debugger");
-	debugger->connect("goto_script_line", this, "_goto_script_line");
-	debugger->connect("set_execution", this, "_set_execution");
-	debugger->connect("clear_execution", this, "_clear_execution");
-	debugger->connect("breaked", this, "_breaked");
-	debugger->connect("show_debugger", this, "_show_debugger");
-	add_child(debugger);
+	editor = p_editor;
+	server.instance();
+	debugger = _add_debugger("Debugger");
+}
+
+ScriptEditorDebugger *EditorDebuggerNode::_add_debugger(String p_name) {
+	ScriptEditorDebugger *node = memnew(ScriptEditorDebugger(editor));
+	node->set_name(p_name);
+	node->connect("goto_script_line", this, "_goto_script_line");
+	node->connect("set_execution", this, "_set_execution");
+	node->connect("clear_execution", this, "_clear_execution");
+	node->connect("breaked", this, "_breaked");
+	node->connect("show_debugger", this, "_show_debugger");
+	add_child(node);
+	return node;
 }
 
 void EditorDebuggerNode::_bind_methods() {
@@ -86,8 +93,87 @@ Error EditorDebuggerNode::start() {
 	if (is_visible_in_tree()) {
 		EditorNode::get_singleton()->make_bottom_panel_item_visible(this);
 	}
-	debugger->start();
+	int remote_port = (int)EditorSettings::get_singleton()->get("network/debug/remote_port");
+	const Error err = server->listen(remote_port);
+	if (err != OK) {
+		EditorNode::get_log()->add_message(String("Error listening on port ") + itos(remote_port), EditorLog::MSG_TYPE_ERROR);
+		return err;
+	}
+	set_process(true);
 	return OK;
+}
+
+void EditorDebuggerNode::stop() {
+	server->stop();
+	//debugger->stop();
+	// Also close all debugging sessions.
+	for (int i = 0; i < get_tab_count(); i++) {
+		Object::cast_to<ScriptEditorDebugger>(get_tab_control(i))->stop();
+	}
+}
+
+void EditorDebuggerNode::_notification(int p_what) {
+	if (!server->is_listening())
+		return;
+
+	if (p_what != NOTIFICATION_PROCESS)
+		return;
+	if (server->is_connection_available()) {
+
+		int error_count = 0;
+		int warning_count = 0;
+		for (int i = 0; i < get_tab_count(); i++) {
+			ScriptEditorDebugger *n = Object::cast_to<ScriptEditorDebugger>(get_tab_control(i));
+			if (!n)
+				continue;
+			error_count += n->get_error_count();
+			warning_count += n->get_warning_count();
+		}
+
+		if (error_count != last_error_count || warning_count != last_warning_count) {
+
+			for (int i = 0; i < get_tab_count(); i++) {
+				ScriptEditorDebugger *n = Object::cast_to<ScriptEditorDebugger>(get_tab_control(i));
+				if (!n)
+					continue;
+				n->update_tabs();
+			}
+
+			if (error_count == 0 && warning_count == 0) {
+				debugger_button->set_text(TTR("Debugger"));
+				debugger_button->set_icon(Ref<Texture>());
+			} else {
+				debugger_button->set_text(TTR("Debugger") + " (" + itos(error_count + warning_count) + ")");
+				if (error_count == 0) {
+					debugger_button->set_icon(get_icon("Warning", "EditorIcons"));
+				} else {
+					debugger_button->set_icon(get_icon("Error", "EditorIcons"));
+				}
+			}
+			last_error_count = error_count;
+			last_warning_count = warning_count;
+		}
+
+		// Take connections
+		if (get_tab_count() >= 4) { // XXX Allow more?
+			// We already have a valid connection. Disconnecting any new connecting client to prevent it from hanging.
+			// (If we don't keep a reference to the connection it will be destroyed and disconnect_from_host will be called internally)
+			server->take_connection();
+			return;
+		} else {
+			ScriptEditorDebugger *extra;
+			if (debugger->is_processing()) {
+				extra = _add_debugger("Session " + itos(get_tab_count()));
+			} else {
+				extra = debugger;
+				EditorNode::get_log()->add_message("--- Debugging process started ---", EditorLog::MSG_TYPE_EDITOR);
+				EditorNode::get_singleton()->get_pause_button()->set_pressed(false);
+				EditorNode::get_singleton()->get_pause_button()->set_disabled(false);
+				debugger->update_live_edit_root();
+			}
+			extra->start(server->take_connection());
+		}
+	}
 }
 
 void EditorDebuggerNode::_breaked(bool p_breaked, bool p_can_debug) {
@@ -242,7 +328,7 @@ public:
 };
 
 void ScriptEditorDebugger::_put_msg(String p_message, Array p_data) {
-	if (connection.is_valid() && connection->is_connected_to_host()) {
+	if (is_peer_connected()) {
 		Array msg;
 		msg.push_back(p_message);
 		msg.push_back(p_data);
@@ -300,6 +386,20 @@ void ScriptEditorDebugger::debug_continue() {
 
 	_clear_execution();
 	_put_msg("continue", Array());
+}
+
+void ScriptEditorDebugger::update_tabs() {
+	if (error_count == 0 && warning_count == 0) {
+		errors_tab->set_name(TTR("Errors"));
+		tabs->set_tab_icon(errors_tab->get_index(), Ref<Texture>());
+	} else {
+		errors_tab->set_name(TTR("Errors") + " (" + itos(error_count + warning_count) + ")");
+		if (error_count == 0) {
+			tabs->set_tab_icon(errors_tab->get_index(), get_icon("Warning", "EditorIcons"));
+		} else {
+			tabs->set_tab_icon(errors_tab->get_index(), get_icon("Error", "EditorIcons"));
+		}
+	}
 }
 
 void ScriptEditorDebugger::_scene_tree_folded(Object *obj) {
@@ -1159,7 +1259,7 @@ void ScriptEditorDebugger::_notification(int p_what) {
 		} break;
 		case NOTIFICATION_PROCESS: {
 
-			if (connection.is_valid()) {
+			if (is_peer_connected()) {
 
 				inspect_scene_tree_timeout -= get_process_delta_time();
 				if (inspect_scene_tree_timeout < 0) {
@@ -1219,80 +1319,7 @@ void ScriptEditorDebugger::_notification(int p_what) {
 				}
 			}
 
-			if (error_count != last_error_count || warning_count != last_warning_count) {
-
-				if (error_count == 0 && warning_count == 0) {
-					errors_tab->set_name(TTR("Errors"));
-					debugger_button->set_text(TTR("Debugger"));
-					debugger_button->set_icon(Ref<Texture>());
-					tabs->set_tab_icon(errors_tab->get_index(), Ref<Texture>());
-				} else {
-					errors_tab->set_name(TTR("Errors") + " (" + itos(error_count + warning_count) + ")");
-					debugger_button->set_text(TTR("Debugger") + " (" + itos(error_count + warning_count) + ")");
-					if (error_count == 0) {
-						debugger_button->set_icon(get_icon("Warning", "EditorIcons"));
-						tabs->set_tab_icon(errors_tab->get_index(), get_icon("Warning", "EditorIcons"));
-					} else {
-						debugger_button->set_icon(get_icon("Error", "EditorIcons"));
-						tabs->set_tab_icon(errors_tab->get_index(), get_icon("Error", "EditorIcons"));
-					}
-				}
-				last_error_count = error_count;
-				last_warning_count = warning_count;
-			}
-
-			if (server->is_connection_available()) {
-				if (connection.is_valid()) {
-					// We already have a valid connection. Disconnecting any new connecting client to prevent it from hanging.
-					// (If we don't keep a reference to the connection it will be destroyed and disconnect_from_host will be called internally)
-					server->take_connection();
-				} else {
-					// We just got the first connection.
-					connection = server->take_connection();
-					if (connection.is_null())
-						break;
-
-					EditorNode::get_log()->add_message("--- Debugging process started ---", EditorLog::MSG_TYPE_EDITOR);
-
-					ppeer->set_stream_peer(connection);
-
-					//EditorNode::get_singleton()->make_bottom_panel_item_visible(this);
-					//emit_signal("show_debugger",true);
-
-					dobreak->set_disabled(false);
-					tabs->set_current_tab(0);
-
-					_set_reason_text(TTR("Child process connected."), MESSAGE_SUCCESS);
-					profiler->clear();
-
-					inspect_scene_tree->clear();
-					le_set->set_disabled(true);
-					le_clear->set_disabled(false);
-					vmem_refresh->set_disabled(false);
-					error_tree->clear();
-					error_count = 0;
-					warning_count = 0;
-					profiler_signature.clear();
-					//live_edit_root->set_text("/root");
-
-					EditorNode::get_singleton()->get_pause_button()->set_pressed(false);
-					EditorNode::get_singleton()->get_pause_button()->set_disabled(false);
-
-					update_live_edit_root();
-					if (profiler->is_profiling()) {
-						_profiler_activate(true);
-					}
-
-					if (network_profiler->is_profiling()) {
-						_network_profiler_activate(true);
-					}
-				}
-			}
-
-			if (connection.is_null())
-				break;
-
-			if (!connection->is_connected_to_host()) {
+			if (!is_peer_connected()) {
 				stop();
 				editor->notify_child_process_exited(); //somehow, exited
 				break;
@@ -1332,9 +1359,9 @@ void ScriptEditorDebugger::_notification(int p_what) {
 			add_constant_override("margin_left", -EditorNode::get_singleton()->get_gui_base()->get_stylebox("BottomPanelDebuggerOverride", "EditorStyles")->get_margin(MARGIN_LEFT));
 			add_constant_override("margin_right", -EditorNode::get_singleton()->get_gui_base()->get_stylebox("BottomPanelDebuggerOverride", "EditorStyles")->get_margin(MARGIN_RIGHT));
 
-			tabs->add_style_override("panel", editor->get_gui_base()->get_stylebox("DebuggerPanel", "EditorStyles"));
-			tabs->add_style_override("tab_fg", editor->get_gui_base()->get_stylebox("DebuggerTabFG", "EditorStyles"));
-			tabs->add_style_override("tab_bg", editor->get_gui_base()->get_stylebox("DebuggerTabBG", "EditorStyles"));
+			tabs->add_style_override("panel", EditorNode::get_singleton()->get_gui_base()->get_stylebox("DebuggerPanel", "EditorStyles"));
+			tabs->add_style_override("tab_fg", EditorNode::get_singleton()->get_gui_base()->get_stylebox("DebuggerTabFG", "EditorStyles"));
+			tabs->add_style_override("tab_bg", EditorNode::get_singleton()->get_gui_base()->get_stylebox("DebuggerTabBG", "EditorStyles"));
 
 			copy->set_icon(get_icon("ActionCopy", "EditorIcons"));
 			step->set_icon(get_icon("DebugStep", "EditorIcons"));
@@ -1360,10 +1387,12 @@ void ScriptEditorDebugger::_clear_execution() {
 	stack_script.unref();
 }
 
-void ScriptEditorDebugger::start() {
+void ScriptEditorDebugger::start(Ref<StreamPeerTCP> p_connection) {
 
 	stop();
 
+	connection = p_connection;
+	ppeer->set_stream_peer(connection);
 	if (is_visible_in_tree()) {
 		// TODO show tab?
 		//EditorNode::get_singleton()->make_bottom_panel_item_visible(this);
@@ -1375,12 +1404,6 @@ void ScriptEditorDebugger::start() {
 		perf_max.write[i] = 0;
 	}
 
-	int remote_port = (int)EditorSettings::get_singleton()->get("network/debug/remote_port");
-	if (server->listen(remote_port) != OK) {
-		EditorNode::get_log()->add_message(String("Error listening on port ") + itos(remote_port), EditorLog::MSG_TYPE_ERROR);
-		return;
-	}
-
 	EditorNode::get_singleton()->get_scene_tree_dock()->show_tab_buttons();
 	auto_switch_remote_scene_tree = (bool)EditorSettings::get_singleton()->get("debugger/auto_switch_to_remote_scene_tree");
 	if (auto_switch_remote_scene_tree) {
@@ -1390,6 +1413,18 @@ void ScriptEditorDebugger::start() {
 	set_process(true);
 	breaked = false;
 	camera_override = OVERRIDE_NONE;
+
+	dobreak->set_disabled(false);
+	tabs->set_current_tab(0);
+	_set_reason_text(TTR("Child process connected."), MESSAGE_SUCCESS);
+
+	if (profiler->is_profiling()) {
+		_profiler_activate(true);
+	}
+
+	if (network_profiler->is_profiling()) {
+		_network_profiler_activate(true);
+	}
 }
 
 void ScriptEditorDebugger::pause() {
@@ -1404,7 +1439,6 @@ void ScriptEditorDebugger::stop() {
 	breaked = false;
 	_clear_execution();
 
-	server->stop();
 	_clear_remote_objects();
 	ppeer->set_stream_peer(Ref<StreamPeer>());
 
@@ -2206,8 +2240,6 @@ ScriptEditorDebugger::ScriptEditorDebugger(EditorNode *p_editor) {
 		inspector->connect("object_id_selected", this, "_scene_tree_property_select_object");
 		sc->add_child(inspector);
 
-		server.instance();
-
 		pending_in_queue = 0;
 
 		variables = memnew(ScriptEditorDebuggerVariables);
@@ -2465,8 +2497,6 @@ ScriptEditorDebugger::ScriptEditorDebugger(EditorNode *p_editor) {
 	warning_count = 0;
 	hide_on_stop = true;
 	enable_external_editor = false;
-	last_error_count = 0;
-	last_warning_count = 0;
 
 	EditorNode::get_singleton()->get_pause_button()->connect("pressed", this, "_paused");
 }
@@ -2477,6 +2507,5 @@ ScriptEditorDebugger::~ScriptEditorDebugger() {
 
 	ppeer->set_stream_peer(Ref<StreamPeer>());
 
-	server->stop();
 	_clear_remote_objects();
 }

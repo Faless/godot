@@ -84,8 +84,6 @@ private:
 
 	AcceptDialog *msgdialog;
 
-	Button *debugger_button;
-
 	LineEdit *clicked_ctrl;
 	LineEdit *clicked_ctrl_type;
 	LineEdit *live_edit_root;
@@ -117,8 +115,6 @@ private:
 
 	int error_count;
 	int warning_count;
-	int last_error_count;
-	int last_warning_count;
 
 	bool hide_on_stop;
 	bool enable_external_editor;
@@ -156,7 +152,6 @@ private:
 	Tree *stack_dump;
 	EditorInspector *inspector;
 
-	Ref<TCP_Server> server;
 	Ref<StreamPeerTCP> connection;
 	Ref<PacketPeerStream> ppeer;
 
@@ -239,7 +234,7 @@ protected:
 	static void _bind_methods();
 
 public:
-	void start();
+	void start(Ref<StreamPeerTCP> p_connection);
 	void pause();
 	void unpause();
 	void stop();
@@ -252,6 +247,9 @@ public:
 	void debug_break();
 	void debug_continue();
 
+	bool get_error_count() { return error_count; };
+	bool get_warning_count() { return warning_count; };
+	void update_tabs();
 	String get_var_value(const String &p_var) const;
 
 	void set_live_debugging(bool p_enable);
@@ -281,8 +279,6 @@ public:
 
 	Ref<Script> get_dump_stack_script() const;
 
-	void set_tool_button(Button *p_tb) { debugger_button = p_tb; }
-
 	void reload_scripts();
 
 	bool is_skip_breakpoints();
@@ -296,8 +292,16 @@ class EditorDebuggerNode : public TabContainer {
 
 	GDCLASS(EditorDebuggerNode, TabContainer);
 
+private:
 	ScriptEditorDebugger *debugger;
-	List<ScriptEditorDebugger *> extra_debuggers;
+	EditorNode *editor;
+	Ref<TCP_Server> server;
+	Button *debugger_button;
+
+	int last_error_count;
+	int last_warning_count;
+
+	ScriptEditorDebugger *_add_debugger(String p_name);
 
 protected:
 	void _goto_script_line(REF p_script, int p_line) {
@@ -319,7 +323,7 @@ protected:
 	}
 
 protected:
-	void _notification(int p_what){};
+	void _notification(int p_what);
 	static void _bind_methods();
 
 public:
@@ -354,7 +358,7 @@ public:
 	}
 
 	void set_tool_button(Button *p_button) {
-		debugger->set_tool_button(p_button);
+		debugger_button = p_button;
 	}
 
 	String get_var_value(const String &p_var) const {
@@ -375,9 +379,7 @@ public:
 
 	Error start();
 
-	void stop() {
-		debugger->stop();
-	}
+	void stop();
 };
 
 #endif // SCRIPT_EDITOR_DEBUGGER_H

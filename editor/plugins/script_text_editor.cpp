@@ -32,10 +32,10 @@
 
 #include "core/math/expression.h"
 #include "core/os/keyboard.h"
+#include "editor/debugger/script_editor_debugger.h"
 #include "editor/editor_node.h"
 #include "editor/editor_scale.h"
 #include "editor/editor_settings.h"
-#include "editor/script_editor_debugger.h"
 
 void ConnectionInfoDialog::ok_pressed() {
 }

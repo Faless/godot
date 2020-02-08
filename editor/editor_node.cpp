@@ -65,6 +65,7 @@
 #include "servers/physics_2d_server.h"
 
 #include "editor/audio_stream_preview.h"
+#include "editor/debugger/script_editor_debugger.h"
 #include "editor/dependency_editor.h"
 #include "editor/editor_about.h"
 #include "editor/editor_audio_buses.h"
@@ -167,7 +168,6 @@
 #include "editor/quick_open.h"
 #include "editor/register_exporters.h"
 #include "editor/run_settings_dialog.h"
-#include "editor/script_editor_debugger.h"
 #include "editor/settings_config_dialog.h"
 
 #include <stdio.h>

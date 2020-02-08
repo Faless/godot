@@ -32,13 +32,13 @@
 
 #include "core/os/keyboard.h"
 #include "core/project_settings.h"
+#include "editor/debugger/script_editor_debugger.h"
 #include "editor_file_system.h"
 #include "editor_log.h"
 #include "editor_node.h"
 #include "editor_scale.h"
 #include "editor_settings.h"
 #include "scene/gui/margin_container.h"
-#include "script_editor_debugger.h"
 
 void EditorSettingsDialog::ok_pressed() {
 

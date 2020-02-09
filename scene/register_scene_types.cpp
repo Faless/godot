@@ -206,6 +206,7 @@
 #include "scene/3d/vehicle_body.h"
 #include "scene/3d/visibility_notifier.h"
 #include "scene/animation/skeleton_ik.h"
+#include "scene/debugger/scene_debugger.h"
 #include "scene/resources/environment.h"
 #include "scene/resources/mesh_library.h"
 #endif
@@ -767,10 +768,12 @@ void register_scene_types() {
 			ERR_PRINT("Error loading custom theme '" + theme_path + "'");
 		}
 	}
+	SceneDebugger::initialize();
 }
 
 void unregister_scene_types() {
 
+	SceneDebugger::deinitialize();
 	clear_default_theme();
 
 	ResourceLoader::remove_resource_format_loader(resource_loader_dynamic_font);

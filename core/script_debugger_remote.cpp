@@ -36,10 +36,6 @@
 #include "core/os/input.h"
 #include "core/os/os.h"
 #include "core/project_settings.h"
-#include "scene/main/node.h"
-#include "scene/main/scene_tree.h"
-#include "scene/main/viewport.h"
-#include "scene/resources/packed_scene.h"
 #include "servers/visual_server.h"
 
 void ScriptDebuggerRemote::_put_msg(String p_message, Array p_data) {
@@ -97,38 +93,11 @@ Error ScriptDebuggerRemote::connect_to_host(const String &p_host, uint16_t p_por
 	return OK;
 }
 
-void ScriptDebuggerRemote::_save_node(ObjectID id, const String &p_path) {
-
-	Node *node = Object::cast_to<Node>(ObjectDB::get_instance(id));
-	ERR_FAIL_COND(!node);
-
-	Ref<PackedScene> ps = memnew(PackedScene);
-	ps->pack(node);
-	ResourceSaver::save(p_path, ps);
-}
-
 void ScriptDebuggerRemote::_parse_message(const String p_command, const Array &p_data, ScriptLanguage *p_script) {
 
-	if (p_command == "request_scene_tree") {
-#ifdef DEBUG_ENABLED
-		if (scene_tree)
-			scene_tree->_debugger_request_tree();
-#endif
-	} else if (p_command == "request_video_mem") {
+	if (p_command == "request_video_mem") {
 		_send_video_memory();
 
-	} else if (p_command == "inspect_object") {
-		ERR_FAIL_COND(p_data.size() < 1);
-		ObjectID id = p_data[0];
-		_send_object_id(id);
-
-	} else if (p_command == "set_object_property") {
-		ERR_FAIL_COND(p_data.size() < 3);
-		_set_object_property(p_data[0], p_data[1], p_data[2]);
-
-	} else if (command == "save_node") {
-		ERR_FAIL_COND(p_data.size() < 2);
-		_save_node(cmd[1], cmd[2]);
 	} else if (p_command == "start_profiling") {
 		ERR_FAIL_COND(p_data.size() < 1);
 
@@ -160,44 +129,6 @@ void ScriptDebuggerRemote::_parse_message(const String p_command, const Array &p
 	} else if (p_command == "stop_network_profiling") {
 		multiplayer->profiling_end();
 		profiling_network = false;
-
-	} else if (p_command == "override_camera_2D:set") {
-		ERR_FAIL_COND(p_data.size() < 1);
-		bool enforce = p_data[0];
-
-		if (scene_tree) {
-			scene_tree->get_root()->enable_canvas_transform_override(enforce);
-		}
-
-	} else if (p_command == "override_camera_2D:transform") {
-		ERR_FAIL_COND(p_data.size() < 1);
-		Transform2D transform = p_data[1];
-		if (scene_tree) {
-			scene_tree->get_root()->set_canvas_transform_override(transform);
-		}
-
-	} else if (p_command == "override_camera_3D:set") {
-		ERR_FAIL_COND(p_data.size() < 1);
-		bool enable = p_data[0];
-		if (scene_tree) {
-			scene_tree->get_root()->enable_camera_override(enable);
-		}
-
-	} else if (p_command == "override_camera_3D:transform") {
-		ERR_FAIL_COND(p_data.size() < 5);
-		Transform transform = p_data[0];
-		bool is_perspective = p_data[1];
-		float size_or_fov = p_data[2];
-		float near = p_data[3];
-		float far = p_data[4];
-		if (scene_tree) {
-			if (is_perspective) {
-				scene_tree->get_root()->set_camera_override_perspective(size_or_fov, near, far);
-			} else {
-				scene_tree->get_root()->set_camera_override_orthogonal(size_or_fov, near, far);
-			}
-			scene_tree->get_root()->set_camera_override_transform(transform);
-		}
 
 	} else if (p_command == "reload_scripts") {
 		reload_all_scripts = true;
@@ -296,74 +227,10 @@ void ScriptDebuggerRemote::_parse_message(const String p_command, const Array &p
 			}
 		}
 
-	} else if (scene_tree && p_command.begins_with("live_")) {
-		// Live edit commands
-#ifdef DEBUG_ENABLED
-		if (p_command == "live_set_root") {
-			ERR_FAIL_COND(p_data.size() < 2);
-			scene_tree->_live_edit_root_func(p_data[0], p_data[1]);
-
-		} else if (p_command == "live_node_path") {
-			ERR_FAIL_COND(p_data.size() < 2);
-			scene_tree->_live_edit_node_path_func(p_data[0], p_data[1]);
-
-		} else if (p_command == "live_res_path") {
-			ERR_FAIL_COND(p_data.size() < 2);
-			scene_tree->_live_edit_res_path_func(p_data[0], p_data[1]);
-
-		} else if (p_command == "live_node_prop_res") {
-			ERR_FAIL_COND(p_data.size() < 3);
-			scene_tree->_live_edit_node_set_res_func(p_data[0], p_data[1], p_data[2]);
-
-		} else if (p_command == "live_node_prop") {
-			ERR_FAIL_COND(p_data.size() < 3);
-			scene_tree->_live_edit_node_set_func(p_data[0], p_data[1], p_data[2]);
-
-		} else if (p_command == "live_res_prop_res") {
-			ERR_FAIL_COND(p_data.size() < 3);
-			scene_tree->_live_edit_res_set_res_func(p_data[0], p_data[1], p_data[2]);
-
-		} else if (p_command == "live_res_prop") {
-			ERR_FAIL_COND(p_data.size() < 3);
-			scene_tree->_live_edit_res_set_func(p_data[0], p_data[1], p_data[2]);
-
-		} else if (p_command == "live_node_call") {
-			ERR_FAIL_COND(p_data.size() < 7);
-			scene_tree->_live_edit_node_call_func(p_data[0], p_data[1], p_data[2], p_data[3], p_data[4], p_data[5], p_data[6]);
-
-		} else if (p_command == "live_res_call") {
-			ERR_FAIL_COND(p_data.size() < 7);
-			scene_tree->_live_edit_res_call_func(p_data[0], p_data[1], p_data[2], p_data[3], p_data[4], p_data[5], p_data[6]);
-
-		} else if (p_command == "live_create_node") {
-			ERR_FAIL_COND(p_data.size() < 3);
-			scene_tree->_live_edit_create_node_func(p_data[0], p_data[1], p_data[2]);
-
-		} else if (p_command == "live_instance_node") {
-			ERR_FAIL_COND(p_data.size() < 3);
-			scene_tree->_live_edit_instance_node_func(p_data[0], p_data[1], p_data[2]);
-
-		} else if (p_command == "live_remove_node") {
-			ERR_FAIL_COND(p_data.size() < 1);
-			scene_tree->_live_edit_remove_node_func(p_data[0]);
-
-		} else if (p_command == "live_remove_and_keep_node") {
-			ERR_FAIL_COND(p_data.size() < 2);
-			scene_tree->_live_edit_remove_and_keep_node_func(p_data[0], p_data[1]);
-
-		} else if (p_command == "live_restore_node") {
-			ERR_FAIL_COND(p_data.size() < 3);
-			scene_tree->_live_edit_restore_node_func(p_data[0], p_data[1], p_data[2]);
-
-		} else if (p_command == "live_duplicate_node") {
-			ERR_FAIL_COND(p_data.size() < 2);
-			scene_tree->_live_edit_duplicate_node_func(p_data[0], p_data[1]);
-
-		} else if (p_command == "live_reparent_node") {
-			ERR_FAIL_COND(p_data.size() < 4);
-			scene_tree->_live_edit_reparent_node_func(p_data[0], p_data[1], p_data[2], p_data[3]);
-		}
-#endif
+	} else if (scene_tree_parse_func && scene_tree_parse_func(p_command, p_data)) {
+		// Parsed...
+	} else {
+		// Unknown message...
 	}
 }
 
@@ -546,165 +413,6 @@ void ScriptDebuggerRemote::_err_handler(void *ud, const char *p_func, const char
 
 	ScriptDebuggerRemote *sdr = (ScriptDebuggerRemote *)ud;
 	sdr->send_error(p_func, p_file, p_line, p_err, p_descr, p_type, si);
-}
-
-void ScriptDebuggerRemote::_send_object_id(ObjectID p_id) {
-
-	Object *obj = ObjectDB::get_instance(p_id);
-	if (!obj)
-		return;
-
-	typedef Pair<PropertyInfo, Variant> PropertyDesc;
-	List<PropertyDesc> properties;
-
-	if (ScriptInstance *si = obj->get_script_instance()) {
-		if (!si->get_script().is_null()) {
-
-			typedef Map<const Script *, Set<StringName> > ScriptMemberMap;
-			typedef Map<const Script *, Map<StringName, Variant> > ScriptConstantsMap;
-
-			ScriptMemberMap members;
-			members[si->get_script().ptr()] = Set<StringName>();
-			si->get_script()->get_members(&(members[si->get_script().ptr()]));
-
-			ScriptConstantsMap constants;
-			constants[si->get_script().ptr()] = Map<StringName, Variant>();
-			si->get_script()->get_constants(&(constants[si->get_script().ptr()]));
-
-			Ref<Script> base = si->get_script()->get_base_script();
-			while (base.is_valid()) {
-
-				members[base.ptr()] = Set<StringName>();
-				base->get_members(&(members[base.ptr()]));
-
-				constants[base.ptr()] = Map<StringName, Variant>();
-				base->get_constants(&(constants[base.ptr()]));
-
-				base = base->get_base_script();
-			}
-
-			for (ScriptMemberMap::Element *sm = members.front(); sm; sm = sm->next()) {
-				for (Set<StringName>::Element *E = sm->get().front(); E; E = E->next()) {
-					Variant m;
-					if (si->get(E->get(), m)) {
-						String script_path = sm->key() == si->get_script().ptr() ? "" : sm->key()->get_path().get_file() + "/";
-						PropertyInfo pi(m.get_type(), "Members/" + script_path + E->get());
-						properties.push_back(PropertyDesc(pi, m));
-					}
-				}
-			}
-
-			for (ScriptConstantsMap::Element *sc = constants.front(); sc; sc = sc->next()) {
-				for (Map<StringName, Variant>::Element *E = sc->get().front(); E; E = E->next()) {
-					String script_path = sc->key() == si->get_script().ptr() ? "" : sc->key()->get_path().get_file() + "/";
-					if (E->value().get_type() == Variant::OBJECT) {
-						Variant id = ((Object *)E->value())->get_instance_id();
-						PropertyInfo pi(id.get_type(), "Constants/" + E->key(), PROPERTY_HINT_OBJECT_ID, "Object");
-						properties.push_back(PropertyDesc(pi, id));
-					} else {
-						PropertyInfo pi(E->value().get_type(), "Constants/" + script_path + E->key());
-						properties.push_back(PropertyDesc(pi, E->value()));
-					}
-				}
-			}
-		}
-	}
-
-	if (Node *node = Object::cast_to<Node>(obj)) {
-		// in some cases node will not be in tree here
-		// for instance where it created as variable and not yet added to tree
-		// in such cases we can't ask for it's path
-		if (node->is_inside_tree()) {
-			PropertyInfo pi(Variant::NODE_PATH, String("Node/path"));
-			properties.push_front(PropertyDesc(pi, node->get_path()));
-		} else {
-			PropertyInfo pi(Variant::STRING, String("Node/path"));
-			properties.push_front(PropertyDesc(pi, "[Orphan]"));
-		}
-
-	} else if (Resource *res = Object::cast_to<Resource>(obj)) {
-		if (Script *s = Object::cast_to<Script>(res)) {
-			Map<StringName, Variant> constants;
-			s->get_constants(&constants);
-			for (Map<StringName, Variant>::Element *E = constants.front(); E; E = E->next()) {
-				if (E->value().get_type() == Variant::OBJECT) {
-					Variant id = ((Object *)E->value())->get_instance_id();
-					PropertyInfo pi(id.get_type(), "Constants/" + E->key(), PROPERTY_HINT_OBJECT_ID, "Object");
-					properties.push_front(PropertyDesc(pi, E->value()));
-				} else {
-					PropertyInfo pi(E->value().get_type(), String("Constants/") + E->key());
-					properties.push_front(PropertyDesc(pi, E->value()));
-				}
-			}
-		}
-	}
-
-	List<PropertyInfo> pinfo;
-	obj->get_property_list(&pinfo, true);
-	for (List<PropertyInfo>::Element *E = pinfo.front(); E; E = E->next()) {
-		if (E->get().usage & (PROPERTY_USAGE_EDITOR | PROPERTY_USAGE_CATEGORY)) {
-			properties.push_back(PropertyDesc(E->get(), obj->get(E->get().name)));
-		}
-	}
-
-	Array send_props;
-	for (int i = 0; i < properties.size(); i++) {
-		const PropertyInfo &pi = properties[i].first;
-		Variant &var = properties[i].second;
-
-		WeakRef *ref = Object::cast_to<WeakRef>(var);
-		if (ref) {
-			var = ref->get_ref();
-		}
-
-		RES res = var;
-
-		Array prop;
-		prop.push_back(pi.name);
-		prop.push_back(pi.type);
-
-		//only send information that can be sent..
-		int len = 0; //test how big is this to encode
-		encode_variant(var, NULL, len);
-		if (len > packet_peer_stream->get_output_buffer_max_size()) { //limit to max size
-			prop.push_back(PROPERTY_HINT_OBJECT_TOO_BIG);
-			prop.push_back("");
-			prop.push_back(pi.usage);
-			prop.push_back(Variant());
-		} else {
-			prop.push_back(pi.hint);
-			prop.push_back(pi.hint_string);
-			prop.push_back(pi.usage);
-
-			if (!res.is_null()) {
-				var = res->get_path();
-			}
-
-			prop.push_back(var);
-		}
-		send_props.push_back(prop);
-	}
-
-	Array arr;
-	arr.push_back(p_id);
-	arr.push_back(obj->get_class());
-	arr.push_back(send_props);
-	_put_msg("message:inspect_object", arr);
-}
-
-void ScriptDebuggerRemote::_set_object_property(ObjectID p_id, const String &p_property, const Variant &p_value) {
-
-	Object *obj = ObjectDB::get_instance(p_id);
-	if (!obj)
-		return;
-
-	String prop_name = p_property;
-	if (p_property.begins_with("Members/")) {
-		Vector<String> ss = p_property.split("/");
-		prop_name = ss[ss.size() - 1];
-	}
-
-	obj->set(prop_name, p_value);
 }
 
 void ScriptDebuggerRemote::_poll_events() {
@@ -1077,6 +785,7 @@ void ScriptDebuggerRemote::set_skip_breakpoints(bool p_skip_breakpoints) {
 }
 
 ScriptDebuggerRemote::ResourceUsageFunc ScriptDebuggerRemote::resource_usage_func = NULL;
+ScriptDebuggerRemote::ParseMessageFunc ScriptDebuggerRemote::scene_tree_parse_func = NULL;
 
 ScriptDebuggerRemote::ScriptDebuggerRemote() :
 		profiling(false),
@@ -1104,8 +813,7 @@ ScriptDebuggerRemote::ScriptDebuggerRemote() :
 		last_msec(0),
 		msec_count(0),
 		locking(false),
-		poll_every(0),
-		scene_tree(NULL) {
+		poll_every(0) {
 
 	packet_peer_stream->set_stream_peer(tcp_client);
 	packet_peer_stream->set_output_buffer_max_size((1024 * 1024 * 8) - 4); // 8 MiB should be way more than enough, minus 4 bytes for separator.

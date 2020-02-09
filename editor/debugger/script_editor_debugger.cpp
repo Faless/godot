@@ -276,59 +276,6 @@ void ScriptEditorDebugger::update_tabs() {
 	}
 }
 
-void ScriptEditorDebugger::_scene_tree_folded(Object *obj) {
-
-	if (updating_scene_tree) {
-
-		return;
-	}
-	TreeItem *item = Object::cast_to<TreeItem>(obj);
-
-	if (!item)
-		return;
-
-	ObjectID id = item->get_metadata(0);
-	if (unfold_cache.has(id)) {
-		unfold_cache.erase(id);
-	} else {
-		unfold_cache.insert(id);
-	}
-}
-
-void ScriptEditorDebugger::_scene_tree_selected() {
-
-	if (updating_scene_tree) {
-
-		return;
-	}
-	TreeItem *item = inspect_scene_tree->get_selected();
-	if (!item) {
-
-		return;
-	}
-
-	inspected_object_id = item->get_metadata(0);
-
-	Array msg;
-	msg.push_back(inspected_object_id);
-	_put_msg("inspect_object", msg);
-}
-
-void ScriptEditorDebugger::_scene_tree_rmb_selected(const Vector2 &p_position) {
-
-	TreeItem *item = inspect_scene_tree->get_item_at_position(p_position);
-	if (!item)
-		return;
-
-	item->select(0);
-
-	item_menu->clear();
-	item_menu->add_icon_item(get_icon("CreateNewSceneFrom", "EditorIcons"), TTR("Save Branch as Scene"), ITEM_MENU_SAVE_REMOTE_NODE);
-	item_menu->add_icon_item(get_icon("CopyNodePath", "EditorIcons"), TTR("Copy Node Path"), ITEM_MENU_COPY_NODE_PATH);
-	item_menu->set_global_position(get_global_mouse_position());
-	item_menu->popup();
-}
-
 void ScriptEditorDebugger::_file_selected(const String &p_file) {
 	switch (file_dialog_mode) {
 		case SAVE_NODE: {
@@ -384,99 +331,25 @@ void ScriptEditorDebugger::_scene_tree_property_value_edited(const String &p_pro
 	msg.push_back(p_prop);
 	msg.push_back(p_value);
 	_put_msg("set_object_property", msg);
-	inspect_edited_object_timeout = 0.7; //avoid annoyance, don't request soon after editing
+	//inspect_edited_object_timeout = 0.7; //avoid annoyance, don't request soon after editing // TODO FIXME!
 }
 
 void ScriptEditorDebugger::_scene_tree_property_select_object(ObjectID p_object) {
 
 	inspected_object_id = p_object;
-	Array msg;
-	msg.push_back(inspected_object_id);
-	_put_msg("inspect_object", msg);
+	request_object(p_object);
 }
 
-void ScriptEditorDebugger::_scene_tree_request() {
+void ScriptEditorDebugger::request_scene_tree() {
 
 	_put_msg("request_scene_tree", Array());
 }
 
-/// Populates inspect_scene_tree recursively given data in nodes.
-/// Nodes is an array containing 4 elements for each node, it follows this pattern:
-/// nodes[i] == number of direct children of this node
-/// nodes[i + 1] == node name
-/// nodes[i + 2] == node class
-/// nodes[i + 3] == node instance id
-///
-/// Returns the number of items parsed in nodes from current_index.
-///
-/// Given a nodes array like [R,A,B,C,D,E] the following Tree will be generated, assuming
-/// filter is an empty String, R and A child count are 2, B is 1 and C, D and E are 0.
-///
-/// R
-/// |-A
-/// | |-B
-/// | | |-C
-/// | |
-/// | |-D
-/// |
-/// |-E
-///
-int ScriptEditorDebugger::_update_scene_tree(TreeItem *parent, const Array &nodes, int current_index) {
-	String filter = EditorNode::get_singleton()->get_scene_tree_dock()->get_filter();
-	String item_text = nodes[current_index + 1];
-	String item_type = nodes[current_index + 2];
-	bool keep = filter.is_subsequence_ofi(item_text);
+void ScriptEditorDebugger::request_object(ObjectID p_obj_id) {
 
-	TreeItem *item = inspect_scene_tree->create_item(parent);
-	item->set_text(0, item_text);
-	item->set_tooltip(0, TTR("Type:") + " " + item_type);
-	ObjectID id = ObjectID(nodes[current_index + 3]);
-	Ref<Texture> icon = EditorNode::get_singleton()->get_class_icon(nodes[current_index + 2], "");
-	if (icon.is_valid()) {
-		item->set_icon(0, icon);
-	}
-	item->set_metadata(0, id);
-
-	if (id == inspected_object_id) {
-		TreeItem *cti = item->get_parent();
-		while (cti) {
-			cti->set_collapsed(false);
-			cti = cti->get_parent();
-		}
-		item->select(0);
-	}
-
-	// Set current item as collapsed if necessary
-	if (parent) {
-		if (!unfold_cache.has(id)) {
-			item->set_collapsed(true);
-		}
-	}
-
-	int children_count = nodes[current_index];
-	// Tracks the total number of items parsed in nodes, this is used to skips nodes that
-	// are not direct children of the current node since we can't know in advance the total
-	// number of children, direct and not, of a node without traversing the nodes array previously.
-	// Keeping track of this allows us to build our remote scene tree by traversing the node
-	// array just once.
-	int items_count = 1;
-	for (int i = 0; i < children_count; i++) {
-		// Called for each direct child of item.
-		// Direct children of current item might not be adjacent so items_count must
-		// be incremented by the number of items parsed until now, otherwise we would not
-		// be able to access the next child of the current item.
-		// items_count is multiplied by 4 since that's the number of elements in the nodes
-		// array needed to represent a single node.
-		items_count += _update_scene_tree(item, nodes, current_index + items_count * 4);
-	}
-
-	// If item has not children and should not be kept delete it
-	if (!keep && !item->get_children() && parent) {
-		parent->remove_child(item);
-		memdelete(item);
-	}
-
-	return items_count;
+	Array msg;
+	msg.push_back(p_obj_id);
+	_put_msg("inspect_object", msg);
 }
 
 void ScriptEditorDebugger::_video_mem_request() {
@@ -539,15 +412,7 @@ void ScriptEditorDebugger::_parse_message(const String &p_msg, const Array &p_da
 
 	} else if (p_msg == "message:scene_tree") {
 
-		inspect_scene_tree->clear();
-		Map<int, TreeItem *> lv;
-
-		updating_scene_tree = true;
-
-		_update_scene_tree(NULL, p_data, 0);
-
-		updating_scene_tree = false;
-
+		emit_signal("remote_tree_updated", p_data); // TODO Store one per debugger instead.
 		le_clear->set_disabled(false);
 		le_set->set_disabled(false);
 	} else if (p_msg == "message:inspect_object") {
@@ -1135,29 +1000,6 @@ void ScriptEditorDebugger::_notification(int p_what) {
 
 			if (is_peer_connected()) {
 
-				inspect_scene_tree_timeout -= get_process_delta_time();
-				if (inspect_scene_tree_timeout < 0) {
-					inspect_scene_tree_timeout = EditorSettings::get_singleton()->get("debugger/remote_scene_tree_refresh_interval");
-					if (inspect_scene_tree->is_visible_in_tree()) {
-						_scene_tree_request();
-					}
-				}
-
-				inspect_edited_object_timeout -= get_process_delta_time();
-				if (inspect_edited_object_timeout < 0) {
-					inspect_edited_object_timeout = EditorSettings::get_singleton()->get("debugger/remote_inspect_refresh_interval");
-					if (inspected_object_id) {
-						if (ScriptEditorDebuggerInspectedObject *obj = Object::cast_to<ScriptEditorDebuggerInspectedObject>(ObjectDB::get_instance(editor->get_editor_history()->get_current()))) {
-							if (obj->remote_object_id == inspected_object_id) {
-								//take the chance and re-inspect selected object
-								Array msg;
-								msg.push_back(inspected_object_id);
-								_put_msg("inspect_object", msg);
-							}
-						}
-					}
-				}
-
 				if (camera_override == OVERRIDE_2D) {
 					CanvasItemEditor *editor = CanvasItemEditor::get_singleton();
 
@@ -1279,10 +1121,6 @@ void ScriptEditorDebugger::start(Ref<StreamPeerTCP> p_connection) {
 	}
 
 	EditorNode::get_singleton()->get_scene_tree_dock()->show_tab_buttons();
-	auto_switch_remote_scene_tree = (bool)EditorSettings::get_singleton()->get("debugger/auto_switch_to_remote_scene_tree");
-	if (auto_switch_remote_scene_tree) {
-		EditorNode::get_singleton()->get_scene_tree_dock()->show_remote_tree();
-	}
 
 	set_process(true);
 	breaked = false;
@@ -1335,7 +1173,6 @@ void ScriptEditorDebugger::stop() {
 	profiler->set_enabled(true);
 	vmem_refresh->set_disabled(true);
 
-	inspect_scene_tree->clear();
 	inspector->edit(NULL);
 	EditorNode::get_singleton()->get_pause_button()->set_pressed(false);
 	EditorNode::get_singleton()->get_pause_button()->set_disabled(true);
@@ -1600,7 +1437,7 @@ void ScriptEditorDebugger::_live_edit_set() {
 	if (!is_peer_connected())
 		return;
 
-	TreeItem *ti = inspect_scene_tree->get_selected();
+	TreeItem *ti = NULL; //inspect_scene_tree->get_selected(); TODO FIXME
 	if (!ti)
 		return;
 	String path;
@@ -1833,13 +1670,6 @@ void ScriptEditorDebugger::_paused() {
 	}
 }
 
-void ScriptEditorDebugger::_set_remote_object(ObjectID p_id, ScriptEditorDebuggerInspectedObject *p_obj) {
-
-	if (remote_objects.has(p_id))
-		memdelete(remote_objects[p_id]);
-	remote_objects[p_id] = p_obj;
-}
-
 void ScriptEditorDebugger::_clear_remote_objects() {
 
 	for (Map<ObjectID, ScriptEditorDebuggerInspectedObject *>::Element *E = remote_objects.front(); E; E = E->next()) {
@@ -1923,21 +1753,6 @@ void ScriptEditorDebugger::_item_menu_id_pressed(int p_option) {
 		} break;
 		case ITEM_MENU_COPY_NODE_PATH: {
 
-			TreeItem *ti = inspect_scene_tree->get_selected();
-			String text = ti->get_text(0);
-
-			if (ti->get_parent() == NULL) {
-				text = ".";
-			} else if (ti->get_parent()->get_parent() == NULL) {
-				text = ".";
-			} else {
-				while (ti->get_parent()->get_parent() != inspect_scene_tree->get_root()) {
-					ti = ti->get_parent();
-					text = ti->get_text(0) + "/" + text;
-				}
-			}
-
-			OS::get_singleton()->set_clipboard(text);
 		} break;
 	}
 }
@@ -1964,7 +1779,6 @@ void ScriptEditorDebugger::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("_export_csv"), &ScriptEditorDebugger::_export_csv);
 	ClassDB::bind_method(D_METHOD("_performance_draw"), &ScriptEditorDebugger::_performance_draw);
 	ClassDB::bind_method(D_METHOD("_performance_select"), &ScriptEditorDebugger::_performance_select);
-	ClassDB::bind_method(D_METHOD("_scene_tree_request"), &ScriptEditorDebugger::_scene_tree_request);
 	ClassDB::bind_method(D_METHOD("_video_mem_request"), &ScriptEditorDebugger::_video_mem_request);
 	ClassDB::bind_method(D_METHOD("_live_edit_set"), &ScriptEditorDebugger::_live_edit_set);
 	ClassDB::bind_method(D_METHOD("_live_edit_clear"), &ScriptEditorDebugger::_live_edit_clear);
@@ -1984,9 +1798,6 @@ void ScriptEditorDebugger::_bind_methods() {
 
 	ClassDB::bind_method(D_METHOD("_paused"), &ScriptEditorDebugger::_paused);
 
-	ClassDB::bind_method(D_METHOD("_scene_tree_selected"), &ScriptEditorDebugger::_scene_tree_selected);
-	ClassDB::bind_method(D_METHOD("_scene_tree_folded"), &ScriptEditorDebugger::_scene_tree_folded);
-	ClassDB::bind_method(D_METHOD("_scene_tree_rmb_selected"), &ScriptEditorDebugger::_scene_tree_rmb_selected);
 	ClassDB::bind_method(D_METHOD("_file_selected"), &ScriptEditorDebugger::_file_selected);
 
 	ClassDB::bind_method(D_METHOD("live_debug_create_node"), &ScriptEditorDebugger::live_debug_create_node);
@@ -2000,6 +1811,7 @@ void ScriptEditorDebugger::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("_scene_tree_property_value_edited"), &ScriptEditorDebugger::_scene_tree_property_value_edited);
 
 	ADD_SIGNAL(MethodInfo("goto_script_line"));
+	ADD_SIGNAL(MethodInfo("remote_tree_updated", PropertyInfo(Variant::ARRAY, "remote_tree")));
 	ADD_SIGNAL(MethodInfo("set_execution", PropertyInfo("script"), PropertyInfo(Variant::INT, "line")));
 	ADD_SIGNAL(MethodInfo("clear_execution", PropertyInfo("script")));
 	ADD_SIGNAL(MethodInfo("breaked", PropertyInfo(Variant::BOOL, "reallydid"), PropertyInfo(Variant::BOOL, "can_debug")));
@@ -2170,23 +1982,6 @@ ScriptEditorDebugger::ScriptEditorDebugger(EditorNode *p_editor) {
 		error_tree->add_child(item_menu);
 
 		tabs->add_child(errors_tab);
-	}
-
-	{ // remote scene tree
-
-		inspect_scene_tree = memnew(Tree);
-		EditorNode::get_singleton()->get_scene_tree_dock()->add_remote_tree_editor(inspect_scene_tree);
-		EditorNode::get_singleton()->get_scene_tree_dock()->connect("remote_tree_selected", this, "_scene_tree_selected");
-		inspect_scene_tree->set_v_size_flags(SIZE_EXPAND_FILL);
-		inspect_scene_tree->connect("cell_selected", this, "_scene_tree_selected");
-		inspect_scene_tree->connect("item_collapsed", this, "_scene_tree_folded");
-		inspect_scene_tree->set_allow_rmb_select(true);
-		inspect_scene_tree->connect("item_rmb_selected", this, "_scene_tree_rmb_selected");
-		auto_switch_remote_scene_tree = EDITOR_DEF("debugger/auto_switch_to_remote_scene_tree", false);
-		inspect_scene_tree_timeout = EDITOR_DEF("debugger/remote_scene_tree_refresh_interval", 1.0);
-		inspect_edited_object_timeout = EDITOR_DEF("debugger/remote_inspect_refresh_interval", 0.2);
-		inspected_object_id = 0;
-		updating_scene_tree = false;
 	}
 
 	{ // File dialog

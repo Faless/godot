@@ -91,18 +91,12 @@ private:
 	Button *le_clear;
 	Button *export_csv;
 
-	bool updating_scene_tree;
-	float inspect_scene_tree_timeout;
-	float inspect_edited_object_timeout;
-	bool auto_switch_remote_scene_tree;
 	ObjectID inspected_object_id;
 	ScriptEditorDebuggerVariables *variables;
 	Map<ObjectID, ScriptEditorDebuggerInspectedObject *> remote_objects;
-	Set<ObjectID> unfold_cache;
 
 	VBoxContainer *errors_tab;
 	Tree *error_tree;
-	Tree *inspect_scene_tree;
 	Button *clearbutton;
 	PopupMenu *item_menu;
 
@@ -179,16 +173,11 @@ private:
 	void _stack_dump_frame_selected();
 	void _output_clear();
 
-	void _scene_tree_folded(Object *obj);
-	void _scene_tree_selected();
-	void _scene_tree_rmb_selected(const Vector2 &p_position);
 	void _file_selected(const String &p_file);
-	void _scene_tree_request();
 	void _parse_message(const String &p_msg, const Array &p_data);
 	void _set_reason_text(const String &p_reason, MessageType p_type);
 	void _scene_tree_property_select_object(ObjectID p_object);
 	void _scene_tree_property_value_edited(const String &p_prop, const Variant &p_value);
-	int _update_scene_tree(TreeItem *parent, const Array &nodes, int current_index);
 
 	void _video_mem_request();
 
@@ -215,7 +204,6 @@ private:
 
 	void _paused();
 
-	void _set_remote_object(ObjectID p_id, ScriptEditorDebuggerInspectedObject *p_obj);
 	void _clear_remote_objects();
 	void _clear_errors_list();
 
@@ -234,6 +222,9 @@ protected:
 	static void _bind_methods();
 
 public:
+	void update_object(ObjectID p_obj_id, const String &p_prop, const Variant &p_value);
+	void request_object(ObjectID p_obj_id);
+	void request_scene_tree();
 	void start(Ref<StreamPeerTCP> p_connection);
 	void pause();
 	void unpause();

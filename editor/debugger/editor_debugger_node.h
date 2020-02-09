@@ -6,6 +6,8 @@
 #include "scene/gui/button.h"
 #include "scene/gui/tab_container.h"
 
+class EditorDebuggerRemoteTree;
+
 class EditorDebuggerNode : public TabContainer {
 
 	GDCLASS(EditorDebuggerNode, TabContainer);
@@ -19,9 +21,16 @@ private:
 	int last_error_count;
 	int last_warning_count;
 
+	ObjectID inspected_object_id;
+	int inspect_edited_object_timeout = 0;
+	EditorDebuggerRemoteTree *remote_scene_tree;
+	float remote_scene_tree_timeout;
+	bool auto_switch_remote_scene_tree;
+
 	ScriptEditorDebugger *_add_debugger(String p_name);
 
 protected:
+	void _remote_tree_updated(const Array &p_data);
 	void _goto_script_line(REF p_script, int p_line) {
 		emit_signal("goto_script_line", p_script, p_line);
 	}

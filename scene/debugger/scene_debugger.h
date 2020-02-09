@@ -1,0 +1,71 @@
+
+#ifndef SCENE_DEBUGGER_H
+#define SCENE_DEBUGGER_H
+
+#include "core/array.h"
+#include "core/object.h"
+#include "core/ustring.h"
+
+class LiveEditor {
+
+#ifdef DEBUG_ENABLED
+private:
+	friend class SceneDebugger;
+	Map<int, NodePath> live_edit_node_path_cache;
+	Map<int, String> live_edit_resource_cache;
+
+	NodePath live_edit_root;
+	String live_edit_scene;
+
+	Map<String, Set<Node *> > live_scene_edit_cache;
+	Map<Node *, Map<ObjectID, Node *> > live_edit_remove_list;
+
+	void _send_tree();
+
+	void _node_path_func(const NodePath &p_path, int p_id);
+	void _res_path_func(const String &p_path, int p_id);
+
+	void _node_set_func(int p_id, const StringName &p_prop, const Variant &p_value);
+	void _node_set_res_func(int p_id, const StringName &p_prop, const String &p_value);
+	void _node_call_func(int p_id, const StringName &p_method, VARIANT_ARG_DECLARE);
+	void _res_set_func(int p_id, const StringName &p_prop, const Variant &p_value);
+	void _res_set_res_func(int p_id, const StringName &p_prop, const String &p_value);
+	void _res_call_func(int p_id, const StringName &p_method, VARIANT_ARG_DECLARE);
+	void _root_func(const NodePath &p_scene_path, const String &p_scene_from);
+
+	void _create_node_func(const NodePath &p_parent, const String &p_type, const String &p_name);
+	void _instance_node_func(const NodePath &p_parent, const String &p_path, const String &p_name);
+	void _remove_node_func(const NodePath &p_at);
+	void _remove_and_keep_node_func(const NodePath &p_at, ObjectID p_keep_id);
+	void _restore_node_func(ObjectID p_id, const NodePath &p_at, int p_at_pos);
+	void _duplicate_node_func(const NodePath &p_at, const String &p_new_name);
+	void _reparent_node_func(const NodePath &p_at, const NodePath &p_new_place, const String &p_new_name, int p_at_pos);
+
+	LiveEditor() {
+		singleton = this;
+		live_edit_root = NodePath("/root");
+	};
+
+	static LiveEditor *singleton;
+
+public:
+	static LiveEditor *get_singleton();
+#endif
+};
+
+class SceneDebugger {
+
+private:
+	static void _save_node(ObjectID id, const String &p_path);
+	static void _send_object_id(ObjectID p_id, int p_max_size = 1 << 20);
+	static void _set_object_property(ObjectID p_id, const String &p_property, const Variant &p_value);
+
+public:
+	static void initialize();
+	static void deinitialize();
+	static bool parse_message(const String &p_msg, const Array &p_args);
+	static void add_to_cache(const String &p_filename, Node *p_node);
+	static void remove_from_cache(const String &p_filename, Node *p_node);
+};
+
+#endif

@@ -38,8 +38,6 @@
 #include "core/script_debugger.h"
 #include "core/script_language.h"
 
-class SceneTree;
-
 class ScriptDebuggerRemote : public ScriptDebugger {
 
 	struct ProfileInfoSort {
@@ -98,8 +96,6 @@ class ScriptDebuggerRemote : public ScriptDebugger {
 	void _poll_events();
 	uint32_t poll_every;
 
-	SceneTree *scene_tree;
-
 	void _parse_message(const String p_command, const Array &p_data, ScriptLanguage *p_script = NULL);
 
 	void _set_object_property(ObjectID p_id, const String &p_property, const Variant &p_value);
@@ -119,14 +115,14 @@ class ScriptDebuggerRemote : public ScriptDebugger {
 
 	Vector<FrameData> profile_frame_data;
 
-	void _save_node(ObjectID id, const String &p_path);
-
 	bool skip_breakpoints;
 
 public:
 	typedef void (*ResourceUsageFunc)(ResourceUsage *);
+	typedef bool (*ParseMessageFunc)(const String &p_name, const Array &p_msg); // Returns true if something was found (stopping propagation).
 
 	static ResourceUsageFunc resource_usage_func;
+	static ParseMessageFunc scene_tree_parse_func; // Could be made into list, extensible...
 
 	Error connect_to_host(const String &p_host, uint16_t p_port);
 	virtual void debug(ScriptLanguage *p_script, bool p_can_continue = true, bool p_is_error_breakpoint = false);
@@ -149,8 +145,6 @@ public:
 	virtual void profiling_set_frame_times(float p_frame_time, float p_idle_time, float p_physics_time, float p_physics_frame_time);
 
 	virtual void set_skip_breakpoints(bool p_skip_breakpoints);
-
-	void set_scene_tree(SceneTree *p_scene_tree) { scene_tree = p_scene_tree; };
 
 	ScriptDebuggerRemote();
 	~ScriptDebuggerRemote();

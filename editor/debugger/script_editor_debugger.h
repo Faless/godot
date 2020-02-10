@@ -33,6 +33,7 @@
 
 #include "core/io/packet_peer.h"
 #include "core/io/stream_peer_tcp.h"
+#include "editor/debugger/editor_debugger_inspector.h"
 #include "editor/editor_inspector.h"
 #include "editor/property_editor.h"
 #include "scene/3d/camera.h"
@@ -52,8 +53,6 @@ class HSplitContainer;
 class ItemList;
 class EditorProfiler;
 class EditorNetworkProfiler;
-
-class ScriptEditorDebuggerInspectedObject;
 
 class ScriptEditorDebugger : public MarginContainer {
 
@@ -93,7 +92,6 @@ private:
 
 	ObjectID inspected_object_id;
 	ScriptEditorDebuggerVariables *variables;
-	Map<ObjectID, ScriptEditorDebuggerInspectedObject *> remote_objects;
 
 	VBoxContainer *errors_tab;
 	Tree *error_tree;
@@ -144,7 +142,7 @@ private:
 	LineEdit *vmem_total;
 
 	Tree *stack_dump;
-	EditorInspector *inspector;
+	EditorDebuggerInspector *inspector;
 
 	Ref<StreamPeerTCP> connection;
 	Ref<PacketPeerStream> ppeer;
@@ -171,7 +169,6 @@ private:
 	void _performance_draw();
 	void _performance_select();
 	void _stack_dump_frame_selected();
-	void _output_clear();
 
 	void _file_selected(const String &p_file);
 	void _parse_message(const String &p_msg, const Array &p_data);
@@ -204,7 +201,6 @@ private:
 
 	void _paused();
 
-	void _clear_remote_objects();
 	void _clear_errors_list();
 
 	void _error_tree_item_rmb_selected(const Vector2 &p_pos);

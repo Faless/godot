@@ -119,88 +119,6 @@ public:
 	}
 };
 
-class ScriptEditorDebuggerInspectedObject : public Object {
-
-	GDCLASS(ScriptEditorDebuggerInspectedObject, Object);
-
-protected:
-	bool _set(const StringName &p_name, const Variant &p_value) {
-
-		if (!prop_values.has(p_name) || String(p_name).begins_with("Constants/"))
-			return false;
-
-		prop_values[p_name] = p_value;
-		emit_signal("value_edited", p_name, p_value);
-		return true;
-	}
-
-	bool _get(const StringName &p_name, Variant &r_ret) const {
-
-		if (!prop_values.has(p_name))
-			return false;
-
-		r_ret = prop_values[p_name];
-		return true;
-	}
-
-	void _get_property_list(List<PropertyInfo> *p_list) const {
-
-		p_list->clear(); //sorry, no want category
-		for (const List<PropertyInfo>::Element *E = prop_list.front(); E; E = E->next()) {
-			p_list->push_back(E->get());
-		}
-	}
-
-	static void _bind_methods() {
-
-		ClassDB::bind_method(D_METHOD("get_title"), &ScriptEditorDebuggerInspectedObject::get_title);
-		ClassDB::bind_method(D_METHOD("get_variant"), &ScriptEditorDebuggerInspectedObject::get_variant);
-		ClassDB::bind_method(D_METHOD("clear"), &ScriptEditorDebuggerInspectedObject::clear);
-		ClassDB::bind_method(D_METHOD("get_remote_object_id"), &ScriptEditorDebuggerInspectedObject::get_remote_object_id);
-
-		ADD_SIGNAL(MethodInfo("value_edited"));
-	}
-
-public:
-	String type_name;
-	ObjectID remote_object_id;
-	List<PropertyInfo> prop_list;
-	Map<StringName, Variant> prop_values;
-
-	ObjectID get_remote_object_id() {
-		return remote_object_id;
-	}
-
-	String get_title() {
-		if (remote_object_id)
-			return TTR("Remote ") + String(type_name) + ": " + itos(remote_object_id);
-		else
-			return "<null>";
-	}
-	Variant get_variant(const StringName &p_name) {
-
-		Variant var;
-		_get(p_name, var);
-		return var;
-	}
-
-	void clear() {
-
-		prop_list.clear();
-		prop_values.clear();
-	}
-	void update() {
-		_change_notify();
-	}
-	void update_single(const char *p_prop) {
-		_change_notify(p_prop);
-	}
-
-	ScriptEditorDebuggerInspectedObject() {
-		remote_object_id = 0;
-	}
-};
-
 void ScriptEditorDebugger::_put_msg(String p_message, Array p_data) {
 	if (is_peer_connected()) {
 		Array msg;
@@ -386,7 +304,7 @@ void ScriptEditorDebugger::_parse_message(const String &p_msg, const Array &p_da
 			tabs->set_current_tab(0);
 		}
 		profiler->set_enabled(false);
-		_clear_remote_objects();
+		inspector->clear_cache(); // Take a chance to force remote objects update.
 
 	} else if (p_msg == "debug_exit") {
 
@@ -417,90 +335,7 @@ void ScriptEditorDebugger::_parse_message(const String &p_msg, const Array &p_da
 		le_set->set_disabled(false);
 	} else if (p_msg == "message:inspect_object") {
 
-		ScriptEditorDebuggerInspectedObject *debugObj = NULL;
-
-		SceneDebuggerObject obj;
-		obj.deserialize(p_data);
-		ERR_FAIL_COND(obj.id == 0);
-
-		if (remote_objects.has(obj.id)) {
-			debugObj = remote_objects[obj.id];
-		} else {
-			debugObj = memnew(ScriptEditorDebuggerInspectedObject);
-			debugObj->remote_object_id = obj.id;
-			debugObj->type_name = obj.class_name;
-			remote_objects[obj.id] = debugObj;
-			debugObj->connect("value_edited", this, "_scene_tree_property_value_edited");
-		}
-
-		int old_prop_size = debugObj->prop_list.size();
-
-		debugObj->prop_list.clear();
-		int new_props_added = 0;
-		Set<String> changed;
-		for (int i = 0; i < obj.properties.size(); i++) {
-
-			PropertyInfo &pinfo = obj.properties[i].first;
-			Variant &var = obj.properties[i].second;
-
-			if (pinfo.type == Variant::OBJECT) {
-				if (var.get_type() == Variant::STRING) {
-					String path = var;
-					if (path.find("::") != -1) {
-						// built-in resource
-						String base_path = path.get_slice("::", 0);
-						if (ResourceLoader::get_resource_type(base_path) == "PackedScene") {
-							if (!EditorNode::get_singleton()->is_scene_open(base_path)) {
-								EditorNode::get_singleton()->load_scene(base_path);
-							}
-						} else {
-							EditorNode::get_singleton()->load_resource(base_path);
-						}
-					}
-					var = ResourceLoader::load(path);
-
-					if (pinfo.hint_string == "Script") {
-						if (debugObj->get_script() != var) {
-							debugObj->set_script(RefPtr());
-							Ref<Script> script(var);
-							if (!script.is_null()) {
-								ScriptInstance *script_instance = script->placeholder_instance_create(debugObj);
-								debugObj->set_script_and_instance(var, script_instance);
-							}
-						}
-					}
-				}
-			}
-
-			//always add the property, since props may have been added or removed
-			debugObj->prop_list.push_back(pinfo);
-
-			if (!debugObj->prop_values.has(pinfo.name)) {
-				new_props_added++;
-				debugObj->prop_values[pinfo.name] = var;
-			} else {
-
-				if (bool(Variant::evaluate(Variant::OP_NOT_EQUAL, debugObj->prop_values[pinfo.name], var))) {
-					debugObj->prop_values[pinfo.name] = var;
-					changed.insert(pinfo.name);
-				}
-			}
-		}
-
-		if (editor->get_editor_history()->get_current() != debugObj->get_instance_id()) {
-			editor->push_item(debugObj, "");
-		} else {
-
-			if (old_prop_size == debugObj->prop_list.size() && new_props_added == 0) {
-				//only some may have changed, if so, then update those, if exist
-				for (Set<String>::Element *E = changed.front(); E; E = E->next()) {
-					EditorNode::get_singleton()->get_inspector()->update_property(E->get());
-				}
-			} else {
-				//full update, because props were added or removed
-				debugObj->update();
-			}
-		}
+		inspector->add_object(p_data);
 	} else if (p_msg == "message:video_mem") {
 
 		vmem_tree->clear();
@@ -1151,7 +986,7 @@ void ScriptEditorDebugger::stop() {
 	breaked = false;
 	_clear_execution();
 
-	_clear_remote_objects();
+	inspector->clear_cache();
 	ppeer->set_stream_peer(Ref<StreamPeer>());
 
 	if (connection.is_valid()) {
@@ -1242,12 +1077,6 @@ void ScriptEditorDebugger::_stack_dump_frame_selected() {
 	} else {
 		inspector->edit(NULL);
 	}
-}
-
-void ScriptEditorDebugger::_output_clear() {
-
-	//output->clear();
-	//output->push_color(Color(0,0,0));
 }
 
 void ScriptEditorDebugger::_export_csv() {
@@ -1670,17 +1499,6 @@ void ScriptEditorDebugger::_paused() {
 	}
 }
 
-void ScriptEditorDebugger::_clear_remote_objects() {
-
-	for (Map<ObjectID, ScriptEditorDebuggerInspectedObject *>::Element *E = remote_objects.front(); E; E = E->next()) {
-		if (editor->get_editor_history()->get_current() == E->value()->get_instance_id()) {
-			editor->push_item(NULL);
-		}
-		memdelete(E->value());
-	}
-	remote_objects.clear();
-}
-
 void ScriptEditorDebugger::_clear_errors_list() {
 
 	error_tree->clear();
@@ -1775,7 +1593,6 @@ void ScriptEditorDebugger::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("debug_step"), &ScriptEditorDebugger::debug_step);
 	ClassDB::bind_method(D_METHOD("debug_break"), &ScriptEditorDebugger::debug_break);
 	ClassDB::bind_method(D_METHOD("debug_continue"), &ScriptEditorDebugger::debug_continue);
-	ClassDB::bind_method(D_METHOD("_output_clear"), &ScriptEditorDebugger::_output_clear);
 	ClassDB::bind_method(D_METHOD("_export_csv"), &ScriptEditorDebugger::_export_csv);
 	ClassDB::bind_method(D_METHOD("_performance_draw"), &ScriptEditorDebugger::_performance_draw);
 	ClassDB::bind_method(D_METHOD("_performance_select"), &ScriptEditorDebugger::_performance_select);
@@ -1826,7 +1643,6 @@ ScriptEditorDebugger::ScriptEditorDebugger(EditorNode *p_editor) {
 	ppeer = Ref<PacketPeerStream>(memnew(PacketPeerStream));
 	ppeer->set_input_buffer_max_size((1024 * 1024 * 8) - 4); // 8 MiB should be enough, minus 4 bytes for separator.
 	editor = p_editor;
-	editor->get_inspector()->connect("object_id_selected", this, "_scene_tree_property_select_object");
 
 	tabs = memnew(TabContainer);
 	tabs->set_tab_align(TabContainer::ALIGN_LEFT);
@@ -1919,7 +1735,7 @@ ScriptEditorDebugger::ScriptEditorDebugger(EditorNode *p_editor) {
 		stack_dump->connect("cell_selected", this, "_stack_dump_frame_selected");
 		sc->add_child(stack_dump);
 
-		inspector = memnew(EditorInspector);
+		inspector = memnew(EditorDebuggerInspector);
 		inspector->set_h_size_flags(SIZE_EXPAND_FILL);
 		inspector->set_enable_capitalize_paths(false);
 		inspector->set_read_only(true);
@@ -2176,5 +1992,5 @@ ScriptEditorDebugger::~ScriptEditorDebugger() {
 
 	ppeer->set_stream_peer(Ref<StreamPeer>());
 
-	_clear_remote_objects();
+	inspector->clear_cache();
 }

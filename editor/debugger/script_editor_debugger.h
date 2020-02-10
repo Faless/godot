@@ -91,7 +91,6 @@ private:
 	Button *export_csv;
 
 	ObjectID inspected_object_id;
-	ScriptEditorDebuggerVariables *variables;
 
 	VBoxContainer *errors_tab;
 	Tree *error_tree;

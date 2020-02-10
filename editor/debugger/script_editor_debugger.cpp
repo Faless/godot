@@ -56,69 +56,6 @@
 #include "scene/gui/tree.h"
 #include "scene/resources/packed_scene.h"
 
-class ScriptEditorDebuggerVariables : public Object {
-
-	GDCLASS(ScriptEditorDebuggerVariables, Object);
-
-	List<PropertyInfo> props;
-	Map<StringName, Variant> values;
-
-protected:
-	bool _set(const StringName &p_name, const Variant &p_value) {
-
-		return false;
-	}
-
-	bool _get(const StringName &p_name, Variant &r_ret) const {
-
-		if (!values.has(p_name))
-			return false;
-		r_ret = values[p_name];
-		return true;
-	}
-	void _get_property_list(List<PropertyInfo> *p_list) const {
-
-		for (const List<PropertyInfo>::Element *E = props.front(); E; E = E->next())
-			p_list->push_back(E->get());
-	}
-
-public:
-	void clear() {
-
-		props.clear();
-		values.clear();
-	}
-
-	String get_var_value(const String &p_var) const {
-
-		for (Map<StringName, Variant>::Element *E = values.front(); E; E = E->next()) {
-			String v = E->key().operator String().get_slice("/", 1);
-			if (v == p_var)
-				return E->get();
-		}
-
-		return "";
-	}
-
-	void add_property(const String &p_name, const Variant &p_value, const PropertyHint &p_hint, const String p_hint_string) {
-
-		PropertyInfo pinfo;
-		pinfo.name = p_name;
-		pinfo.type = p_value.get_type();
-		pinfo.hint = p_hint;
-		pinfo.hint_string = p_hint_string;
-		props.push_back(pinfo);
-		values[p_name] = p_value;
-	}
-
-	void update() {
-		_change_notify();
-	}
-
-	ScriptEditorDebuggerVariables() {
-	}
-};
-
 void ScriptEditorDebugger::_put_msg(String p_message, Array p_data) {
 	if (is_peer_connected()) {
 		Array msg;
@@ -389,7 +326,7 @@ void ScriptEditorDebugger::_parse_message(const String &p_msg, const Array &p_da
 		}
 	} else if (p_msg == "stack_frame_vars") {
 
-		variables->clear();
+		inspector->clear_properties();
 
 	} else if (p_msg == "stack_frame_var") {
 
@@ -421,9 +358,7 @@ void ScriptEditorDebugger::_parse_message(const String &p_msg, const Array &p_da
 				type = "Unknown/";
 		}
 
-		variables->add_property(type + n, v, h, hs);
-		variables->update();
-		inspector->edit(variables);
+		inspector->add_property(type + n, v, h, hs);
 
 	} else if (p_msg == "output") {
 		ERR_FAIL_COND(p_data.size() < 1);
@@ -812,7 +747,6 @@ void ScriptEditorDebugger::_notification(int p_what) {
 
 		case NOTIFICATION_ENTER_TREE: {
 
-			inspector->edit(variables);
 			skip_breakpoints->set_icon(get_icon("DebugSkipBreakpointsOff", "EditorIcons"));
 			copy->set_icon(get_icon("ActionCopy", "EditorIcons"));
 
@@ -1090,7 +1024,7 @@ void ScriptEditorDebugger::_export_csv() {
 String ScriptEditorDebugger::get_var_value(const String &p_var) const {
 	if (!breaked)
 		return String();
-	return variables->get_var_value(p_var);
+	return inspector->get_var_value(p_var);
 }
 
 int ScriptEditorDebugger::_get_node_path_cache(const NodePath &p_path) {
@@ -1744,8 +1678,6 @@ ScriptEditorDebugger::ScriptEditorDebugger(EditorNode *p_editor) {
 
 		pending_in_queue = 0;
 
-		variables = memnew(ScriptEditorDebuggerVariables);
-
 		breaked = false;
 
 		tabs->add_child(dbg);
@@ -1987,8 +1919,6 @@ ScriptEditorDebugger::ScriptEditorDebugger(EditorNode *p_editor) {
 }
 
 ScriptEditorDebugger::~ScriptEditorDebugger() {
-
-	memdelete(variables);
 
 	ppeer->set_stream_peer(Ref<StreamPeer>());
 

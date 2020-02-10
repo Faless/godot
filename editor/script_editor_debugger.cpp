@@ -44,6 +44,7 @@
 #include "editor_settings.h"
 #include "main/performance.h"
 #include "property_editor.h"
+#include "scene/debugger/scene_debugger.h"
 #include "scene/gui/dialogs.h"
 #include "scene/gui/label.h"
 #include "scene/gui/line_edit.h"
@@ -542,17 +543,17 @@ void ScriptEditorDebugger::_parse_message(const String &p_msg, const Array &p_da
 
 		ScriptEditorDebuggerInspectedObject *debugObj = NULL;
 
-		ObjectID id = p_data[0];
-		String type = p_data[1];
-		Array properties = p_data[2];
+		SceneDebuggerObject obj;
+		obj.deserialize(p_data);
+		ERR_FAIL_COND(obj.id == 0);
 
-		if (remote_objects.has(id)) {
-			debugObj = remote_objects[id];
+		if (remote_objects.has(obj.id)) {
+			debugObj = remote_objects[obj.id];
 		} else {
 			debugObj = memnew(ScriptEditorDebuggerInspectedObject);
-			debugObj->remote_object_id = id;
-			debugObj->type_name = type;
-			remote_objects[id] = debugObj;
+			debugObj->remote_object_id = obj.id;
+			debugObj->type_name = obj.class_name;
+			remote_objects[obj.id] = debugObj;
 			debugObj->connect("value_edited", this, "_scene_tree_property_value_edited");
 		}
 
@@ -561,24 +562,13 @@ void ScriptEditorDebugger::_parse_message(const String &p_msg, const Array &p_da
 		debugObj->prop_list.clear();
 		int new_props_added = 0;
 		Set<String> changed;
-		for (int i = 0; i < properties.size(); i++) {
+		for (int i = 0; i < obj.properties.size(); i++) {
 
-			Array prop = properties[i];
-			if (prop.size() != 6)
-				continue;
-
-			PropertyInfo pinfo;
-			pinfo.name = prop[0];
-			pinfo.type = Variant::Type(int(prop[1]));
-			pinfo.hint = PropertyHint(int(prop[2]));
-			pinfo.hint_string = prop[3];
-			pinfo.usage = PropertyUsageFlags(int(prop[4]));
-			Variant var = prop[5];
+			PropertyInfo &pinfo = obj.properties[i].first;
+			Variant &var = obj.properties[i].second;
 
 			if (pinfo.type == Variant::OBJECT) {
-				if (var.is_zero()) {
-					var = RES();
-				} else if (var.get_type() == Variant::STRING) {
+				if (var.get_type() == Variant::STRING) {
 					String path = var;
 					if (path.find("::") != -1) {
 						// built-in resource
@@ -602,13 +592,6 @@ void ScriptEditorDebugger::_parse_message(const String &p_msg, const Array &p_da
 								debugObj->set_script_and_instance(var, script_instance);
 							}
 						}
-					}
-				} else if (var.get_type() == Variant::OBJECT) {
-					if (((Object *)var)->is_class("EncodedObjectAsID")) {
-						var = Object::cast_to<EncodedObjectAsID>(var)->get_object_id();
-						pinfo.type = var.get_type();
-						pinfo.hint = PROPERTY_HINT_OBJECT_ID;
-						pinfo.hint_string = "Object";
 					}
 				}
 			}

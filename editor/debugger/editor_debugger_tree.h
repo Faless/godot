@@ -1,8 +1,11 @@
 #include "scene/gui/tree.h"
 
-class EditorDebuggerRemoteTree : public Tree {
+#ifndef EDITOR_DEBUGGER_TREE_H
+#define EDITOR_DEBUGGER_TREE_H
 
-	GDCLASS(EditorDebuggerRemoteTree, Tree);
+class EditorDebuggerTree : public Tree {
+
+	GDCLASS(EditorDebuggerTree, Tree);
 
 	enum ItemMenu {
 		ITEM_MENU_COPY_ERROR,
@@ -26,5 +29,6 @@ protected:
 
 public:
 	int update_scene_tree(TreeItem *parent, const Array &nodes, int current_index);
-	EditorDebuggerRemoteTree();
+	EditorDebuggerTree();
 };
+#endif // EDITOR_DEBUGGER_TREE_H

@@ -6,7 +6,7 @@
 #include "scene/gui/button.h"
 #include "scene/gui/tab_container.h"
 
-class EditorDebuggerRemoteTree;
+class EditorDebuggerTree;
 
 class EditorDebuggerNode : public TabContainer {
 
@@ -23,7 +23,7 @@ private:
 
 	ObjectID inspected_object_id;
 	int inspect_edited_object_timeout = 0;
-	EditorDebuggerRemoteTree *remote_scene_tree;
+	EditorDebuggerTree *remote_scene_tree;
 	float remote_scene_tree_timeout;
 	bool auto_switch_remote_scene_tree;
 

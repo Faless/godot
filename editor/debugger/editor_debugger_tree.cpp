@@ -2,7 +2,7 @@
 
 #include "editor/editor_node.h"
 
-EditorDebuggerRemoteTree::EditorDebuggerRemoteTree() {
+EditorDebuggerTree::EditorDebuggerTree() {
 	inspected_object_id = 0;
 	updating_scene_tree = false;
 
@@ -15,7 +15,7 @@ EditorDebuggerRemoteTree::EditorDebuggerRemoteTree() {
 	add_child(item_menu);
 }
 
-void EditorDebuggerRemoteTree::_notification(int p_what) {
+void EditorDebuggerTree::_notification(int p_what) {
 	if (p_what == NOTIFICATION_POSTINITIALIZE) {
 		connect("cell_selected", this, "_scene_tree_selected");
 		connect("item_collapsed", this, "_scene_tree_folded");
@@ -23,15 +23,15 @@ void EditorDebuggerRemoteTree::_notification(int p_what) {
 	}
 }
 
-void EditorDebuggerRemoteTree::_bind_methods() {
+void EditorDebuggerTree::_bind_methods() {
 	WARN_PRINT("bind_methods");
-	ClassDB::bind_method(D_METHOD("_scene_tree_selected"), &EditorDebuggerRemoteTree::_scene_tree_selected);
-	ClassDB::bind_method(D_METHOD("_scene_tree_folded"), &EditorDebuggerRemoteTree::_scene_tree_folded);
-	ClassDB::bind_method(D_METHOD("_scene_tree_rmb_selected"), &EditorDebuggerRemoteTree::_scene_tree_rmb_selected);
+	ClassDB::bind_method(D_METHOD("_scene_tree_selected"), &EditorDebuggerTree::_scene_tree_selected);
+	ClassDB::bind_method(D_METHOD("_scene_tree_folded"), &EditorDebuggerTree::_scene_tree_folded);
+	ClassDB::bind_method(D_METHOD("_scene_tree_rmb_selected"), &EditorDebuggerTree::_scene_tree_rmb_selected);
 	ADD_SIGNAL(MethodInfo("inspect_object", PropertyInfo(Variant::INT, "object_id")));
 }
 
-void EditorDebuggerRemoteTree::_scene_tree_selected() {
+void EditorDebuggerTree::_scene_tree_selected() {
 
 	if (updating_scene_tree) {
 
@@ -48,7 +48,7 @@ void EditorDebuggerRemoteTree::_scene_tree_selected() {
 	emit_signal("inspect_object", inspected_object_id);
 }
 
-void EditorDebuggerRemoteTree::_scene_tree_folded(Object *obj) {
+void EditorDebuggerTree::_scene_tree_folded(Object *obj) {
 
 	if (updating_scene_tree) {
 
@@ -67,7 +67,7 @@ void EditorDebuggerRemoteTree::_scene_tree_folded(Object *obj) {
 	}
 }
 
-void EditorDebuggerRemoteTree::_scene_tree_rmb_selected(const Vector2 &p_position) {
+void EditorDebuggerTree::_scene_tree_rmb_selected(const Vector2 &p_position) {
 
 	TreeItem *item = get_item_at_position(p_position);
 	if (!item)
@@ -103,7 +103,7 @@ void EditorDebuggerRemoteTree::_scene_tree_rmb_selected(const Vector2 &p_positio
 /// |
 /// |-E
 ///
-int EditorDebuggerRemoteTree::update_scene_tree(TreeItem *parent, const Array &nodes, int current_index) {
+int EditorDebuggerTree::update_scene_tree(TreeItem *parent, const Array &nodes, int current_index) {
 	bool was_updating = updating_scene_tree;
 	updating_scene_tree = true;
 	String filter = EditorNode::get_singleton()->get_scene_tree_dock()->get_filter();
@@ -166,7 +166,7 @@ int EditorDebuggerRemoteTree::update_scene_tree(TreeItem *parent, const Array &n
 	return items_count;
 }
 
-void EditorDebuggerRemoteTree::_item_menu_id_pressed(int p_option) {
+void EditorDebuggerTree::_item_menu_id_pressed(int p_option) {
 
 	switch (p_option) {
 

@@ -11,7 +11,7 @@ EditorDebuggerNode::EditorDebuggerNode(EditorNode *p_editor) {
 	debugger = _add_debugger("Debugger");
 
 	// Remote scene tree
-	remote_scene_tree = memnew(EditorDebuggerRemoteTree);
+	remote_scene_tree = memnew(EditorDebuggerTree);
 	EditorNode::get_singleton()->get_scene_tree_dock()->add_remote_tree_editor(remote_scene_tree);
 	EditorNode::get_singleton()->get_scene_tree_dock()->connect("remote_tree_selected", remote_scene_tree, "_scene_tree_selected");
 

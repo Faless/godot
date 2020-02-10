@@ -1,5 +1,7 @@
 #include "editor_debugger_inspector.h"
 
+#include "core/io/marshalls.h"
+#include "core/script_debugger.h"
 #include "editor/editor_node.h"
 #include "scene/debugger/scene_debugger.h"
 
@@ -125,12 +127,12 @@ void EditorDebuggerInspector::_object_selected(ObjectID p_object) {
 	emit_signal("inspect_object", p_object);
 }
 
-void EditorDebuggerInspector::add_object(const Array &p_arr) {
+ObjectID EditorDebuggerInspector::add_object(const Array &p_arr) {
 	EditorDebuggerRemoteObject *debugObj = NULL;
 
 	SceneDebuggerObject obj;
 	obj.deserialize(p_arr);
-	ERR_FAIL_COND(obj.id == 0);
+	ERR_FAIL_COND_V(obj.id == 0, 0);
 
 	if (remote_objects.has(obj.id)) {
 		debugObj = remote_objects[obj.id];
@@ -206,6 +208,7 @@ void EditorDebuggerInspector::add_object(const Array &p_arr) {
 		//full update, because props were added or removed
 		debugObj->update();
 	}
+	return obj.id;
 }
 
 void EditorDebuggerInspector::clear_cache() {
@@ -219,24 +222,52 @@ void EditorDebuggerInspector::clear_cache() {
 	remote_objects.clear();
 }
 
-void EditorDebuggerInspector::add_property(const String &p_name, const Variant &p_value, const PropertyHint &p_hint, const String p_hint_string) {
+void EditorDebuggerInspector::add_stack_variable(const Array &p_array) {
+
+	ScriptDebugger::ScriptStackVariable var;
+	var.deserialize(p_array);
+	String n = var.name;
+	Variant v = var.value;
+
+	PropertyHint h = PROPERTY_HINT_NONE;
+	String hs = String();
+
+	if (v.get_type() == Variant::OBJECT) {
+		v = Object::cast_to<EncodedObjectAsID>(v)->get_object_id();
+		h = PROPERTY_HINT_OBJECT_ID;
+		hs = "Object";
+	}
+	String type;
+	switch (var.type) {
+		case 0:
+			type = "Locals/";
+			break;
+		case 1:
+			type = "Members/";
+			break;
+		case 2:
+			type = "Globals/";
+			break;
+		default:
+			type = "Unknown/";
+	}
 
 	PropertyInfo pinfo;
-	pinfo.name = p_name;
-	pinfo.type = p_value.get_type();
-	pinfo.hint = p_hint;
-	pinfo.hint_string = p_hint_string;
+	pinfo.name = type + n;
+	pinfo.type = v.get_type();
+	pinfo.hint = h;
+	pinfo.hint_string = hs;
 
 	variables->prop_list.push_back(pinfo);
-	variables->prop_values[p_name] = p_value;
+	variables->prop_values[type + n] = v;
 	variables->update();
 	edit(variables);
 }
 
-void EditorDebuggerInspector::clear_properties() {
+void EditorDebuggerInspector::clear_stack_variables() {
 	variables->clear();
 }
 
-String EditorDebuggerInspector::get_var_value(const String &p_var) {
+String EditorDebuggerInspector::get_stack_variable(const String &p_var) {
 	return variables->get_variant(p_var);
 }

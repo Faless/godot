@@ -26,14 +26,14 @@ public:
 	~EditorDebuggerInspector();
 
 	// Remote Object cache
-	void add_object(const Array &p_arr);
+	ObjectID add_object(const Array &p_arr);
 	EditorDebuggerRemoteObject *get_object(ObjectID p_id);
 	void clear_cache();
 
 	// Stack Dump variables
-	String get_var_value(const String &p_var);
-	void add_property(const String &p_name, const Variant &p_value, const PropertyHint &p_hint, const String p_hint_string);
-	void clear_properties();
+	String get_stack_variable(const String &p_var);
+	void add_stack_variable(const Array &p_arr);
+	void clear_stack_variables();
 };
 
 #endif // EDITOR_DEBUGGER_REMOTE_INSPECTOR_H

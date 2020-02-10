@@ -272,7 +272,9 @@ void ScriptEditorDebugger::_parse_message(const String &p_msg, const Array &p_da
 		le_set->set_disabled(false);
 	} else if (p_msg == "message:inspect_object") {
 
-		inspector->add_object(p_data);
+		ObjectID id = inspector->add_object(p_data);
+		if (id != 0)
+			emit_signal("object_inspected", id);
 	} else if (p_msg == "message:video_mem") {
 
 		vmem_tree->clear();
@@ -326,39 +328,11 @@ void ScriptEditorDebugger::_parse_message(const String &p_msg, const Array &p_da
 		}
 	} else if (p_msg == "stack_frame_vars") {
 
-		inspector->clear_properties();
+		inspector->clear_stack_variables();
 
 	} else if (p_msg == "stack_frame_var") {
 
-		ScriptDebugger::ScriptStackVariable var;
-		var.deserialize(p_data);
-		String n = var.name;
-		Variant v = var.value;
-
-		PropertyHint h = PROPERTY_HINT_NONE;
-		String hs = String();
-
-		if (v.get_type() == Variant::OBJECT) {
-			v = Object::cast_to<EncodedObjectAsID>(v)->get_object_id();
-			h = PROPERTY_HINT_OBJECT_ID;
-			hs = "Object";
-		}
-		String type;
-		switch (var.type) {
-			case 0:
-				type = "Locals/";
-				break;
-			case 1:
-				type = "Members/";
-				break;
-			case 2:
-				type = "Globals/";
-				break;
-			default:
-				type = "Unknown/";
-		}
-
-		inspector->add_property(type + n, v, h, hs);
+		inspector->add_stack_variable(p_data);
 
 	} else if (p_msg == "output") {
 		ERR_FAIL_COND(p_data.size() < 1);
@@ -1024,7 +998,7 @@ void ScriptEditorDebugger::_export_csv() {
 String ScriptEditorDebugger::get_var_value(const String &p_var) const {
 	if (!breaked)
 		return String();
-	return inspector->get_var_value(p_var);
+	return inspector->get_stack_variable(p_var);
 }
 
 int ScriptEditorDebugger::_get_node_path_cache(const NodePath &p_path) {

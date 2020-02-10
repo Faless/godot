@@ -1,6 +1,6 @@
 #include "editor_debugger_node.h"
 
-#include "editor/debugger/debugger_remote_tree.h"
+#include "editor/debugger/editor_debugger_tree.h"
 #include "editor/editor_log.h"
 #include "editor/editor_node.h"
 

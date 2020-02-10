@@ -1,6 +1,6 @@
 
-#ifndef EDITOR_DEBUGGER_REMOTE_INSPECTOR_H
-#define EDITOR_DEBUGGER_REMOTE_INSPECTOR_H
+#ifndef EDITOR_DEBUGGER_INSPECTOR_H
+#define EDITOR_DEBUGGER_INSPECTOR_H
 #include "editor/editor_inspector.h"
 
 class EditorDebuggerRemoteObject;
@@ -36,4 +36,4 @@ public:
 	void clear_stack_variables();
 };
 
-#endif // EDITOR_DEBUGGER_REMOTE_INSPECTOR_H
+#endif // EDITOR_DEBUGGER_INSPECTOR_H

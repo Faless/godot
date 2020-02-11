@@ -134,10 +134,10 @@ void ScriptEditorDebugger::update_tabs() {
 void ScriptEditorDebugger::_file_selected(const String &p_file) {
 	switch (file_dialog_mode) {
 		case SAVE_NODE: {
-			Array msg;
-			msg.push_back(inspected_object_id);
-			msg.push_back(p_file);
-			_put_msg("save_node", msg);
+			//			Array msg;
+			//			msg.push_back(inspected_object_id);
+			//			msg.push_back(p_file);
+			//			_put_msg("save_node", msg);
 		} break;
 		case SAVE_CSV: {
 			Error err;
@@ -179,20 +179,14 @@ void ScriptEditorDebugger::_file_selected(const String &p_file) {
 	}
 }
 
-void ScriptEditorDebugger::_scene_tree_property_value_edited(const String &p_prop, const Variant &p_value) {
+void ScriptEditorDebugger::update_object(ObjectID p_obj_id, const String &p_prop, const Variant &p_value) {
 
 	Array msg;
-	msg.push_back(inspected_object_id);
+	msg.push_back(p_obj_id);
 	msg.push_back(p_prop);
 	msg.push_back(p_value);
 	_put_msg("set_object_property", msg);
 	//inspect_edited_object_timeout = 0.7; //avoid annoyance, don't request soon after editing // TODO FIXME!
-}
-
-void ScriptEditorDebugger::_scene_tree_property_select_object(ObjectID p_object) {
-
-	inspected_object_id = p_object;
-	request_object(p_object);
 }
 
 void ScriptEditorDebugger::request_scene_tree() {
@@ -274,7 +268,7 @@ void ScriptEditorDebugger::_parse_message(const String &p_msg, const Array &p_da
 
 		ObjectID id = inspector->add_object(p_data);
 		if (id != 0)
-			emit_signal("object_inspected", id);
+			emit_signal("remote_object_updated", id);
 	} else if (p_msg == "message:video_mem") {
 
 		vmem_tree->clear();
@@ -1532,15 +1526,16 @@ void ScriptEditorDebugger::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("live_debug_restore_node"), &ScriptEditorDebugger::live_debug_restore_node);
 	ClassDB::bind_method(D_METHOD("live_debug_duplicate_node"), &ScriptEditorDebugger::live_debug_duplicate_node);
 	ClassDB::bind_method(D_METHOD("live_debug_reparent_node"), &ScriptEditorDebugger::live_debug_reparent_node);
-	ClassDB::bind_method(D_METHOD("_scene_tree_property_select_object"), &ScriptEditorDebugger::_scene_tree_property_select_object);
-	ClassDB::bind_method(D_METHOD("_scene_tree_property_value_edited"), &ScriptEditorDebugger::_scene_tree_property_value_edited);
+	ClassDB::bind_method(D_METHOD("request_object", "id"), &ScriptEditorDebugger::request_object);
+	ClassDB::bind_method(D_METHOD("update_object", "id", "property", "value"), &ScriptEditorDebugger::update_object);
 
 	ADD_SIGNAL(MethodInfo("goto_script_line"));
-	ADD_SIGNAL(MethodInfo("remote_tree_updated", PropertyInfo(Variant::ARRAY, "remote_tree")));
 	ADD_SIGNAL(MethodInfo("set_execution", PropertyInfo("script"), PropertyInfo(Variant::INT, "line")));
 	ADD_SIGNAL(MethodInfo("clear_execution", PropertyInfo("script")));
 	ADD_SIGNAL(MethodInfo("breaked", PropertyInfo(Variant::BOOL, "reallydid"), PropertyInfo(Variant::BOOL, "can_debug")));
 	ADD_SIGNAL(MethodInfo("show_debugger", PropertyInfo(Variant::BOOL, "reallydid")));
+	ADD_SIGNAL(MethodInfo("remote_object_updated", PropertyInfo(Variant::INT, "id")));
+	ADD_SIGNAL(MethodInfo("remote_tree_updated"));
 }
 
 ScriptEditorDebugger::ScriptEditorDebugger(EditorNode *p_editor) {
@@ -1647,7 +1642,6 @@ ScriptEditorDebugger::ScriptEditorDebugger(EditorNode *p_editor) {
 		inspector->set_h_size_flags(SIZE_EXPAND_FILL);
 		inspector->set_enable_capitalize_paths(false);
 		inspector->set_read_only(true);
-		inspector->connect("object_id_selected", this, "_scene_tree_property_select_object");
 		sc->add_child(inspector);
 
 		pending_in_queue = 0;

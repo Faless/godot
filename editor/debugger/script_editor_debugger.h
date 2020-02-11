@@ -90,8 +90,6 @@ private:
 	Button *le_clear;
 	Button *export_csv;
 
-	ObjectID inspected_object_id;
-
 	VBoxContainer *errors_tab;
 	Tree *error_tree;
 	Button *clearbutton;
@@ -172,8 +170,8 @@ private:
 	void _file_selected(const String &p_file);
 	void _parse_message(const String &p_msg, const Array &p_data);
 	void _set_reason_text(const String &p_reason, MessageType p_type);
-	void _scene_tree_property_select_object(ObjectID p_object);
-	void _scene_tree_property_value_edited(const String &p_prop, const Variant &p_value);
+	void _object_selected(ObjectID p_object);
+	void _object_edited(const String &p_prop, const Variant &p_value);
 
 	void _video_mem_request();
 
@@ -233,8 +231,9 @@ public:
 	void debug_break();
 	void debug_continue();
 
-	bool get_error_count() { return error_count; };
-	bool get_warning_count() { return warning_count; };
+	EditorDebuggerInspector *get_inspector() { return inspector; }
+	bool get_error_count() { return error_count; }
+	bool get_warning_count() { return warning_count; }
 	void update_tabs();
 	String get_var_value(const String &p_var) const;
 

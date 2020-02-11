@@ -1,6 +1,7 @@
 #include "editor_debugger_tree.h"
 
 #include "editor/editor_node.h"
+#include "scene/debugger/scene_debugger.h"
 
 EditorDebuggerTree::EditorDebuggerTree() {
 	inspected_object_id = 0;
@@ -24,7 +25,6 @@ void EditorDebuggerTree::_notification(int p_what) {
 }
 
 void EditorDebuggerTree::_bind_methods() {
-	WARN_PRINT("bind_methods");
 	ClassDB::bind_method(D_METHOD("_scene_tree_selected"), &EditorDebuggerTree::_scene_tree_selected);
 	ClassDB::bind_method(D_METHOD("_scene_tree_folded"), &EditorDebuggerTree::_scene_tree_folded);
 	ClassDB::bind_method(D_METHOD("_scene_tree_rmb_selected"), &EditorDebuggerTree::_scene_tree_rmb_selected);
@@ -82,14 +82,7 @@ void EditorDebuggerTree::_scene_tree_rmb_selected(const Vector2 &p_position) {
 	item_menu->popup();
 }
 
-/// Populates inspect_scene_tree recursively given data in nodes.
-/// Nodes is an array containing 4 elements for each node, it follows this pattern:
-/// nodes[i] == number of direct children of this node
-/// nodes[i + 1] == node name
-/// nodes[i + 2] == node class
-/// nodes[i + 3] == node instance id
-///
-/// Returns the number of items parsed in nodes from current_index.
+/// Populates inspect_scene_tree given data in nodes as a flat list, encoded depth first.
 ///
 /// Given a nodes array like [R,A,B,C,D,E] the following Tree will be generated, assuming
 /// filter is an empty String, R and A child count are 2, B is 1 and C, D and E are 0.
@@ -103,67 +96,49 @@ void EditorDebuggerTree::_scene_tree_rmb_selected(const Vector2 &p_position) {
 /// |
 /// |-E
 ///
-int EditorDebuggerTree::update_scene_tree(TreeItem *parent, const Array &nodes, int current_index) {
-	bool was_updating = updating_scene_tree;
+int EditorDebuggerTree::update_scene_tree(TreeItem *p_parent, const Array &nodes, int current_index) {
 	updating_scene_tree = true;
 	String filter = EditorNode::get_singleton()->get_scene_tree_dock()->get_filter();
-	String item_text = nodes[current_index + 1];
-	String item_type = nodes[current_index + 2];
-	bool keep = filter.is_subsequence_ofi(item_text);
 
-	TreeItem *item = create_item(parent);
-	item->set_text(0, item_text);
-	item->set_tooltip(0, TTR("Type:") + " " + item_type);
-	ObjectID id = ObjectID(nodes[current_index + 3]);
-	Ref<Texture> icon = EditorNode::get_singleton()->get_class_icon(nodes[current_index + 2], "");
-	if (icon.is_valid()) {
-		item->set_icon(0, icon);
-	}
-	item->set_metadata(0, id);
-
-	if (id == inspected_object_id) {
-		TreeItem *cti = item->get_parent();
-		while (cti) {
-			cti->set_collapsed(false);
-			cti = cti->get_parent();
+	SceneDebuggerTree tree;
+	tree.deserialize(nodes);
+	// Nodes are in a flatten list, depth first. Use a stack of parents, avoid recursion.
+	List<Pair<TreeItem *, int> > parents;
+	for (int i = 0; i < tree.nodes.size(); i++) {
+		TreeItem *parent = NULL;
+		if (parents.size()) { // Find last parent.
+			Pair<TreeItem *, int> &p = parents[0];
+			parent = p.first;
+			if (!(--p.second)) { // If no child left, remove it.
+				parents.pop_front();
+			}
 		}
-		item->select(0);
-	}
+		// Add this node.
+		SceneDebuggerTree::RemoteNode &node = tree.nodes[i];
+		TreeItem *item = create_item(parent);
+		item->set_text(0, node.type_name);
+		item->set_tooltip(0, TTR("Type:") + " " + node.type_name);
+		Ref<Texture> icon = EditorNode::get_singleton()->get_class_icon(node.type_name, "");
+		if (icon.is_valid()) {
+			item->set_icon(0, icon);
+		}
+		item->set_metadata(0, node.id);
 
-	// Set current item as collapsed if necessary
-	if (parent) {
-		if (!unfold_cache.has(id)) {
-			item->set_collapsed(true);
+		// Set current item as collapsed if necessary (root is never collapsed)
+		if (parent) {
+			if (!unfold_cache.has(node.id)) {
+				item->set_collapsed(true);
+			}
+		}
+		// TODO filter list...
+
+		// Add in front of the parents stack if children are expected.
+		if (node.child_count) {
+			parents.push_front(Pair<TreeItem *, int>(item, node.child_count));
 		}
 	}
-
-	int children_count = nodes[current_index];
-	// Tracks the total number of items parsed in nodes, this is used to skips nodes that
-	// are not direct children of the current node since we can't know in advance the total
-	// number of children, direct and not, of a node without traversing the nodes array previously.
-	// Keeping track of this allows us to build our remote scene tree by traversing the node
-	// array just once.
-	int items_count = 1;
-	for (int i = 0; i < children_count; i++) {
-		// Called for each direct child of item.
-		// Direct children of current item might not be adjacent so items_count must
-		// be incremented by the number of items parsed until now, otherwise we would not
-		// be able to access the next child of the current item.
-		// items_count is multiplied by 4 since that's the number of elements in the nodes
-		// array needed to represent a single node.
-		items_count += update_scene_tree(item, nodes, current_index + items_count * 4);
-	}
-
-	// If item has not children and should not be kept delete it
-	if (!keep && !item->get_children() && parent) {
-		parent->remove_child(item);
-		memdelete(item);
-	}
-
-	if (!was_updating) {
-		updating_scene_tree = false;
-	}
-	return items_count;
+	updating_scene_tree = false;
+	return tree.nodes.size();
 }
 
 void EditorDebuggerTree::_item_menu_id_pressed(int p_option) {

@@ -39,7 +39,7 @@ void EditorDebuggerNode::_bind_methods() {
 	ClassDB::bind_method("_clear_execution", &EditorDebuggerNode::_clear_execution);
 	ClassDB::bind_method("_breaked", &EditorDebuggerNode::_breaked);
 	ClassDB::bind_method("_show_debugger", &EditorDebuggerNode::_show_debugger);
-	ClassDB::bind_method(D_METHOD("_remote_tree_updated", "remote_tree"), &EditorDebuggerNode::_remote_tree_updated);
+	ClassDB::bind_method(D_METHOD("_remote_tree_updated"), &EditorDebuggerNode::_remote_tree_updated);
 
 	ADD_SIGNAL(MethodInfo("goto_script_line"));
 	ADD_SIGNAL(MethodInfo("set_execution", PropertyInfo("script"), PropertyInfo(Variant::INT, "line")));
@@ -118,7 +118,7 @@ void EditorDebuggerNode::_notification(int p_what) {
 	if (remote_scene_tree_timeout < 0) {
 		remote_scene_tree_timeout = EditorSettings::get_singleton()->get("debugger/remote_scene_tree_refresh_interval");
 		if (remote_scene_tree->is_visible_in_tree()) {
-			debugger->request_scene_tree();
+			debugger->request_remote_tree();
 		}
 	}
 
@@ -172,8 +172,8 @@ void EditorDebuggerNode::_breaked(bool p_breaked, bool p_can_debug) {
 	emit_signal("breaked", p_breaked, p_can_debug);
 }
 
-void EditorDebuggerNode::_remote_tree_updated(const Array &p_data) {
+void EditorDebuggerNode::_remote_tree_updated() {
 	// TODO Should check active
 	remote_scene_tree->clear();
-	remote_scene_tree->update_scene_tree(NULL, p_data, 0);
+	remote_scene_tree->update_scene_tree(debugger->get_remote_tree());
 }

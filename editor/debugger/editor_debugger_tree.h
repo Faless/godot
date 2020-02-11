@@ -3,6 +3,8 @@
 #ifndef EDITOR_DEBUGGER_TREE_H
 #define EDITOR_DEBUGGER_TREE_H
 
+class SceneDebuggerTree;
+
 class EditorDebuggerTree : public Tree {
 
 	GDCLASS(EditorDebuggerTree, Tree);
@@ -28,7 +30,7 @@ protected:
 	void _notification(int p_what);
 
 public:
-	int update_scene_tree(TreeItem *parent, const Array &nodes, int current_index);
+	void update_scene_tree(const SceneDebuggerTree *p_tree);
 	EditorDebuggerTree();
 };
 #endif // EDITOR_DEBUGGER_TREE_H

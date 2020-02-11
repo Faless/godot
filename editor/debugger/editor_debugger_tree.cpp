@@ -96,15 +96,13 @@ void EditorDebuggerTree::_scene_tree_rmb_selected(const Vector2 &p_position) {
 /// |
 /// |-E
 ///
-int EditorDebuggerTree::update_scene_tree(TreeItem *p_parent, const Array &nodes, int current_index) {
+void EditorDebuggerTree::update_scene_tree(const SceneDebuggerTree *p_tree) {
 	updating_scene_tree = true;
 	String filter = EditorNode::get_singleton()->get_scene_tree_dock()->get_filter();
 
-	SceneDebuggerTree tree;
-	tree.deserialize(nodes);
 	// Nodes are in a flatten list, depth first. Use a stack of parents, avoid recursion.
 	List<Pair<TreeItem *, int> > parents;
-	for (int i = 0; i < tree.nodes.size(); i++) {
+	for (int i = 0; i < p_tree->nodes.size(); i++) {
 		TreeItem *parent = NULL;
 		if (parents.size()) { // Find last parent.
 			Pair<TreeItem *, int> &p = parents[0];
@@ -114,7 +112,7 @@ int EditorDebuggerTree::update_scene_tree(TreeItem *p_parent, const Array &nodes
 			}
 		}
 		// Add this node.
-		SceneDebuggerTree::RemoteNode &node = tree.nodes[i];
+		const SceneDebuggerTree::RemoteNode &node = p_tree->nodes[i];
 		TreeItem *item = create_item(parent);
 		item->set_text(0, node.type_name);
 		item->set_tooltip(0, TTR("Type:") + " " + node.type_name);
@@ -138,7 +136,6 @@ int EditorDebuggerTree::update_scene_tree(TreeItem *p_parent, const Array &nodes
 		}
 	}
 	updating_scene_tree = false;
-	return tree.nodes.size();
 }
 
 void EditorDebuggerTree::_item_menu_id_pressed(int p_option) {

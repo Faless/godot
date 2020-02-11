@@ -53,6 +53,7 @@ class HSplitContainer;
 class ItemList;
 class EditorProfiler;
 class EditorNetworkProfiler;
+class SceneDebuggerTree;
 
 class ScriptEditorDebugger : public MarginContainer {
 
@@ -140,6 +141,7 @@ private:
 
 	Tree *stack_dump;
 	EditorDebuggerInspector *inspector;
+	SceneDebuggerTree *scene_tree;
 
 	Ref<StreamPeerTCP> connection;
 	Ref<PacketPeerStream> ppeer;
@@ -217,7 +219,8 @@ protected:
 public:
 	void update_object(ObjectID p_obj_id, const String &p_prop, const Variant &p_value);
 	void request_object(ObjectID p_obj_id);
-	void request_scene_tree();
+	void request_remote_tree();
+	const SceneDebuggerTree *get_remote_tree();
 	void start(Ref<StreamPeerTCP> p_connection);
 	void pause();
 	void unpause();

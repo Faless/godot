@@ -44,6 +44,7 @@
 #include "editor/plugins/spatial_editor_plugin.h"
 #include "editor/property_editor.h"
 #include "main/performance.h"
+#include "scene/debugger/scene_debugger.h"
 #include "scene/gui/dialogs.h"
 #include "scene/gui/label.h"
 #include "scene/gui/line_edit.h"
@@ -189,9 +190,13 @@ void ScriptEditorDebugger::update_object(ObjectID p_obj_id, const String &p_prop
 	//inspect_edited_object_timeout = 0.7; //avoid annoyance, don't request soon after editing // TODO FIXME!
 }
 
-void ScriptEditorDebugger::request_scene_tree() {
+void ScriptEditorDebugger::request_remote_tree() {
 
 	_put_msg("request_scene_tree", Array());
+}
+
+const SceneDebuggerTree *ScriptEditorDebugger::get_remote_tree() {
+	return scene_tree;
 }
 
 void ScriptEditorDebugger::request_object(ObjectID p_obj_id) {
@@ -261,7 +266,9 @@ void ScriptEditorDebugger::_parse_message(const String &p_msg, const Array &p_da
 
 	} else if (p_msg == "message:scene_tree") {
 
-		emit_signal("remote_tree_updated", p_data); // TODO Store one per debugger instead.
+		scene_tree->nodes.clear();
+		scene_tree->deserialize(p_data);
+		emit_signal("remote_tree_updated");
 		le_clear->set_disabled(false);
 		le_set->set_disabled(false);
 	} else if (p_msg == "message:inspect_object") {
@@ -1842,6 +1849,7 @@ ScriptEditorDebugger::ScriptEditorDebugger(EditorNode *p_editor) {
 		info_left->add_child(memnew(Label(TTR("Clicked Control Type:"))));
 		info_left->add_child(clicked_ctrl_type);
 
+		scene_tree = memnew(SceneDebuggerTree);
 		live_edit_root = memnew(LineEdit);
 		live_edit_root->set_h_size_flags(SIZE_EXPAND_FILL);
 
@@ -1891,4 +1899,5 @@ ScriptEditorDebugger::~ScriptEditorDebugger() {
 	ppeer->set_stream_peer(Ref<StreamPeer>());
 
 	inspector->clear_cache();
+	memdelete(scene_tree);
 }

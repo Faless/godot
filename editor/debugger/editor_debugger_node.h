@@ -30,7 +30,7 @@ private:
 	ScriptEditorDebugger *_add_debugger(String p_name);
 
 protected:
-	void _remote_tree_updated(const Array &p_data);
+	void _remote_tree_updated();
 	void _goto_script_line(REF p_script, int p_line) {
 		emit_signal("goto_script_line", p_script, p_line);
 	}

@@ -398,22 +398,49 @@ void SceneDebuggerObject::deserialize(const Array &p_arr) {
 	}
 }
 
+/// SceneDebuggerTree
+SceneDebuggerTree::SceneDebuggerTree(Node *p_root) {
+	// Flatten tree into list, depth first, use stack to avoid recursion.
+	List<Node *> stack;
+	stack.push_back(p_root);
+	while (stack.size()) {
+		Node *n = stack[0];
+		stack.pop_front();
+		int count = n->get_child_count();
+		nodes.push_back(RemoteNode(count, n->get_name(), n->get_class(), n->get_instance_id()));
+		for (int i = 0; i < count; i++) {
+			stack.push_front(n->get_child(count - i - 1));
+		}
+	}
+}
+
+void SceneDebuggerTree::serialize(Array &p_arr) {
+	for (List<RemoteNode>::Element *E = nodes.front(); E; E = E->next()) {
+		RemoteNode &n = E->get();
+		p_arr.push_back(n.child_count);
+		p_arr.push_back(n.name);
+		p_arr.push_back(n.type_name);
+		p_arr.push_back(n.id);
+	}
+}
+
+void SceneDebuggerTree::deserialize(const Array &p_arr) {
+	int idx = 0;
+	while (p_arr.size() > idx) {
+		ERR_FAIL_COND(p_arr.size() < 4);
+		CHECK_TYPE(p_arr[idx], INT);
+		CHECK_TYPE(p_arr[idx + 1], STRING);
+		CHECK_TYPE(p_arr[idx + 2], STRING);
+		CHECK_TYPE(p_arr[idx + 3], INT);
+		nodes.push_back(RemoteNode(p_arr[idx], p_arr[idx + 1], p_arr[idx + 2], p_arr[idx + 3]));
+		idx += 4;
+	}
+}
+
 /// LiveEditor
 LiveEditor *LiveEditor::singleton = NULL;
 LiveEditor *LiveEditor::get_singleton() {
 	return singleton;
-}
-
-static void _fill_array(Node *p_node, Array &array, int p_level) {
-
-	array.push_back(p_node->get_child_count());
-	array.push_back(p_node->get_name());
-	array.push_back(p_node->get_class());
-	array.push_back(p_node->get_instance_id());
-	for (int i = 0; i < p_node->get_child_count(); i++) {
-
-		_fill_array(p_node->get_child(i), array, p_level + 1);
-	}
 }
 
 void LiveEditor::_send_tree() {
@@ -422,7 +449,9 @@ void LiveEditor::_send_tree() {
 		return;
 
 	Array arr;
-	_fill_array(scene_tree->root, arr, 0);
+	// Encoded as a flat list depth fist.
+	SceneDebuggerTree tree(scene_tree->root);
+	tree.serialize(arr);
 	ScriptDebugger::get_singleton()->send_message("scene_tree", arr);
 }
 

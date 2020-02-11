@@ -46,6 +46,35 @@ public:
 	void deserialize(const Array &p_arr);
 };
 
+class SceneDebuggerTree {
+
+public:
+	struct RemoteNode {
+		int child_count;
+		String name;
+		String type_name;
+		ObjectID id;
+
+		RemoteNode(int p_child, const String &p_name, const String &p_type, ObjectID p_id) {
+			child_count = p_child;
+			name = p_name;
+			type_name = p_type;
+			id = p_id;
+		}
+
+		RemoteNode() {
+			id = 0;
+		}
+	};
+
+	List<RemoteNode> nodes;
+
+	void serialize(Array &r_arr);
+	void deserialize(const Array &p_arr);
+	SceneDebuggerTree(Node *p_root);
+	SceneDebuggerTree(){};
+};
+
 class LiveEditor {
 
 private:

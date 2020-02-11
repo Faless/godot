@@ -15,7 +15,7 @@ private:
 	EditorDebuggerRemoteObject *variables;
 
 	void _object_selected(ObjectID p_object);
-	void _object_edited(const String &p_prop, const Variant &p_value);
+	void _object_edited(ObjectID p_id, const String &p_prop, const Variant &p_value);
 
 protected:
 	void _notification(int p_what);
@@ -27,7 +27,7 @@ public:
 
 	// Remote Object cache
 	ObjectID add_object(const Array &p_arr);
-	EditorDebuggerRemoteObject *get_object(ObjectID p_id);
+	Object *get_object(ObjectID p_id);
 	void clear_cache();
 
 	// Stack Dump variables

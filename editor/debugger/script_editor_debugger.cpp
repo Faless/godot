@@ -180,16 +180,6 @@ void ScriptEditorDebugger::_file_selected(const String &p_file) {
 	}
 }
 
-void ScriptEditorDebugger::update_object(ObjectID p_obj_id, const String &p_prop, const Variant &p_value) {
-
-	Array msg;
-	msg.push_back(p_obj_id);
-	msg.push_back(p_prop);
-	msg.push_back(p_value);
-	_put_msg("set_object_property", msg);
-	//inspect_edited_object_timeout = 0.7; //avoid annoyance, don't request soon after editing // TODO FIXME!
-}
-
 void ScriptEditorDebugger::request_remote_tree() {
 
 	_put_msg("request_scene_tree", Array());
@@ -199,11 +189,38 @@ const SceneDebuggerTree *ScriptEditorDebugger::get_remote_tree() {
 	return scene_tree;
 }
 
-void ScriptEditorDebugger::request_object(ObjectID p_obj_id) {
+void ScriptEditorDebugger::update_remote_object(ObjectID p_obj_id, const String &p_prop, const Variant &p_value) {
 
 	Array msg;
 	msg.push_back(p_obj_id);
+	msg.push_back(p_prop);
+	msg.push_back(p_value);
+	_put_msg("set_object_property", msg);
+}
+
+void ScriptEditorDebugger::request_remote_object(ObjectID p_obj_id) {
+
+	ERR_FAIL_COND(!p_obj_id);
+	Array msg;
+	msg.push_back(p_obj_id);
 	_put_msg("inspect_object", msg);
+}
+
+Object *ScriptEditorDebugger::get_remote_object(ObjectID p_id) {
+	return inspector->get_object(p_id);
+}
+
+void ScriptEditorDebugger::_remote_object_selected(ObjectID p_id) {
+	emit_signal("remote_object_requested", p_id);
+}
+
+void ScriptEditorDebugger::_remote_object_edited(ObjectID p_id, const String &p_prop, const Variant &p_value) {
+	update_remote_object(p_id, p_prop, p_value);
+	request_remote_object(p_id);
+}
+
+void ScriptEditorDebugger::_remote_object_property_updated(ObjectID p_id, const String &p_property) {
+	emit_signal("remote_object_property_updated", p_id, p_property);
 }
 
 void ScriptEditorDebugger::_video_mem_request() {
@@ -1525,6 +1542,9 @@ void ScriptEditorDebugger::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("_paused"), &ScriptEditorDebugger::_paused);
 
 	ClassDB::bind_method(D_METHOD("_file_selected"), &ScriptEditorDebugger::_file_selected);
+	ClassDB::bind_method(D_METHOD("_remote_object_selected", "id"), &ScriptEditorDebugger::_remote_object_selected);
+	ClassDB::bind_method(D_METHOD("_remote_object_edited", "id", "property", "value"), &ScriptEditorDebugger::_remote_object_edited);
+	ClassDB::bind_method(D_METHOD("_remote_object_property_updated", "id", "property"), &ScriptEditorDebugger::_remote_object_property_updated);
 
 	ClassDB::bind_method(D_METHOD("live_debug_create_node"), &ScriptEditorDebugger::live_debug_create_node);
 	ClassDB::bind_method(D_METHOD("live_debug_instance_node"), &ScriptEditorDebugger::live_debug_instance_node);
@@ -1533,15 +1553,17 @@ void ScriptEditorDebugger::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("live_debug_restore_node"), &ScriptEditorDebugger::live_debug_restore_node);
 	ClassDB::bind_method(D_METHOD("live_debug_duplicate_node"), &ScriptEditorDebugger::live_debug_duplicate_node);
 	ClassDB::bind_method(D_METHOD("live_debug_reparent_node"), &ScriptEditorDebugger::live_debug_reparent_node);
-	ClassDB::bind_method(D_METHOD("request_object", "id"), &ScriptEditorDebugger::request_object);
-	ClassDB::bind_method(D_METHOD("update_object", "id", "property", "value"), &ScriptEditorDebugger::update_object);
+	ClassDB::bind_method(D_METHOD("request_remote_object", "id"), &ScriptEditorDebugger::request_remote_object);
+	ClassDB::bind_method(D_METHOD("update_remote_object", "id", "property", "value"), &ScriptEditorDebugger::update_remote_object);
 
 	ADD_SIGNAL(MethodInfo("goto_script_line"));
 	ADD_SIGNAL(MethodInfo("set_execution", PropertyInfo("script"), PropertyInfo(Variant::INT, "line")));
 	ADD_SIGNAL(MethodInfo("clear_execution", PropertyInfo("script")));
 	ADD_SIGNAL(MethodInfo("breaked", PropertyInfo(Variant::BOOL, "reallydid"), PropertyInfo(Variant::BOOL, "can_debug")));
 	ADD_SIGNAL(MethodInfo("show_debugger", PropertyInfo(Variant::BOOL, "reallydid")));
+	ADD_SIGNAL(MethodInfo("remote_object_requested", PropertyInfo(Variant::INT, "id")));
 	ADD_SIGNAL(MethodInfo("remote_object_updated", PropertyInfo(Variant::INT, "id")));
+	ADD_SIGNAL(MethodInfo("remote_object_property_updated", PropertyInfo(Variant::INT, "id"), PropertyInfo(Variant::STRING, "property")));
 	ADD_SIGNAL(MethodInfo("remote_tree_updated"));
 }
 
@@ -1649,6 +1671,9 @@ ScriptEditorDebugger::ScriptEditorDebugger(EditorNode *p_editor) {
 		inspector->set_h_size_flags(SIZE_EXPAND_FILL);
 		inspector->set_enable_capitalize_paths(false);
 		inspector->set_read_only(true);
+		inspector->connect("object_selected", this, "_remote_object_selected");
+		inspector->connect("object_edited", this, "_remote_object_edited");
+		inspector->connect("object_property_updated", this, "_remote_object_property_updated");
 		sc->add_child(inspector);
 
 		pending_in_queue = 0;

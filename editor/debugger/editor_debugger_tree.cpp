@@ -28,7 +28,7 @@ void EditorDebuggerTree::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("_scene_tree_selected"), &EditorDebuggerTree::_scene_tree_selected);
 	ClassDB::bind_method(D_METHOD("_scene_tree_folded"), &EditorDebuggerTree::_scene_tree_folded);
 	ClassDB::bind_method(D_METHOD("_scene_tree_rmb_selected"), &EditorDebuggerTree::_scene_tree_rmb_selected);
-	ADD_SIGNAL(MethodInfo("inspect_object", PropertyInfo(Variant::INT, "object_id")));
+	ADD_SIGNAL(MethodInfo("object_selected", PropertyInfo(Variant::INT, "object_id")));
 }
 
 void EditorDebuggerTree::_scene_tree_selected() {
@@ -45,7 +45,7 @@ void EditorDebuggerTree::_scene_tree_selected() {
 
 	inspected_object_id = item->get_metadata(0);
 
-	emit_signal("inspect_object", inspected_object_id);
+	emit_signal("object_selected", inspected_object_id);
 }
 
 void EditorDebuggerTree::_scene_tree_folded(Object *obj) {
@@ -127,6 +127,9 @@ void EditorDebuggerTree::update_scene_tree(const SceneDebuggerTree *p_tree) {
 			if (!unfold_cache.has(node.id)) {
 				item->set_collapsed(true);
 			}
+		}
+		if (node.id == inspected_object_id) {
+			item->select(0);
 		}
 		// TODO filter list...
 

@@ -31,6 +31,10 @@ private:
 
 protected:
 	void _remote_tree_updated();
+	void _remote_object_updated(ObjectID p_id);
+	void _remote_object_property_updated(ObjectID p_id, const String &p_property);
+	void _remote_object_requested(ObjectID p_id);
+
 	void _goto_script_line(REF p_script, int p_line) {
 		emit_signal("goto_script_line", p_script, p_line);
 	}
@@ -55,6 +59,8 @@ protected:
 
 public:
 	EditorDebuggerNode(EditorNode *p_editor);
+
+	void request_remote_tree();
 
 	void reload_scripts() {
 		debugger->reload_scripts();

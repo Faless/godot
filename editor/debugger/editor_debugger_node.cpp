@@ -12,8 +12,9 @@ EditorDebuggerNode::EditorDebuggerNode(EditorNode *p_editor) {
 
 	// Remote scene tree
 	remote_scene_tree = memnew(EditorDebuggerTree);
+	remote_scene_tree->connect("object_selected", this, "_remote_object_requested");
 	EditorNode::get_singleton()->get_scene_tree_dock()->add_remote_tree_editor(remote_scene_tree);
-	EditorNode::get_singleton()->get_scene_tree_dock()->connect("remote_tree_selected", remote_scene_tree, "_scene_tree_selected");
+	EditorNode::get_singleton()->get_scene_tree_dock()->connect("remote_tree_selected", this, "request_remote_tree");
 
 	remote_scene_tree_timeout = EDITOR_DEF("debugger/remote_scene_tree_refresh_interval", 1.0);
 	inspect_edited_object_timeout = EDITOR_DEF("debugger/remote_inspect_refresh_interval", 0.2);
@@ -29,6 +30,9 @@ ScriptEditorDebugger *EditorDebuggerNode::_add_debugger(String p_name) {
 	node->connect("breaked", this, "_breaked");
 	node->connect("show_debugger", this, "_show_debugger");
 	node->connect("remote_tree_updated", this, "_remote_tree_updated");
+	node->connect("remote_object_updated", this, "_remote_object_updated");
+	node->connect("remote_object_property_updated", this, "_remote_object_property_updated");
+	node->connect("remote_object_requested", this, "_remote_object_requested");
 	add_child(node);
 	return node;
 }
@@ -39,7 +43,11 @@ void EditorDebuggerNode::_bind_methods() {
 	ClassDB::bind_method("_clear_execution", &EditorDebuggerNode::_clear_execution);
 	ClassDB::bind_method("_breaked", &EditorDebuggerNode::_breaked);
 	ClassDB::bind_method("_show_debugger", &EditorDebuggerNode::_show_debugger);
+	ClassDB::bind_method(D_METHOD("request_remote_tree"), &EditorDebuggerNode::request_remote_tree);
 	ClassDB::bind_method(D_METHOD("_remote_tree_updated"), &EditorDebuggerNode::_remote_tree_updated);
+	ClassDB::bind_method(D_METHOD("_remote_object_updated", "id"), &EditorDebuggerNode::_remote_object_updated);
+	ClassDB::bind_method(D_METHOD("_remote_object_property_updated", "id", "property"), &EditorDebuggerNode::_remote_object_property_updated);
+	ClassDB::bind_method(D_METHOD("_remote_object_requested", "id"), &EditorDebuggerNode::_remote_object_requested);
 
 	ADD_SIGNAL(MethodInfo("goto_script_line"));
 	ADD_SIGNAL(MethodInfo("set_execution", PropertyInfo("script"), PropertyInfo(Variant::INT, "line")));
@@ -172,8 +180,27 @@ void EditorDebuggerNode::_breaked(bool p_breaked, bool p_can_debug) {
 	emit_signal("breaked", p_breaked, p_can_debug);
 }
 
+// LiveEdit/Inspector
+void EditorDebuggerNode::request_remote_tree() {
+	debugger->request_remote_tree();
+}
+
 void EditorDebuggerNode::_remote_tree_updated() {
 	// TODO Should check active
 	remote_scene_tree->clear();
 	remote_scene_tree->update_scene_tree(debugger->get_remote_tree());
+}
+
+void EditorDebuggerNode::_remote_object_updated(ObjectID p_id) {
+	EditorNode::get_singleton()->push_item(debugger->get_remote_object(p_id));
+}
+
+void EditorDebuggerNode::_remote_object_property_updated(ObjectID p_id, const String &p_property) {
+	// TODO check it makes sense!
+	EditorNode::get_singleton()->get_inspector()->update_property(p_property);
+}
+
+void EditorDebuggerNode::_remote_object_requested(ObjectID p_id) {
+	// From stack dump, or editor inspected objects.
+	debugger->request_remote_object(p_id);
 }

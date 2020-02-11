@@ -16,7 +16,7 @@ protected:
 			return false;
 
 		prop_values[p_name] = p_value;
-		emit_signal("value_edited", p_name, p_value);
+		emit_signal("value_edited", remote_object_id, p_name, p_value);
 		return true;
 	}
 
@@ -44,7 +44,7 @@ protected:
 		ClassDB::bind_method(D_METHOD("clear"), &EditorDebuggerRemoteObject::clear);
 		ClassDB::bind_method(D_METHOD("get_remote_object_id"), &EditorDebuggerRemoteObject::get_remote_object_id);
 
-		ADD_SIGNAL(MethodInfo("value_edited"));
+		ADD_SIGNAL(MethodInfo("value_edited", PropertyInfo(Variant::INT, "object_id"), PropertyInfo(Variant::STRING, "property"), PropertyInfo("value")));
 	}
 
 public:
@@ -80,10 +80,6 @@ public:
 		_change_notify();
 	}
 
-	void update_single(const char *p_prop) {
-		_change_notify(p_prop);
-	}
-
 	EditorDebuggerRemoteObject() {
 		remote_object_id = 0;
 		editable = true;
@@ -91,7 +87,6 @@ public:
 };
 
 EditorDebuggerInspector::EditorDebuggerInspector() {
-	inspected_object_id = 0;
 	variables = memnew(EditorDebuggerRemoteObject);
 	variables->editable = false;
 }
@@ -101,6 +96,11 @@ EditorDebuggerInspector::~EditorDebuggerInspector() {
 }
 
 void EditorDebuggerInspector::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("_object_edited", "name", "value"), &EditorDebuggerInspector::_object_edited);
+	ClassDB::bind_method(D_METHOD("_object_selected", "id"), &EditorDebuggerInspector::_object_selected);
+	ADD_SIGNAL(MethodInfo("object_selected", PropertyInfo(Variant::INT, "id")));
+	ADD_SIGNAL(MethodInfo("object_edited", PropertyInfo(Variant::INT, "id"), PropertyInfo(Variant::STRING, "property"), PropertyInfo("value")));
+	ADD_SIGNAL(MethodInfo("object_property_updated", PropertyInfo(Variant::INT, "id"), PropertyInfo(Variant::STRING, "property")));
 }
 
 void EditorDebuggerInspector::_notification(int p_what) {
@@ -116,15 +116,14 @@ void EditorDebuggerInspector::_notification(int p_what) {
 	}
 }
 
-void EditorDebuggerInspector::_object_edited(const String &p_prop, const Variant &p_value) {
+void EditorDebuggerInspector::_object_edited(ObjectID p_id, const String &p_prop, const Variant &p_value) {
 
-	emit_signal("update_object", inspected_object_id, p_prop, p_value);
+	emit_signal("object_edited", p_id, p_prop, p_value);
 }
 
 void EditorDebuggerInspector::_object_selected(ObjectID p_object) {
 
-	inspected_object_id = p_object;
-	emit_signal("inspect_object", p_object);
+	emit_signal("object_selected", p_object);
 }
 
 ObjectID EditorDebuggerInspector::add_object(const Array &p_arr) {
@@ -141,7 +140,7 @@ ObjectID EditorDebuggerInspector::add_object(const Array &p_arr) {
 		debugObj->remote_object_id = obj.id;
 		debugObj->type_name = obj.class_name;
 		remote_objects[obj.id] = debugObj;
-		debugObj->connect("value_edited", this, "_scene_tree_property_value_edited");
+		debugObj->connect("value_edited", this, "_object_edited");
 	}
 
 	int old_prop_size = debugObj->prop_list.size();
@@ -201,8 +200,7 @@ ObjectID EditorDebuggerInspector::add_object(const Array &p_arr) {
 	if (old_prop_size == debugObj->prop_list.size() && new_props_added == 0) {
 		//only some may have changed, if so, then update those, if exist
 		for (Set<String>::Element *E = changed.front(); E; E = E->next()) {
-			// TODO update properties...
-			//EditorNode::get_singleton()->get_inspector()->update_property(E->get());
+			emit_signal("object_property_updated", debugObj->remote_object_id, E->get());
 		}
 	} else {
 		//full update, because props were added or removed
@@ -220,6 +218,12 @@ void EditorDebuggerInspector::clear_cache() {
 		memdelete(E->value());
 	}
 	remote_objects.clear();
+}
+
+Object *EditorDebuggerInspector::get_object(ObjectID p_id) {
+	if (remote_objects.has(p_id))
+		return remote_objects[p_id];
+	return NULL;
 }
 
 void EditorDebuggerInspector::add_stack_variable(const Array &p_array) {

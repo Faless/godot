@@ -172,8 +172,9 @@ private:
 	void _file_selected(const String &p_file);
 	void _parse_message(const String &p_msg, const Array &p_data);
 	void _set_reason_text(const String &p_reason, MessageType p_type);
-	void _object_selected(ObjectID p_object);
-	void _object_edited(const String &p_prop, const Variant &p_value);
+	void _remote_object_selected(ObjectID p_object);
+	void _remote_object_edited(ObjectID, const String &p_prop, const Variant &p_value);
+	void _remote_object_property_updated(ObjectID p_id, const String &p_property);
 
 	void _video_mem_request();
 
@@ -217,10 +218,13 @@ protected:
 	static void _bind_methods();
 
 public:
-	void update_object(ObjectID p_obj_id, const String &p_prop, const Variant &p_value);
-	void request_object(ObjectID p_obj_id);
+	void request_remote_object(ObjectID p_obj_id);
+	void update_remote_object(ObjectID p_obj_id, const String &p_prop, const Variant &p_value);
+	Object *get_remote_object(ObjectID p_id);
+
 	void request_remote_tree();
 	const SceneDebuggerTree *get_remote_tree();
+
 	void start(Ref<StreamPeerTCP> p_connection);
 	void pause();
 	void unpause();
@@ -234,7 +238,6 @@ public:
 	void debug_break();
 	void debug_continue();
 
-	EditorDebuggerInspector *get_inspector() { return inspector; }
 	bool get_error_count() { return error_count; }
 	bool get_warning_count() { return warning_count; }
 	void update_tabs();

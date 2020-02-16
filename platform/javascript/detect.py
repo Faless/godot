@@ -111,7 +111,9 @@ def configure(env):
 
     # No multi-threading (SharedArrayBuffer) available yet,
     # once feasible also consider memory buffer size issues.
-    env.Append(CPPDEFINES=['NO_THREADS'])
+    env.Append(CPPFLAGS=['-s', 'USE_PTHREADS=1']);
+    env.Append(CPPDEFINES=['PTHREAD_NO_RENAME'])
+    # env.Append(CPPDEFINES=['NO_THREADS'])
 
     # Disable exceptions and rtti on non-tools (template) builds
     if not env['tools']:
@@ -131,11 +133,14 @@ def configure(env):
 
     env.Append(LINKFLAGS=['-s', 'BINARYEN=1'])
     env.Append(LINKFLAGS=['-s', 'MODULARIZE=1', '-s', 'EXPORT_NAME="Godot"'])
+    env.Append(LINKFLAGS=['-s', 'USE_PTHREADS=1']);
+    env.Append(LINKFLAGS=['-s', 'PTHREAD_POOL_SIZE=8']);
+    env.Append(LINKFLAGS=['-s', 'WASM_MEM_MAX=2048MB'])
 
     # Only include the JavaScript support code for the web environment
     # (i.e. exclude Node.js and other unused environments).
     # This makes the JavaScript support code about 4 KB smaller.
-    env.Append(LINKFLAGS=['-s', 'ENVIRONMENT=web'])
+    env.Append(LINKFLAGS=['-s', 'ENVIRONMENT=web,worker'])
 
     # This needs to be defined for Emscripten using 'fastcomp' (default pre-1.39.0)
     # and undefined if using 'upstream'. And to make things simple, earlier

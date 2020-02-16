@@ -10,8 +10,8 @@ javascript_files = [
     'os_javascript.cpp',
 ]
 
-build = env.add_program(['#bin/godot${PROGSUFFIX}.js', '#bin/godot${PROGSUFFIX}.wasm'], javascript_files);
-js, wasm = build
+build = env.add_program(['#bin/godot${PROGSUFFIX}.js', '#bin/godot${PROGSUFFIX}.worker.js', '#bin/godot${PROGSUFFIX}.wasm'], javascript_files);
+js, worker, wasm = build
 
 js_libraries = [
     'http_request.js',
@@ -36,10 +36,12 @@ js_wrapped = env.Textfile('#bin/godot', [wrapper_start, js, wrapper_preloader, w
 zip_dir = env.Dir('#bin/.javascript_zip')
 zip_files = env.InstallAs([
     zip_dir.File('godot.js'),
+    zip_dir.File('godot.worker.js'),
     zip_dir.File('godot.wasm'),
     zip_dir.File('godot.html')
 ], [
     js_wrapped,
+    worker,
     wasm,
     '#misc/dist/html/full-size.html'
 ])

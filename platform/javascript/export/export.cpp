@@ -94,6 +94,9 @@ public:
 		} else if (req[1] == basereq + ".js") {
 			filepath += ".js";
 			ctype = "application/javascript";
+		} else if (req[1] == basereq + ".worker.js") {
+			filepath += ".worker.js";
+			ctype = "application/javascript";
 		} else if (req[1] == basereq + ".pck") {
 			filepath += ".pck";
 			ctype = "application/octet-stream";

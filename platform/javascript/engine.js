@@ -32,6 +32,26 @@ function getBaseName(path) {
 	return getPathLeaf(getBasePath(path));
 }
 
+function setup(module) {
+	// TODO set locale
+	module['locale'] = 'en_US';
+
+	// TODO canvas
+	var canvas = null;
+	if (canvas instanceof HTMLCanvasElement) {
+		this.rtenv.canvas = canvas;
+	} else {
+		var firstCanvas = document.getElementsByTagName('canvas')[0];
+		if (firstCanvas instanceof HTMLCanvasElement) {
+			canvas = firstCanvas;
+		} else {
+			throw new Error("No canvas found");
+		}
+	}
+	module.canvas = canvas;
+
+}
+
 Godot({
 	locateFile: function(file) {
 		console.log("Locate ", file);
@@ -43,7 +63,11 @@ Godot({
 	]).then(function() {
 		Preloader.preloadedFiles.forEach(function(file) {
 			console.log(file);
-			var dir = file.path.slice(0, file.path.lastIndexOf("/"));
+			var fp = file.path.lastIndexOf("/");
+			var dir = "/";
+			if (fp > 0) {
+				dir = file.path.slice(0, file.path.lastIndexOf("/"));
+			}
 			console.log(dir);
 			try {
 				Module['FS'].stat(dir);
@@ -57,6 +81,7 @@ Godot({
 			// With memory growth, canOwn should be false.
 			Module['FS'].createDataFile(file.path, null, new Uint8Array(file.buffer), true, true, false);
 		}, this);
+		setup(Module)
 		Module.callMain(["--main-pack", EXPORT_NAME + ".pck"]);
 	});
 });

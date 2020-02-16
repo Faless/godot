@@ -158,4 +158,4 @@ def configure(env):
     env.Append(LINKFLAGS=['-s', 'NO_EXIT_RUNTIME=1'])
 
     #adding flag due to issue with emscripten 1.38.41 callMain method https://github.com/emscripten-core/emscripten/blob/incoming/ChangeLog.md#v13841-08072019
-    env.Append(LINKFLAGS=['-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=["callMain", "FS", "PATH"]'])
+    env.Append(LINKFLAGS=['-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=["callMain", "FS"]'])

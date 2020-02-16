@@ -22,6 +22,7 @@ env.Depends(build, js_libraries)
 
 js_modules = [
     'id_handler.js',
+    'preloader.js'
 ]
 for module in js_modules:
     env.Append(LINKFLAGS=['--pre-js', env.File(module).path])

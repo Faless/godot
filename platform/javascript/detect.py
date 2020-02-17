@@ -134,7 +134,7 @@ def configure(env):
     env.Append(LINKFLAGS=['-s', 'BINARYEN=1'])
     env.Append(LINKFLAGS=['-s', 'MODULARIZE=1', '-s', 'EXPORT_NAME="Godot"'])
     env.Append(LINKFLAGS=['-s', 'USE_PTHREADS=1']);
-    env.Append(LINKFLAGS=['-s', 'PTHREAD_POOL_SIZE=8']);
+    env.Append(LINKFLAGS=['-s', 'PTHREAD_POOL_SIZE=8'])
     env.Append(LINKFLAGS=['-s', 'WASM_MEM_MAX=2048MB'])
 
     # Only include the JavaScript support code for the web environment

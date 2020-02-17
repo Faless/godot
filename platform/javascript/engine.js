@@ -52,6 +52,8 @@ function setup(module) {
 
 }
 
+var Engine = function() {
+
 Godot({
 	locateFile: function(file) {
 		console.log("Locate ", file);
@@ -86,7 +88,7 @@ Godot({
 	});
 });
 
-})();
+};
 
 /*
 (function() {

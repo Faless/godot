@@ -5,4 +5,4 @@ var Engine = {
 		// a wrapper for said code. See engine.js for the other part of the
 		// wrapper.
 */
-(function() {
+//var Engine = function() {

@@ -1,5 +1,7 @@
 var Preloader = (function() {
 
+	var DOWNLOAD_ATTEMPTS_MAX = 4;
+
 	function loadXHR(resolve, reject, file, tracker) {
 		var xhr = new XMLHttpRequest;
 		xhr.open('GET', file);

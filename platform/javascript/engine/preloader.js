@@ -98,9 +98,9 @@ var Preloader = (function() {
 		}
 	};
 
-
 	return {
 		'preload': preloadFile,
+		'loadPromise': loadPromise,
 		'loadingTracker': loadingFiles,
 		'preloadedFiles': preloadedFiles
 	}

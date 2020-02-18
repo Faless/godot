@@ -1,94 +1,162 @@
-/*
-		// The following is concatenated with generated code, and acts as the end
-		// of a wrapper for said code. See pre.js for the other part of the
-		// wrapper.
-		exposedLibs['PATH'] = PATH;
-		exposedLibs['FS'] = FS;
-		return Module;
-	},
-};
-*/
-const EXPORT_NAME = "tmp_js_export";
-const MAIN_PACK = "tmp_js_export.pck";
+var Engine = function(execName, mainPack) {
 
-function getPathLeaf(path) {
-
-	while (path.endsWith('/'))
-		path = path.slice(0, -1);
-	return path.slice(path.lastIndexOf('/') + 1);
-}
-
-function getBasePath(path) {
-
-	if (path.endsWith('/'))
-		path = path.slice(0, -1);
-	if (path.lastIndexOf('.') > path.lastIndexOf('/'))
-		path = path.slice(0, path.lastIndexOf('.'));
-	return path;
-}
-
-function getBaseName(path) {
-
-	return getPathLeaf(getBasePath(path));
-}
-
-function setup(module) {
-	// TODO set locale
-	module['locale'] = 'en_US';
-
-	// TODO canvas
+	var unloadAfterInit = true;
 	var canvas = null;
-	if (canvas instanceof HTMLCanvasElement) {
-		this.rtenv.canvas = canvas;
-	} else {
-		var firstCanvas = document.getElementsByTagName('canvas')[0];
-		if (firstCanvas instanceof HTMLCanvasElement) {
-			canvas = firstCanvas;
-		} else {
-			throw new Error("No canvas found");
+	var resizeCanvasOnStart = false;
+	var customLocale = 'en_US';
+	var wasmExt = '.wasm';
+
+	var loader = new Loader();
+	var rtenv = null;
+
+	var executableName = '';
+	var loadPath = '';
+	var loadPromise = null;
+	var initPromise = null;
+	var stderr = null;
+	var stdout = null;
+
+	this.load = function(basePath) {
+		if (loadPromise == null) {
+			loadPath = basePath;
+			loadPromise = loader.load(loadPath, wasmExt);
 		}
-	}
-	module.canvas = canvas;
+		return loadPromise;
+	};
 
-}
+	this.unload = function() {
+		loadPromise = null;
+	};
 
-var Engine = function() {
-
-Godot({
-	locateFile: function(file) {
-		console.log("Locate ", file);
-		return file.replace("godot.javascript.opt.debug", EXPORT_NAME);
-	}
-}).then(function(Module) {
-	Promise.all([
-		Preloader.preload(MAIN_PACK, getPathLeaf(MAIN_PACK))
-	]).then(function() {
-		Preloader.preloadedFiles.forEach(function(file) {
-			console.log(file);
-			var fp = file.path.lastIndexOf("/");
-			var dir = "/";
-			if (fp > 0) {
-				dir = file.path.slice(0, file.path.lastIndexOf("/"));
+	this.init = function(basePath) {
+		if (initPromise) {
+			return initPromise;
+		}
+		if (!loadPromise) {
+			if (!basePath) {
+				initPromise = Promise.reject(new Error("A base path must be provided when calling `init` and the engine is not loaded."));
+				return initPromise;
 			}
-			console.log(dir);
-			try {
-				Module['FS'].stat(dir);
-			} catch (e) {
-				if (e.code !== 'ENOENT') {
-					console.log(e);
-					throw e;
+			this.load(basePath);
+		}
+		var config = {}
+		if (typeof stdout === 'function')
+			config.print = stdout;
+		if (typeof stderr === 'function')
+			config.printErr = stderr;
+		initPromise = loader.init(loadPromise, loadPath, config).then(function() {
+			return new Promise(function(resolve, reject) {
+				rtenv = loader.env;
+				if (unloadAfterInit) {
+					loadPromise = null;
 				}
-				Module['FS'].mkdirTree(dir);
-			}
-			// With memory growth, canOwn should be false.
-			Module['FS'].createDataFile(file.path, null, new Uint8Array(file.buffer), true, true, false);
-		}, this);
-		setup(Module)
-		Module.callMain(["--main-pack", EXPORT_NAME + ".pck"]);
-	});
-});
+				resolve();
+			});
+		});
+		return initPromise;
+	};
 
-};
+	this.preloadFile = function(file, path) {
+		return Preloader.preload(file, path);
+	};
+
+	this.start = function() {
+		// Start from arguments.
+		var args = [];
+		for (var i = 0; i < arguments.length; i++) {
+			args.push(arguments[i]);
+		}
+		var me = this;
+		return new Promise(function(resolve, reject) {
+			return me.init().then(function() {
+				if (!(canvas instanceof HTMLCanvasElement)) {
+					canvas = Utils.findCanvas();
+				}
+				rtenv['locale'] = customLocale;
+				rtenv['canvas'] = canvas;
+				rtenv['thisProgram'] = executableName;
+				rtenv['resizeCanvasOnStart'] = resizeCanvasOnStart;
+				loader.start(args).then(function() {
+					loader = null;
+					initPromise = null;
+					resolve();
+				});
+			});
+		});
+	};
+
+	this.startGame = function(execName, mainPack) {
+		// Start and init with execName as loadPath if not inited.
+		executableName = execName;
+		var me = this;
+		return Promise.all([
+			this.init(execName),
+			this.preloadFile(mainPack, mainPack)
+		]).then(function() {
+			return me.start('--main-pack', mainPack);
+		});
+	};
+
+	this.isWebGLAvailable = function(majorVersion = 1) {
+		return Utils.isWebGLAvailable(majorVersion);
+	};
+
+	this.setWebAssemblyFilenameExtension = function(override) {
+		if (String(override).length === 0) {
+			throw new Error('Invalid WebAssembly filename extension override');
+		}
+		wasmExt = String(override);
+	};
+
+	this.setUnloadAfterInit = function(enabled) {
+		unloadAfterInit = enabled;
+	};
+
+	this.setCanvas = function(canvasElem) {
+		canvas = canvasElem;
+	};
+
+	this.setCanvasResizedOnStart = function(enabled) {
+		resizeCanvasOnStart = enabled;
+	};
+
+	this.setLocale = function(locale) {
+		customLocale = locale;
+	};
+
+	this.setExecutableName = function(newName) {
+		executableName = newName;
+	};
+
+	this.setProgressFunc = function(func) {
+		progressFunc = func;
+	}
+
+	this.setStdoutFunc = function(func) {
+
+		var print = function(text) {
+			if (arguments.length > 1) {
+				text = Array.prototype.slice.call(arguments).join(" ");
+			}
+			func(text);
+		};
+		if (rtenv)
+			rtenv.print = print;
+		stdout = print;
+	};
+
+	this.setStderrFunc = function(func) {
+
+		var printErr = function(text) {
+			if (arguments.length > 1)
+				text = Array.prototype.slice.call(arguments).join(" ");
+			func(text);
+		};
+		if (rtenv)
+			rtenv.printErr = printErr;
+		stderr = printErr;
+	};
+}
 
 /*
 (function() {

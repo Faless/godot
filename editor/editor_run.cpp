@@ -31,6 +31,7 @@
 #include "editor_run.h"
 
 #include "core/project_settings.h"
+#include "editor/debugger/editor_debugger_node.cpp"
 #include "editor_settings.h"
 
 EditorRun::Status EditorRun::get_status() const {
@@ -43,8 +44,6 @@ Error EditorRun::run(const String &p_scene, const String &p_custom_args, const L
 	List<String> args;
 
 	String resource_path = ProjectSettings::get_singleton()->get_resource_path();
-	String remote_host = EditorSettings::get_singleton()->get("network/debug/remote_host");
-	int remote_port = (int)EditorSettings::get_singleton()->get("network/debug/remote_port");
 
 	if (resource_path != "") {
 		args.push_back("--path");
@@ -52,7 +51,14 @@ Error EditorRun::run(const String &p_scene, const String &p_custom_args, const L
 	}
 
 	args.push_back("--remote-debug");
-	args.push_back(remote_host + ":" + String::num(remote_port));
+	const String conn_string = EditorDebuggerNode::get_singleton()->get_connection_string();
+	if (!conn_string.empty()) {
+		args.push_back(EditorDebuggerNode::get_singleton()->get_connection_string());
+	} else { // Try anyway with default settings
+		const String remote_host = EditorSettings::get_singleton()->get("network/debug/remote_host");
+		const int remote_port = (int)EditorSettings::get_singleton()->get("network/debug/remote_port");
+		args.push_back(remote_host + ":" + String::num(remote_port));
+	}
 
 	args.push_back("--allow_focus_steal_pid");
 	args.push_back(itos(OS::get_singleton()->get_process_id()));

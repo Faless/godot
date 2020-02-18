@@ -30,6 +30,7 @@
 
 #include "editor_debugger_node.h"
 
+#include "core/os/os.h"
 #include "editor/debugger/editor_debugger_tree.h"
 #include "editor/editor_log.h"
 #include "editor/editor_node.h"
@@ -166,6 +167,11 @@ ScriptEditorDebugger *EditorDebuggerNode::get_default_debugger() const {
 	return Object::cast_to<ScriptEditorDebugger>(get_tab_control(0));
 }
 
+String EditorDebuggerNode::get_connection_string() const {
+	String remote_host = EditorSettings::get_singleton()->get("network/debug/remote_host");
+	return remote_port ? remote_host + ":" + itos(remote_port) : "";
+}
+
 Error EditorDebuggerNode::start() {
 	stop();
 	if (EDITOR_GET("run/output/always_open_output_on_play")) {
@@ -174,12 +180,27 @@ Error EditorDebuggerNode::start() {
 		EditorNode::get_singleton()->make_bottom_panel_item_visible(this);
 	}
 
-	int remote_port = (int)EditorSettings::get_singleton()->get("network/debug/remote_port");
-	const Error err = server->listen(remote_port);
+	const int max_tries = 6;
+	remote_port = (int)EditorSettings::get_singleton()->get("network/debug/remote_port");
+	int current_try = 0;
+
+	// Find first available port.
+	Error err = server->listen(remote_port);
+	while (err != OK && current_try < max_tries) {
+		EditorNode::get_log()->add_message(String("Remote debugger failed listening on port: ") + itos(remote_port) + String(" Retrying on new port: " + itos(remote_port + 1)), EditorLog::MSG_TYPE_WARNING);
+		current_try++;
+		remote_port++;
+		OS::get_singleton()->delay_usec(1000);
+		err = server->listen(remote_port);
+	}
+
+	// No suitable port found.
 	if (err != OK) {
-		EditorNode::get_log()->add_message(String("Error listening on port ") + itos(remote_port), EditorLog::MSG_TYPE_ERROR);
+		EditorNode::get_log()->add_message(String("Remote debugger error listening for connections. No free port"), EditorLog::MSG_TYPE_ERROR);
 		return err;
 	}
+
+	// Success.
 	set_process(true);
 	EditorNode::get_log()->add_message("--- Debugging process started ---", EditorLog::MSG_TYPE_EDITOR);
 	return OK;
@@ -190,6 +211,7 @@ void EditorDebuggerNode::stop() {
 		server->stop();
 		EditorNode::get_log()->add_message("--- Debugging process stopped ---", EditorLog::MSG_TYPE_EDITOR);
 	}
+	remote_port = 0;
 	// Also close all debugging sessions.
 	_for_all(this, [&](ScriptEditorDebugger *dbg) {
 		if (dbg->is_session_active())

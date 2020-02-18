@@ -86,6 +86,7 @@ private:
 	bool auto_switch_remote_scene_tree = false;
 	bool debug_with_external_editor = false;
 	bool hide_on_stop = true;
+	int remote_port = 0;
 	ScriptEditorDebugger::CameraOverride camera_override = ScriptEditorDebugger::OVERRIDE_NONE;
 	Map<Breakpoint, bool> breakpoints;
 
@@ -144,6 +145,7 @@ public:
 	Ref<Script> get_dump_stack_script() const { return stack_script; } // Why do we need this?
 
 	bool get_debug_with_external_editor() { return debug_with_external_editor; }
+	String get_connection_string() const;
 
 	bool is_skip_breakpoints() const;
 	void set_breakpoint(const String &p_path, int p_line, bool p_enabled);

@@ -2054,15 +2054,16 @@ void EditorNode::_run(bool p_current, const String &p_custom) {
 	if (debug_menu->get_popup()->is_item_checked(debug_menu->get_popup()->get_item_index(RUN_DEBUG_TWO)))
 		instances = 2;
 
+	emit_signal("play_pressed"); // Will start the debugger, but will it break something else? What about NativeRun? Possibly a dedicated signal "start_debugger"?
+
 	Error error = editor_run.run(run_filename, args, breakpoints, skip_breakpoints, instances);
 
 	if (error != OK) {
+		emit_signal("stop_pressed");
 
 		show_accept(TTR("Could not start subprocess!"), TTR("OK"));
 		return;
 	}
-
-	emit_signal("play_pressed");
 
 	if (p_current) {
 		play_scene_button->set_pressed(true);

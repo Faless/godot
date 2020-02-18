@@ -25,12 +25,6 @@ var Utils = (function() {
 		};
 
 		return instantiateWasm;
-//		return new Promise(function(resolve, reject) {
-//			rtenvProps.onRuntimeInitialized = resolve;
-//			rtenvProps.onAbort = reject;
-//			rtenvProps.thisProgram = executableName;
-//			rtenvProps.engine.rtenv = Engine.RuntimeEnvironment(rtenvProps, LIBS);
-//		});
 	}
 
 	function copyToFS(fs, path, buffer) {
@@ -42,13 +36,13 @@ var Utils = (function() {
 		try {
 			fs.stat(dir);
 		} catch (e) {
-			if (e.code !== 'ENOENT') {
+			if (e.errno !== 44) { // 'ENOENT', see https://github.com/emscripten-core/emscripten/blob/master/system/lib/libc/musl/arch/emscripten/bits/errno.h
 				throw e;
 			}
 			fs.mkdirTree(dir);
 		}
 		// With memory growth, canOwn should be false.
-		fs.createDataFile(path, null, new Uint8Array(buffer), true, true, false);
+		fs.writeFile(path, new Uint8Array(buffer), {'flags': 'wx+'});
 	}
 
 	function findCanvas() {

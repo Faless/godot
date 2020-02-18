@@ -98,10 +98,48 @@ var Preloader = (function() {
 		}
 	};
 
+	var progressFunc = null;
+	var lastProgress = { loaded: 0, total: 0 };
+	function animateProgress() {
+
+		var loaded = 0;
+		var total = 0;
+		var totalIsValid = true;
+		var progressIsFinal = true;
+
+		Object.keys(loadingFiles).forEach(function(file) {
+			const stat = loadingFiles[file];
+			if (!stat.final) {
+				progressIsFinal = false;
+			}
+			if (!totalIsValid || stat.total === 0) {
+				totalIsValid = false;
+				total = 0;
+			} else {
+				total += stat.total;
+			}
+			loaded += stat.loaded;
+		});
+		if (loaded !== lastProgress.loaded || total !== lastProgress.total) {
+			lastProgress.loaded = loaded;
+			lastProgress.total = total;
+			if (typeof progressFunc === 'function')
+				progressFunc(loaded, total);
+		}
+		if (!progressIsFinal)
+			requestAnimationFrame(animateProgress);
+	}
+
+	function setProgressFunc(callback) {
+		pregressFunc = callback;
+	}
+
 	return {
 		'preload': preloadFile,
 		'loadPromise': loadPromise,
 		'loadingTracker': loadingFiles,
-		'preloadedFiles': preloadedFiles
+		'preloadedFiles': preloadedFiles,
+		'animateProgress': animateProgress,
+		'setProgressFunc': setProgressFunc
 	}
 })();

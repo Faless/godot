@@ -59,7 +59,7 @@ var Utils = (function() {
 		throw new Error("No canvas found");
 	}
 
-	function isWebGLAvailable(majorVersion) {
+	function isWebGLAvailable(majorVersion = 1) {
 
 		var testContext = false;
 		try {

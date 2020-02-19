@@ -28,7 +28,6 @@ for module in js_modules:
 env.Depends(build, js_modules)
 
 wrap_list = [
-    'engine/pre.js',
     js,
     'engine/path.js',
     'engine/preloader.js',

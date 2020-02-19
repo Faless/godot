@@ -62,7 +62,8 @@ def configure(env):
     ## Compiler configuration
 
     env['ENV'] = os.environ
-    env['ENV']['EMCC_CLOSURE_ARGS'] = '--language_in ECMASCRIPT6' # Closure compiler support for ecmascript specs (const, let, etc).
+    # Closure compiler extern and support for ecmascript specs (const, let, etc).
+    env['ENV']['EMCC_CLOSURE_ARGS'] = '--language_in ECMASCRIPT6'
 
     em_config_file = os.getenv('EM_CONFIG') or os.path.expanduser('~/.emscripten')
     if not os.path.exists(em_config_file):

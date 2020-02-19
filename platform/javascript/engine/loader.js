@@ -30,7 +30,7 @@ var Loader = function() {
 				Utils.copyToFS(me.env['FS'], file.path, file.buffer);
 			});
 			Preloader.preloadedFiles = [];
-			me.env.callMain(args);
+			me.env['callMain'](args);
 			resolve();
 		});
 	}

@@ -37,7 +37,7 @@ def configure(env):
 
     ## Build type
 
-    if env['target'] != 'debug':
+    if env['target'] == 'release':
         # Use -Os to prioritize optimizing for reduced file size. This is
         # particularly valuable for the web platform because it directly
         # decreases download time.
@@ -46,11 +46,14 @@ def configure(env):
         # run-time performance.
         env.Append(CCFLAGS=['-Os'])
         env.Append(LINKFLAGS=['-Os'])
-        if env['target'] == 'release_debug':
-            env.Append(CPPDEFINES=['DEBUG_ENABLED'])
-            # Retain function names for backtraces at the cost of file size.
-            env.Append(LINKFLAGS=['--profiling-funcs'])
-    else:
+        env.Append(LINKFLAGS=['--closure', '1'])
+    elif env['target'] == 'release_debug':
+        env.Append(CCFLAGS=['-Os'])
+        env.Append(LINKFLAGS=['-Os'])
+        env.Append(CPPDEFINES=['DEBUG_ENABLED'])
+        # Retain function names for backtraces at the cost of file size.
+        env.Append(LINKFLAGS=['--profiling-funcs'])
+    else: # 'debug'
         env.Append(CPPDEFINES=['DEBUG_ENABLED'])
         env.Append(CCFLAGS=['-O1', '-g'])
         env.Append(LINKFLAGS=['-O1', '-g'])
@@ -59,6 +62,7 @@ def configure(env):
     ## Compiler configuration
 
     env['ENV'] = os.environ
+    env['ENV']['EMCC_CLOSURE_ARGS'] = '--language_in ECMASCRIPT6' # Closure compiler support for ecmascript specs (const, let, etc).
 
     em_config_file = os.getenv('EM_CONFIG') or os.path.expanduser('~/.emscripten')
     if not os.path.exists(em_config_file):
@@ -140,7 +144,8 @@ def configure(env):
     # Only include the JavaScript support code for the web environment
     # (i.e. exclude Node.js and other unused environments).
     # This makes the JavaScript support code about 4 KB smaller.
-    env.Append(LINKFLAGS=['-s', 'ENVIRONMENT=web,worker'])
+    # FIXME NOT WORKING WITH THREADS, reported upstream.
+    #env.Append(LINKFLAGS=['-s', 'ENVIRONMENT=web,worker'])
 
     # This needs to be defined for Emscripten using 'fastcomp' (default pre-1.39.0)
     # and undefined if using 'upstream'. And to make things simple, earlier

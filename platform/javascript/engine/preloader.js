@@ -131,7 +131,7 @@ var Preloader = (function() {
 	}
 
 	function setProgressFunc(callback) {
-		pregressFunc = callback;
+		progressFunc = callback;
 	}
 
 	return {

@@ -31,7 +31,7 @@ var Utils = (function() {
 		var p = path.lastIndexOf("/");
 		var dir = "/";
 		if (p > 0) {
-			dir = path.slice(0, file.path.lastIndexOf("/"));
+			dir = path.slice(0, path.lastIndexOf("/"));
 		}
 		try {
 			fs.stat(dir);

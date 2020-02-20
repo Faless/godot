@@ -60,6 +60,11 @@ def configure(env):
         env.Append(LINKFLAGS=['-O1', '-g'])
         env.Append(LINKFLAGS=['-s', 'ASSERTIONS=1'])
 
+    # LTO
+    if env['use_lto']:
+        env.Append(CCFLAGS=['-s', 'WASM_OBJECT_FILES=0'])
+        env.Append(LINKFLAGS=['-s', 'WASM_OBJECT_FILES=0', '--llvm-lto',  '1'])
+
     ## Closure compiler builder
     jscc = env.Builder(generator=run_closure_compiler, suffix='.cc.js', src_suffix='.js')
     env.Append(BUILDERS = {'BuildJS' : jscc})

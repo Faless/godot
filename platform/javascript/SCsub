@@ -27,13 +27,22 @@ for module in js_modules:
     env.Append(LINKFLAGS=['--pre-js', env.File(module).path])
 env.Depends(build, js_modules)
 
-wrap_list = [
-    js,
+engine = [
     'engine/path.js',
     'engine/preloader.js',
     'engine/loader.js',
     'engine/utils.js',
     'engine/engine.js',
+]
+externs = [
+    env.File('#platform/javascript/engine/externs.js')
+]
+js_engine = env.CreateEngineFile('#bin/godot${PROGSUFFIX}.engine.js', engine, externs)
+env.Depends(js_engine, externs)
+
+wrap_list = [
+    js,
+    js_engine,
 ]
 js_wrapped = env.Textfile('#bin/godot', [env.File(f) for f in wrap_list], TEXTFILESUFFIX='${PROGSUFFIX}.wrapped.js')
 

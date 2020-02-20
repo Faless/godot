@@ -1,5 +1,6 @@
 import os
 
+from emscripten_helpers import parse_config, run_closure_compiler, create_engine_file
 
 def is_active():
     return True
@@ -59,30 +60,19 @@ def configure(env):
         env.Append(LINKFLAGS=['-O1', '-g'])
         env.Append(LINKFLAGS=['-s', 'ASSERTIONS=1'])
 
+    ## Closure compiler builder
+    jscc = env.Builder(generator=run_closure_compiler, suffix='.cc.js', src_suffix='.js')
+    env.Append(BUILDERS = {'BuildJS' : jscc})
+    env.AddMethod(create_engine_file, "CreateEngineFile")
+
     ## Compiler configuration
 
     env['ENV'] = os.environ
     # Closure compiler extern and support for ecmascript specs (const, let, etc).
     env['ENV']['EMCC_CLOSURE_ARGS'] = '--language_in ECMASCRIPT6'
 
-    em_config_file = os.getenv('EM_CONFIG') or os.path.expanduser('~/.emscripten')
-    if not os.path.exists(em_config_file):
-        raise RuntimeError("Emscripten configuration file '%s' does not exist" % em_config_file)
-    with open(em_config_file) as f:
-        em_config = {}
-        try:
-            # Emscripten configuration file is a Python file with simple assignments.
-            exec(f.read(), em_config)
-        except StandardError as e:
-            raise RuntimeError("Emscripten configuration file '%s' is invalid:\n%s" % (em_config_file, e))
-    if 'BINARYEN_ROOT' in em_config and os.path.isdir(os.path.join(em_config.get('BINARYEN_ROOT'), 'emscripten')):
-        # New style, emscripten path as a subfolder of BINARYEN_ROOT
-        env.PrependENVPath('PATH', os.path.join(em_config.get('BINARYEN_ROOT'), 'emscripten'))
-    elif 'EMSCRIPTEN_ROOT' in em_config:
-        # Old style (but can be there as a result from previous activation, so do last)
-        env.PrependENVPath('PATH', em_config.get('EMSCRIPTEN_ROOT'))
-    else:
-        raise RuntimeError("'BINARYEN_ROOT' or 'EMSCRIPTEN_ROOT' missing in Emscripten configuration file '%s'" % em_config_file)
+    em_config = parse_config()
+    env.PrependENVPath('PATH', em_config['EMCC_ROOT'])
 
     env['CC'] = 'emcc'
     env['CXX'] = 'em++'
@@ -152,7 +142,7 @@ def configure(env):
     # and undefined if using 'upstream'. And to make things simple, earlier
     # Emscripten versions didn't include 'fastcomp' in their path, so we check
     # against the presence of 'upstream' to conditionally add the flag.
-    if not "upstream" in em_config['EMSCRIPTEN_ROOT']:
+    if not "upstream" in em_config['EMCC_ROOT']: # TODO Should we drop this?
         env.Append(LINKFLAGS=['-s', 'BINARYEN_TRAP_MODE=\'clamp\''])
 
     # Allow increasing memory buffer size during runtime. This is efficient

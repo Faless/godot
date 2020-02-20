@@ -126,10 +126,11 @@ def configure(env):
 
     # Thread support (via SharedArrayBuffer).
     if env['threads_enabled']:
+        env.Append(CPPDEFINES=['PTHREAD_NO_RENAME'])
         env.Append(CPPFLAGS=['-s', 'USE_PTHREADS=1']);
+        env.Append(LINKFLAGS=['-s', 'USE_PTHREADS=1']);
         env.Append(LINKFLAGS=['-s', 'PTHREAD_POOL_SIZE=4'])
         env.Append(LINKFLAGS=['-s', 'WASM_MEM_MAX=2048MB'])
-        env.Append(CPPDEFINES=['PTHREAD_NO_RENAME'])
     else:
         env.Append(CPPDEFINES=['NO_THREADS'])
         # Reduce code size, not working with threads, not so useful with closure.

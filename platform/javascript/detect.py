@@ -19,6 +19,7 @@ def get_opts():
     return [
         # eval() can be a security concern, so it can be disabled.
         BoolVariable('javascript_eval', 'Enable JavaScript eval interface', True),
+        BoolVariable('threads_enabled', 'Enable WebAssembly Threads support (limited browser support)', False),
     ]
 
 
@@ -47,6 +48,7 @@ def configure(env):
         # run-time performance.
         env.Append(CCFLAGS=['-Os'])
         env.Append(LINKFLAGS=['-Os'])
+        # Enable closure compiler in release builds.
         env.Append(LINKFLAGS=['--closure', '1'])
     elif env['target'] == 'release_debug':
         env.Append(CCFLAGS=['-Os'])
@@ -60,10 +62,23 @@ def configure(env):
         env.Append(LINKFLAGS=['-O1', '-g'])
         env.Append(LINKFLAGS=['-s', 'ASSERTIONS=1'])
 
+    if env['tools']:
+        if not env['threads_enabled']:
+            raise RuntimeError("Threads must be enabled to build the editor. Please add the 'threads_enabled=yes' option")
+        # Tools need more memory
+        env.Append(LINKFLAGS=['-s', 'TOTAL_MEMORY=33554432'])
+    else:
+        # Disable exceptions and rtti on non-tools (template) builds
+        # These flags help keep the file size down.
+        env.Append(CCFLAGS=['-fno-exceptions', '-fno-rtti'])
+        # Don't use dynamic_cast, necessary with no-rtti.
+        env.Append(CPPDEFINES=['NO_SAFE_CAST'])
+
     # LTO
     if env['use_lto']:
         env.Append(CCFLAGS=['-s', 'WASM_OBJECT_FILES=0'])
-        env.Append(LINKFLAGS=['-s', 'WASM_OBJECT_FILES=0', '--llvm-lto',  '1'])
+        env.Append(LINKFLAGS=['-s', 'WASM_OBJECT_FILES=0'])
+        env.Append(LINKFLAGS=['--llvm-lto',  '1'])
 
     ## Closure compiler builder
     jscc = env.Builder(generator=run_closure_compiler, suffix='.cc.js', src_suffix='.js')
@@ -71,7 +86,6 @@ def configure(env):
     env.AddMethod(create_engine_file, "CreateEngineFile")
 
     ## Compiler configuration
-
     env['ENV'] = os.environ
     # Closure compiler extern and support for ecmascript specs (const, let, etc).
     env['ENV']['EMCC_CLOSURE_ARGS'] = '--language_in ECMASCRIPT6'
@@ -104,28 +118,21 @@ def configure(env):
     env['LIBPREFIXES'] = ['$LIBPREFIX']
     env['LIBSUFFIXES'] = ['$LIBSUFFIX']
 
-    ## Compile flags
-
     env.Prepend(CPPPATH=['#platform/javascript'])
     env.Append(CPPDEFINES=['JAVASCRIPT_ENABLED', 'UNIX_ENABLED'])
-
-    # No multi-threading (SharedArrayBuffer) available yet,
-    # once feasible also consider memory buffer size issues.
-    env.Append(CPPFLAGS=['-s', 'USE_PTHREADS=1']);
-    env.Append(CPPDEFINES=['PTHREAD_NO_RENAME'])
-    # env.Append(CPPDEFINES=['NO_THREADS'])
-
-    # Disable exceptions and rtti on non-tools (template) builds
-    if not env['tools']:
-        # These flags help keep the file size down.
-        env.Append(CCFLAGS=['-fno-exceptions', '-fno-rtti'])
-        # Don't use dynamic_cast, necessary with no-rtti.
-        env.Append(CPPDEFINES=['NO_SAFE_CAST'])
 
     if env['javascript_eval']:
         env.Append(CPPDEFINES=['JAVASCRIPT_EVAL_ENABLED'])
 
-    ## Link flags
+    # Thread support (via SharedArrayBuffer).
+    if env['threads_enabled']:
+        env.Append(CPPFLAGS=['-s', 'USE_PTHREADS=1']);
+        env.Append(LINKFLAGS=['-s', 'PTHREAD_POOL_SIZE=4'])
+        env.Append(CPPDEFINES=['PTHREAD_NO_RENAME'])
+    else:
+        env.Append(CPPDEFINES=['NO_THREADS'])
+        # Reduce code size, not working with threads, not so useful with closure.
+        env.Append(LINKFLAGS=['-s', 'ENVIRONMENT=web,worker'])
 
     # We use IDBFS in javascript_main.cpp. Since Emscripten 1.39.1 it needs to
     # be linked explicitly.
@@ -134,21 +141,7 @@ def configure(env):
     env.Append(LINKFLAGS=['-s', 'BINARYEN=1'])
     env.Append(LINKFLAGS=['-s', 'MODULARIZE=1', '-s', 'EXPORT_NAME="Godot"'])
     env.Append(LINKFLAGS=['-s', 'USE_PTHREADS=1']);
-    env.Append(LINKFLAGS=['-s', 'PTHREAD_POOL_SIZE=4'])
     env.Append(LINKFLAGS=['-s', 'WASM_MEM_MAX=2048MB'])
-
-    # Only include the JavaScript support code for the web environment
-    # (i.e. exclude Node.js and other unused environments).
-    # This makes the JavaScript support code about 4 KB smaller.
-    # FIXME NOT WORKING WITH THREADS, reported upstream.
-    #env.Append(LINKFLAGS=['-s', 'ENVIRONMENT=web,worker'])
-
-    # This needs to be defined for Emscripten using 'fastcomp' (default pre-1.39.0)
-    # and undefined if using 'upstream'. And to make things simple, earlier
-    # Emscripten versions didn't include 'fastcomp' in their path, so we check
-    # against the presence of 'upstream' to conditionally add the flag.
-    if not "upstream" in em_config['EMCC_ROOT']: # TODO Should we drop this?
-        env.Append(LINKFLAGS=['-s', 'BINARYEN_TRAP_MODE=\'clamp\''])
 
     # Allow increasing memory buffer size during runtime. This is efficient
     # when using WebAssembly (in comparison to asm.js) and works well for
@@ -161,7 +154,7 @@ def configure(env):
     env.Append(LINKFLAGS=['-s', 'INVOKE_RUN=0'])
 
     # TODO: Reevaluate usage of this setting now that engine.js manages engine runtime.
-    env.Append(LINKFLAGS=['-s', 'NO_EXIT_RUNTIME=1'])
+    #env.Append(LINKFLAGS=['-s', 'NO_EXIT_RUNTIME=1'])
 
     #adding flag due to issue with emscripten 1.38.41 callMain method https://github.com/emscripten-core/emscripten/blob/incoming/ChangeLog.md#v13841-08072019
     env.Append(LINKFLAGS=['-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=["callMain", "FS"]'])

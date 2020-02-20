@@ -128,6 +128,7 @@ def configure(env):
     if env['threads_enabled']:
         env.Append(CPPFLAGS=['-s', 'USE_PTHREADS=1']);
         env.Append(LINKFLAGS=['-s', 'PTHREAD_POOL_SIZE=4'])
+        env.Append(LINKFLAGS=['-s', 'WASM_MEM_MAX=2048MB'])
         env.Append(CPPDEFINES=['PTHREAD_NO_RENAME'])
     else:
         env.Append(CPPDEFINES=['NO_THREADS'])
@@ -140,8 +141,6 @@ def configure(env):
 
     env.Append(LINKFLAGS=['-s', 'BINARYEN=1'])
     env.Append(LINKFLAGS=['-s', 'MODULARIZE=1', '-s', 'EXPORT_NAME="Godot"'])
-    env.Append(LINKFLAGS=['-s', 'USE_PTHREADS=1']);
-    env.Append(LINKFLAGS=['-s', 'WASM_MEM_MAX=2048MB'])
 
     # Allow increasing memory buffer size during runtime. This is efficient
     # when using WebAssembly (in comparison to asm.js) and works well for

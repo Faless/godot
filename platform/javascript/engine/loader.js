@@ -1,4 +1,4 @@
-var Loader = function() {
+var Loader = /** @constructor */ function() {
 
 	this.env = null;
 

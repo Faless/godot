@@ -1,6 +1,6 @@
-var Utils = (function() {
+var Utils = {
 
-	function createLocateRewrite(execName) {
+	createLocateRewrite: function(execName) {
 		function rw(path) {
 			if (path.endsWith('.worker.js')) {
 				return execName + '.worker.js';
@@ -11,9 +11,9 @@ var Utils = (function() {
 			}
 		}
 		return rw;
-	}
+	},
 
-	function createInstantiatePromise(wasmLoader) {
+	createInstantiatePromise: function(wasmLoader) {
 		function instantiateWasm(imports, onSuccess) {
 			wasmLoader.then(function(xhr) {
 				WebAssembly.instantiate(xhr.response, imports).then(function(result) {
@@ -25,9 +25,9 @@ var Utils = (function() {
 		};
 
 		return instantiateWasm;
-	}
+	},
 
-	function copyToFS(fs, path, buffer) {
+	copyToFS: function(fs, path, buffer) {
 		var p = path.lastIndexOf("/");
 		var dir = "/";
 		if (p > 0) {
@@ -43,17 +43,17 @@ var Utils = (function() {
 		}
 		// With memory growth, canOwn should be false.
 		fs.writeFile(path, new Uint8Array(buffer), {'flags': 'wx+'});
-	}
+	},
 
-	function findCanvas() {
+	findCanvas: function() {
 		var nodes = document.getElementsByTagName('canvas');
 		if (nodes.length && nodes[0] instanceof HTMLCanvasElement) {
 			return nodes[0];
 		}
 		throw new Error("No canvas found");
-	}
+	},
 
-	function isWebGLAvailable(majorVersion = 1) {
+	isWebGLAvailable: function(majorVersion = 1) {
 
 		var testContext = false;
 		try {
@@ -66,12 +66,4 @@ var Utils = (function() {
 		} catch (e) {}
 		return !!testContext;
 	}
-
-	return {
-		'createLocateRewrite': createLocateRewrite,
-		'createInstantiatePromise': createInstantiatePromise,
-		'copyToFS': copyToFS,
-		'findCanvas': findCanvas,
-		'isWebGLAvailable': isWebGLAvailable
-	};
-})();
+};

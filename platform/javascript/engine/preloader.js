@@ -1,6 +1,10 @@
 var Preloader = (function() {
 
 	var DOWNLOAD_ATTEMPTS_MAX = 4;
+	var progressFunc = null;
+	var lastProgress = { loaded: 0, total: 0 };
+	var loadingFiles = {};
+	var preloadedFiles = [];
 
 	function loadXHR(resolve, reject, file, tracker) {
 		var xhr = new XMLHttpRequest;
@@ -65,14 +69,12 @@ var Preloader = (function() {
 		}
 	}
 
-	var loadingFiles = {};
 	function loadPromise(file) {
 		return new Promise(function(resolve, reject) {
 			loadXHR(resolve, reject, file, loadingFiles);
 		});
 	}
 
-	var preloadedFiles = [];
 	function preloadFile(pathOrBuffer, destPath) {
 		if (pathOrBuffer instanceof ArrayBuffer) {
 			pathOrBuffer = new Uint8Array(pathOrBuffer);
@@ -86,7 +88,7 @@ var Preloader = (function() {
 			});
 			return Promise.resolve();
 		} else if (typeof pathOrBuffer === 'string') {
-			return loadPromise(pathOrBuffer, loadingFiles).then(function(xhr) {
+			return loadPromise(pathOrBuffer).then(function(xhr) {
 				preloadedFiles.push({
 					path: destPath || pathOrBuffer,
 					buffer: xhr.response
@@ -98,8 +100,6 @@ var Preloader = (function() {
 		}
 	};
 
-	var progressFunc = null;
-	var lastProgress = { loaded: 0, total: 0 };
 	function animateProgress() {
 
 		var loaded = 0;

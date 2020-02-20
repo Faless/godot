@@ -6,6 +6,7 @@ Function('return this')()['Engine'] = (function() {
 	var customLocale = 'en_US';
 	var wasmExt = '.wasm';
 
+	var preloader = new Preloader();
 	var loader = new Loader();
 	var rtenv = null;
 
@@ -20,9 +21,9 @@ Function('return this')()['Engine'] = (function() {
 	function load(basePath) {
 		if (loadPromise == null) {
 			loadPath = basePath;
-			loadPromise = loader.load(loadPath, wasmExt);
-			Preloader.setProgressFunc(progressFunc);
-			requestAnimationFrame(Preloader.animateProgress);
+			loadPromise = preloader.loadPromise(basePath + wasmExt);
+			preloader.setProgressFunc(progressFunc);
+			requestAnimationFrame(preloader.animateProgress);
 		}
 		return loadPromise;
 	};
@@ -64,7 +65,7 @@ Function('return this')()['Engine'] = (function() {
 
 	/** @type {function(string, string):Object} */
 	Engine.prototype.preloadFile = function(file, path) {
-		return Preloader.preload(file, path);
+		return preloader.preload(file, path);
 	};
 
 	/** @type {function(...string):Object} */
@@ -84,7 +85,7 @@ Function('return this')()['Engine'] = (function() {
 				rtenv['canvas'] = canvas;
 				rtenv['thisProgram'] = executableName;
 				rtenv['resizeCanvasOnStart'] = resizeCanvasOnStart;
-				loader.start(args).then(function() {
+				loader.start(preloader.preloadedFiles, args).then(function() {
 					loader = null;
 					initPromise = null;
 					resolve();

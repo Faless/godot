@@ -2,10 +2,6 @@ var Loader = /** @constructor */ function() {
 
 	this.env = null;
 
-	this.load = function(basePath, wasmExt) {
-		return Preloader.loadPromise(basePath + wasmExt);
-	}
-
 	this.init = function(loadPromise, basePath, config) {
 		var me = this;
 		return new Promise(function(resolve, reject) {
@@ -20,16 +16,16 @@ var Loader = /** @constructor */ function() {
 		});
 	}
 
-	this.start = function(args) {
+	this.start = function(preloadedFiles, args) {
 		var me = this;
 		return new Promise(function(resolve, reject) {
 			if (!me.env) {
 				reject(new Error('The engine must be initialized before it can be started'));
 			}
-			Preloader.preloadedFiles.forEach(function(file) {
+			preloadedFiles.forEach(function(file) {
 				Utils.copyToFS(me.env['FS'], file.path, file.buffer);
 			});
-			Preloader.preloadedFiles = [];
+			preloadedFiles.length = 0; // Clear memory
 			me.env['callMain'](args);
 			resolve();
 		});

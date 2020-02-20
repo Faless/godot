@@ -17,7 +17,7 @@ var Utils = {
 		function instantiateWasm(imports, onSuccess) {
 			wasmLoader.then(function(xhr) {
 				WebAssembly.instantiate(xhr.response, imports).then(function(result) {
-					onSuccess(result.instance, result.module);
+					onSuccess(result['instance'], result['module']);
 				});
 			});
 			wasmLoader = null;
@@ -39,10 +39,10 @@ var Utils = {
 			if (e.errno !== 44) { // 'ENOENT', see https://github.com/emscripten-core/emscripten/blob/master/system/lib/libc/musl/arch/emscripten/bits/errno.h
 				throw e;
 			}
-			fs.mkdirTree(dir);
+			fs['mkdirTree'](dir);
 		}
 		// With memory growth, canOwn should be false.
-		fs.writeFile(path, new Uint8Array(buffer), {'flags': 'wx+'});
+		fs['writeFile'](path, new Uint8Array(buffer), {'flags': 'wx+'});
 	},
 
 	findCanvas: function() {

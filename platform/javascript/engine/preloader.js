@@ -1,10 +1,11 @@
-var Preloader = (function() {
+var Preloader = /** @constructor */ function() {
 
 	var DOWNLOAD_ATTEMPTS_MAX = 4;
 	var progressFunc = null;
 	var lastProgress = { loaded: 0, total: 0 };
+
 	var loadingFiles = {};
-	var preloadedFiles = [];
+	this.preloadedFiles = [];
 
 	function loadXHR(resolve, reject, file, tracker) {
 		var xhr = new XMLHttpRequest;
@@ -69,27 +70,28 @@ var Preloader = (function() {
 		}
 	}
 
-	function loadPromise(file) {
+	this.loadPromise = function(file) {
 		return new Promise(function(resolve, reject) {
 			loadXHR(resolve, reject, file, loadingFiles);
 		});
 	}
 
-	function preloadFile(pathOrBuffer, destPath) {
+	this.preload = function(pathOrBuffer, destPath) {
 		if (pathOrBuffer instanceof ArrayBuffer) {
 			pathOrBuffer = new Uint8Array(pathOrBuffer);
 		} else if (ArrayBuffer.isView(pathOrBuffer)) {
 			pathOrBuffer = new Uint8Array(pathOrBuffer.buffer);
 		}
 		if (pathOrBuffer instanceof Uint8Array) {
-			preloadedFiles.push({
+			this.preloadedFiles.push({
 				path: destPath,
 				buffer: pathOrBuffer
 			});
 			return Promise.resolve();
 		} else if (typeof pathOrBuffer === 'string') {
-			return loadPromise(pathOrBuffer).then(function(xhr) {
-				preloadedFiles.push({
+			var me = this;
+			return this.loadPromise(pathOrBuffer).then(function(xhr) {
+				me.preloadedFiles.push({
 					path: destPath || pathOrBuffer,
 					buffer: xhr.response
 				});
@@ -100,7 +102,7 @@ var Preloader = (function() {
 		}
 	};
 
-	function animateProgress() {
+	var animateProgress = function() {
 
 		var loaded = 0;
 		var total = 0;
@@ -129,17 +131,9 @@ var Preloader = (function() {
 		if (!progressIsFinal)
 			requestAnimationFrame(animateProgress);
 	}
+	this.animateProgress = animateProgress; // Also exposed to start it.
 
-	function setProgressFunc(callback) {
+	this.setProgressFunc = function(callback) {
 		progressFunc = callback;
 	}
-
-	return {
-		'preload': preloadFile,
-		'loadPromise': loadPromise,
-		'loadingTracker': loadingFiles,
-		'preloadedFiles': preloadedFiles,
-		'animateProgress': animateProgress,
-		'setProgressFunc': setProgressFunc
-	}
-})();
+};

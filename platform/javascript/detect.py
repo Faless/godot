@@ -133,8 +133,9 @@ def configure(env):
         env.Append(LINKFLAGS=['-s', 'WASM_MEM_MAX=2048MB'])
     else:
         env.Append(CPPDEFINES=['NO_THREADS'])
-        # Reduce code size, not working with threads, not so useful with closure.
-        env.Append(LINKFLAGS=['-s', 'ENVIRONMENT=web,worker'])
+
+    # Reduce code size by generating less support code (e.g. skip NodeJS support).
+    env.Append(LINKFLAGS=['-s', 'ENVIRONMENT=web,worker'])
 
     # We use IDBFS in javascript_main.cpp. Since Emscripten 1.39.1 it needs to
     # be linked explicitly.

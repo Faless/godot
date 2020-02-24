@@ -33,6 +33,7 @@
 
 #include "core/io/packet_peer.h"
 #include "core/io/stream_peer_tcp.h"
+#include "editor/debugger/editor_debugger_connection.h"
 #include "editor/debugger/editor_debugger_inspector.h"
 #include "editor/editor_inspector.h"
 #include "editor/property_editor.h"
@@ -132,8 +133,7 @@ private:
 	EditorDebuggerInspector *inspector;
 	SceneDebuggerTree *scene_tree;
 
-	Ref<StreamPeerTCP> connection;
-	Ref<PacketPeerStream> ppeer;
+	Ref<EditorDebuggerPeer> peer;
 
 	HashMap<NodePath, int> node_path_cache;
 	int last_path_id;
@@ -216,7 +216,7 @@ public:
 	void request_remote_tree();
 	const SceneDebuggerTree *get_remote_tree();
 
-	void start(Ref<StreamPeerTCP> p_connection);
+	void start(Ref<EditorDebuggerPeer> p_peer);
 	void stop();
 
 	void debug_skip_breakpoints();
@@ -228,7 +228,7 @@ public:
 	void debug_continue();
 	bool is_breaked() const { return breaked; }
 	bool is_debuggable() const { return can_debug; }
-	bool is_session_active() { return connection.is_valid() && connection->is_connected_to_host(); };
+	bool is_session_active() { return peer.is_valid() && peer->is_peer_connected(); };
 	int get_remote_pid() const { return remote_pid; }
 
 	int get_error_count() const { return error_count; }

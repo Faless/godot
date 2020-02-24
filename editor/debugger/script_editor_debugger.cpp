@@ -63,7 +63,7 @@ void ScriptEditorDebugger::_put_msg(String p_message, Array p_data) {
 		Array msg;
 		msg.push_back(p_message);
 		msg.push_back(p_data);
-		ppeer->put_var(msg);
+		peer->put_message(msg);
 	}
 }
 
@@ -811,30 +811,11 @@ void ScriptEditorDebugger::_notification(int p_what) {
 				}
 			}
 
-			if (!is_session_active()) {
-				_stop_and_notify();
-				break;
-			};
-
-			if (ppeer->get_available_packet_count() <= 0) {
-				break;
-			};
-
 			const uint64_t until = OS::get_singleton()->get_ticks_msec() + 20;
 
-			while (ppeer->get_available_packet_count() > 0) {
+			while (peer->has_message()) {
 
-				Variant cmd;
-				Error ret = ppeer->get_var(cmd);
-				if (ret != OK) {
-					_stop_and_notify();
-					ERR_FAIL_MSG("Error decoding variant from peer");
-				}
-				if (cmd.get_type() != Variant::ARRAY) {
-					_stop_and_notify();
-					ERR_FAIL_MSG("Invalid message format received from peer");
-				}
-				Array arr = cmd;
+				Array arr = peer->get_message();
 				if (arr.size() != 2 || arr[0].get_type() != Variant::STRING || arr[1].get_type() != Variant::ARRAY) {
 					_stop_and_notify();
 					ERR_FAIL_MSG("Invalid message format received from peer");
@@ -844,6 +825,10 @@ void ScriptEditorDebugger::_notification(int p_what) {
 				if (OS::get_singleton()->get_ticks_msec() > until)
 					break;
 			}
+			if (!is_session_active()) {
+				_stop_and_notify();
+				break;
+			};
 		} break;
 		case EditorSettings::NOTIFICATION_EDITOR_SETTINGS_CHANGED: {
 
@@ -875,14 +860,13 @@ void ScriptEditorDebugger::_clear_execution() {
 	inspector->clear_stack_variables();
 }
 
-void ScriptEditorDebugger::start(Ref<StreamPeerTCP> p_connection) {
+void ScriptEditorDebugger::start(Ref<EditorDebuggerPeer> p_peer) {
 
 	error_count = 0;
 	warning_count = 0;
 	stop();
 
-	connection = p_connection;
-	ppeer->set_stream_peer(connection);
+	peer = p_peer;
 
 	perf_history.clear();
 	for (int i = 0; i < Performance::MONITOR_MAX; i++) {
@@ -936,10 +920,10 @@ void ScriptEditorDebugger::stop() {
 	_clear_execution();
 
 	inspector->clear_cache();
-	ppeer->set_stream_peer(Ref<StreamPeer>());
 
-	if (connection.is_valid()) {
-		connection.unref();
+	if (peer.is_valid()) {
+		peer->close();
+		peer.unref();
 		reason->set_text("");
 		reason->set_tooltip("");
 	}
@@ -970,9 +954,6 @@ void ScriptEditorDebugger::_profiler_activate(bool p_enable) {
 }
 
 void ScriptEditorDebugger::_visual_profiler_activate(bool p_enable) {
-
-	if (!connection.is_valid())
-		return;
 
 	if (p_enable) {
 		profiler_signature.clear();
@@ -1536,8 +1517,6 @@ void ScriptEditorDebugger::_bind_methods() {
 
 ScriptEditorDebugger::ScriptEditorDebugger(EditorNode *p_editor) {
 
-	ppeer = Ref<PacketPeerStream>(memnew(PacketPeerStream));
-	ppeer->set_input_buffer_max_size((1024 * 1024 * 8) - 4); // 8 MiB should be enough, minus 4 bytes for separator.
 	editor = p_editor;
 
 	tabs = memnew(TabContainer);
@@ -1868,8 +1847,10 @@ ScriptEditorDebugger::ScriptEditorDebugger(EditorNode *p_editor) {
 
 ScriptEditorDebugger::~ScriptEditorDebugger() {
 
-	ppeer->set_stream_peer(Ref<StreamPeer>());
-
+	if (peer.is_valid()) {
+		peer->close();
+		peer.unref();
+	}
 	inspector->clear_cache();
 	memdelete(scene_tree);
 }

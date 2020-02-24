@@ -32,6 +32,7 @@
 #define EDITOR_DEBUGGER_NODE_H
 
 #include "core/io/tcp_server.h"
+#include "editor/debugger/editor_debugger_connection.h"
 #include "editor/debugger/script_editor_debugger.h"
 #include "scene/gui/button.h"
 #include "scene/gui/tab_container.h"
@@ -71,7 +72,7 @@ private:
 		}
 	};
 
-	Ref<TCP_Server> server = NULL;
+	Ref<EditorDebuggerServer> server;
 	TabContainer *tabs = NULL;
 	Button *debugger_button = NULL;
 	MenuButton *script_menu = NULL;

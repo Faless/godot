@@ -49,7 +49,6 @@ EditorDebuggerNode *EditorDebuggerNode::singleton = NULL;
 EditorDebuggerNode::EditorDebuggerNode() {
 	if (!singleton)
 		singleton = this;
-	server.instance();
 
 	add_constant_override("margin_left", -EditorNode::get_singleton()->get_gui_base()->get_stylebox("BottomPanelDebuggerOverride", "EditorStyles")->get_margin(MARGIN_LEFT));
 	add_constant_override("margin_right", -EditorNode::get_singleton()->get_gui_base()->get_stylebox("BottomPanelDebuggerOverride", "EditorStyles")->get_margin(MARGIN_RIGHT));
@@ -196,10 +195,9 @@ Error EditorDebuggerNode::start() {
 		EditorNode::get_singleton()->make_bottom_panel_item_visible(this);
 	}
 
-	int remote_port = (int)EditorSettings::get_singleton()->get("network/debug/remote_port");
-	const Error err = server->listen(remote_port);
+	server = Ref<EditorDebuggerServerTCP>(memnew(EditorDebuggerServerTCP));
+	const Error err = server->start();
 	if (err != OK) {
-		EditorNode::get_log()->add_message(String("Error listening on port ") + itos(remote_port), EditorLog::MSG_TYPE_ERROR);
 		return err;
 	}
 	set_process(true);
@@ -208,9 +206,10 @@ Error EditorDebuggerNode::start() {
 }
 
 void EditorDebuggerNode::stop() {
-	if (server->is_listening()) {
+	if (server.is_valid()) {
 		server->stop();
 		EditorNode::get_log()->add_message("--- Debugging process stopped ---", EditorLog::MSG_TYPE_EDITOR);
+		server.unref();
 	}
 	// Also close all debugging sessions.
 	_for_all(tabs, [&](ScriptEditorDebugger *dbg) {
@@ -248,8 +247,13 @@ void EditorDebuggerNode::_notification(int p_what) {
 			break;
 	}
 
-	if (p_what != NOTIFICATION_PROCESS || !server->is_listening())
+	if (p_what != NOTIFICATION_PROCESS || !server.is_valid())
 		return;
+
+	if (!server.is_valid() || !server->is_active()) {
+		stop();
+		return;
+	}
 
 	// Errors and warnings
 	int error_count = 0;
@@ -310,9 +314,8 @@ void EditorDebuggerNode::_notification(int p_what) {
 			if (tabs->get_tab_count() <= 4) { // Max 4 debugging sessions active.
 				debugger = _add_debugger();
 			} else {
-				// We already have too many sessions, disconnecting new clients to prevent it from hanging.
-				// (Not keeping a reference to the connection will disconnect it)
-				server->take_connection();
+				// We already have too many sessions, disconnecting new clients to prevent them from hanging.
+				server->take_connection()->close();
 				return; // Can't add, stop here.
 			}
 		}

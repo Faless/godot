@@ -62,6 +62,8 @@ private:
 
 	static void _thread_func(void *p_ud);
 
+	void _poll();
+
 public:
 	void poll();
 	Error connect_to_host(const String &p_host, uint16_t p_port);
@@ -154,8 +156,8 @@ Error ScriptDebuggerPeerTCP::connect_to_host(const String &p_host, uint16_t p_po
 		return FAILED;
 	};
 	packet_peer->set_stream_peer(tcp_client);
-#ifndef NO_THREADS
 	connected = true;
+#ifndef NO_THREADS
 	running = true;
 	thread = Thread::create(_thread_func, this);
 #endif
@@ -166,7 +168,7 @@ void ScriptDebuggerPeerTCP::_thread_func(void *p_ud) {
 	ScriptDebuggerPeerTCP *peer = (ScriptDebuggerPeerTCP *)p_ud;
 	while (peer->running && peer->is_peer_connected()) {
 		peer->mutex->lock();
-		peer->poll();
+		peer->_poll();
 		peer->mutex->unlock();
 		if (!peer->is_peer_connected())
 			break;
@@ -175,6 +177,12 @@ void ScriptDebuggerPeerTCP::_thread_func(void *p_ud) {
 }
 
 void ScriptDebuggerPeerTCP::poll() {
+#ifdef NO_THREADS
+	_poll();
+#endif
+}
+
+void ScriptDebuggerPeerTCP::_poll() {
 	TCP_LOCK;
 	// Poll in
 	uint64_t ticks = OS::get_singleton()->get_ticks_usec();

@@ -497,6 +497,7 @@ void ScriptDebuggerRemote::debug(ScriptLanguage *p_script, bool p_can_continue, 
 	uint64_t loop_time_sec = 0;
 	while (true) {
 		loop_begin_usec = OS::get_singleton()->get_ticks_usec();
+		peer->poll();
 
 		_get_output();
 
@@ -654,6 +655,7 @@ void ScriptDebuggerRemote::_poll_events() {
 
 	while (peer->has_message()) {
 
+		peer->poll();
 		//send over output_strings
 		_get_output();
 

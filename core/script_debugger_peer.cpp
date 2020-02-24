@@ -205,7 +205,7 @@ void ScriptDebuggerPeerTCP::poll() {
 }
 
 Ref<ScriptDebuggerPeer> ScriptDebuggerPeer::create_from_uri(const String p_uri) {
-	String debug_host;
+	String debug_host = p_uri;
 	uint16_t debug_port = 6007;
 	if (debug_host.find(":") != -1) {
 		int sep_pos = debug_host.find_last(":");

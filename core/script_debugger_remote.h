@@ -31,10 +31,9 @@
 #ifndef SCRIPT_DEBUGGER_REMOTE_H
 #define SCRIPT_DEBUGGER_REMOTE_H
 
-#include "core/io/packet_peer.h"
-#include "core/io/stream_peer_tcp.h"
 #include "core/list.h"
 #include "core/os/os.h"
+#include "core/script_debugger_peer.h"
 #include "core/script_language.h"
 
 class ScriptDebuggerRemote : public ScriptDebugger {
@@ -222,8 +221,7 @@ protected:
 	bool skip_profile_frame;
 	bool reload_all_scripts;
 
-	Ref<StreamPeerTCP> tcp_client;
-	Ref<PacketPeerStream> packet_peer_stream;
+	Ref<ScriptDebuggerPeer> peer;
 
 	uint64_t last_perf_time;
 	uint64_t last_net_prof_time;
@@ -309,7 +307,7 @@ public:
 
 	virtual void set_skip_breakpoints(bool p_skip_breakpoints);
 
-	ScriptDebuggerRemote();
+	ScriptDebuggerRemote(Ref<ScriptDebuggerPeer> p_peer);
 	~ScriptDebuggerRemote();
 };
 

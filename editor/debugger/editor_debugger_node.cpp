@@ -31,9 +31,12 @@
 #include "editor_debugger_node.h"
 
 #include "editor/debugger/editor_debugger_tree.h"
+#include "editor/debugger/script_editor_debugger.h"
 #include "editor/editor_log.h"
 #include "editor/editor_node.h"
 #include "editor/plugins/script_editor_plugin.h"
+#include "scene/gui/menu_button.h"
+#include "scene/gui/tab_container.h"
 
 template <typename Func>
 void _for_all(TabContainer *p_node, const Func &p_func) {
@@ -480,6 +483,26 @@ void EditorDebuggerNode::reload_scripts() {
 	_for_all(tabs, [&](ScriptEditorDebugger *dbg) {
 		dbg->reload_scripts();
 	});
+}
+
+void EditorDebuggerNode::debug_next() {
+	get_default_debugger()->debug_next();
+}
+
+void EditorDebuggerNode::debug_step() {
+	get_default_debugger()->debug_step();
+}
+
+void EditorDebuggerNode::debug_break() {
+	get_default_debugger()->debug_break();
+}
+
+void EditorDebuggerNode::debug_continue() {
+	get_default_debugger()->debug_continue();
+}
+
+String EditorDebuggerNode::get_var_value(const String &p_var) const {
+	return get_default_debugger()->get_var_value(p_var);
 }
 
 // LiveEdit/Inspector

@@ -45,6 +45,7 @@
 #include "editor/plugins/spatial_editor_plugin.h"
 #include "editor/property_editor.h"
 #include "main/performance.h"
+#include "scene/3d/camera.h"
 #include "scene/debugger/scene_debugger.h"
 #include "scene/gui/dialogs.h"
 #include "scene/gui/label.h"
@@ -57,6 +58,8 @@
 #include "scene/gui/texture_button.h"
 #include "scene/gui/tree.h"
 #include "scene/resources/packed_scene.h"
+
+using CameraOverride = EditorDebuggerNode::CameraOverride;
 
 void ScriptEditorDebugger::_put_msg(String p_message, Array p_data) {
 	if (is_session_active()) {
@@ -776,7 +779,7 @@ void ScriptEditorDebugger::_notification(int p_what) {
 
 			if (is_session_active()) {
 
-				if (camera_override == OVERRIDE_2D) {
+				if (camera_override == CameraOverride::OVERRIDE_2D) {
 					CanvasItemEditor *editor = CanvasItemEditor::get_singleton();
 
 					Dictionary state = editor->get_state();
@@ -791,8 +794,8 @@ void ScriptEditorDebugger::_notification(int p_what) {
 					msg.push_back(transform);
 					_put_msg("override_camera_2D:transform", msg);
 
-				} else if (camera_override >= OVERRIDE_3D_1) {
-					int viewport_idx = camera_override - OVERRIDE_3D_1;
+				} else if (camera_override >= CameraOverride::OVERRIDE_3D_1) {
+					int viewport_idx = camera_override - CameraOverride::OVERRIDE_3D_1;
 					SpatialEditorViewport *viewport = SpatialEditor::get_singleton()->get_editor_viewport(viewport_idx);
 					Camera *const cam = viewport->get_camera();
 
@@ -877,7 +880,7 @@ void ScriptEditorDebugger::start(Ref<EditorDebuggerPeer> p_peer) {
 	set_process(true);
 	breaked = false;
 	can_debug = true;
-	camera_override = OVERRIDE_NONE;
+	camera_override = CameraOverride::OVERRIDE_NONE;
 
 	tabs->set_current_tab(0);
 	_set_reason_text(TTR("Debug session started."), MESSAGE_SUCCESS);
@@ -1309,25 +1312,25 @@ void ScriptEditorDebugger::live_debug_reparent_node(const NodePath &p_at, const 
 	}
 }
 
-ScriptEditorDebugger::CameraOverride ScriptEditorDebugger::get_camera_override() const {
+CameraOverride ScriptEditorDebugger::get_camera_override() const {
 	return camera_override;
 }
 
 void ScriptEditorDebugger::set_camera_override(CameraOverride p_override) {
 
-	if (p_override == OVERRIDE_2D && camera_override != OVERRIDE_2D) {
+	if (p_override == CameraOverride::OVERRIDE_2D && camera_override != CameraOverride::OVERRIDE_2D) {
 		Array msg;
 		msg.push_back(true);
 		_put_msg("override_camera_2D:set", msg);
-	} else if (p_override != OVERRIDE_2D && camera_override == OVERRIDE_2D) {
+	} else if (p_override != CameraOverride::OVERRIDE_2D && camera_override == CameraOverride::OVERRIDE_2D) {
 		Array msg;
 		msg.push_back(false);
 		_put_msg("override_camera_2D:set", msg);
-	} else if (p_override >= OVERRIDE_3D_1 && camera_override < OVERRIDE_3D_1) {
+	} else if (p_override >= CameraOverride::OVERRIDE_3D_1 && camera_override < CameraOverride::OVERRIDE_3D_1) {
 		Array msg;
 		msg.push_back(true);
 		_put_msg("override_camera_3D:set", msg);
-	} else if (p_override < OVERRIDE_3D_1 && camera_override >= OVERRIDE_3D_1) {
+	} else if (p_override < CameraOverride::OVERRIDE_3D_1 && camera_override >= CameraOverride::OVERRIDE_3D_1) {
 		Array msg;
 		msg.push_back(false);
 		_put_msg("override_camera_3D:set", msg);
@@ -1838,7 +1841,7 @@ ScriptEditorDebugger::ScriptEditorDebugger(EditorNode *p_editor) {
 	add_child(msgdialog);
 
 	live_debug = true;
-	camera_override = OVERRIDE_NONE;
+	camera_override = CameraOverride::OVERRIDE_NONE;
 	last_path_id = false;
 	error_count = 0;
 	warning_count = 0;

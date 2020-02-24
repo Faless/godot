@@ -31,15 +31,12 @@
 #ifndef SCRIPT_EDITOR_DEBUGGER_H
 #define SCRIPT_EDITOR_DEBUGGER_H
 
-#include "core/io/packet_peer.h"
-#include "core/io/stream_peer_tcp.h"
 #include "editor/debugger/editor_debugger_connection.h"
 #include "editor/debugger/editor_debugger_inspector.h"
-#include "editor/editor_inspector.h"
-#include "editor/property_editor.h"
-#include "scene/3d/camera.h"
-#include "scene/gui/box_container.h"
+#include "editor/debugger/editor_debugger_node.h"
+#include "editor/editor_file_dialog.h"
 #include "scene/gui/button.h"
+#include "scene/gui/margin_container.h"
 
 class Tree;
 class EditorNode;
@@ -61,16 +58,6 @@ class ScriptEditorDebugger : public MarginContainer {
 	GDCLASS(ScriptEditorDebugger, MarginContainer);
 
 	friend class EditorDebuggerNode;
-
-public:
-	enum CameraOverride {
-		OVERRIDE_NONE,
-		OVERRIDE_2D,
-		OVERRIDE_3D_1, // 3D Viewport 1
-		OVERRIDE_3D_2, // 3D Viewport 2
-		OVERRIDE_3D_3, // 3D Viewport 3
-		OVERRIDE_3D_4 // 3D Viewport 4
-	};
 
 private:
 	enum MessageType {
@@ -151,7 +138,7 @@ private:
 
 	bool live_debug;
 
-	CameraOverride camera_override;
+	EditorDebuggerNode::CameraOverride camera_override;
 
 	void _performance_draw();
 	void _performance_select();
@@ -252,8 +239,8 @@ public:
 	void live_debug_duplicate_node(const NodePath &p_at, const String &p_new_name);
 	void live_debug_reparent_node(const NodePath &p_at, const NodePath &p_new_place, const String &p_new_name, int p_at_pos);
 
-	CameraOverride get_camera_override() const;
-	void set_camera_override(CameraOverride p_override);
+	EditorDebuggerNode::CameraOverride get_camera_override() const;
+	void set_camera_override(EditorDebuggerNode::CameraOverride p_override);
 
 	void set_breakpoint(const String &p_path, int p_line, bool p_enabled);
 

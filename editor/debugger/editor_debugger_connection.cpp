@@ -31,6 +31,7 @@
 #include "editor_debugger_connection.h"
 
 #include "core/io/packet_peer.h"
+#include "core/io/tcp_server.h"
 #include "core/os/mutex.h"
 #include "core/os/thread.h"
 #include "editor/editor_log.h"
@@ -138,6 +139,28 @@ public:
 	}
 };
 
+class EditorDebuggerServerTCP : public EditorDebuggerServer {
+
+private:
+	Ref<TCP_Server> server;
+	List<Ref<EditorDebuggerPeer> > peers;
+	Thread *thread = NULL;
+	Mutex *mutex = NULL;
+	bool running = false;
+
+	static void _poll_func(void *p_ud);
+
+public:
+	virtual Error start();
+	virtual void stop();
+	virtual bool is_active() const;
+	virtual bool is_connection_available() const;
+	virtual Ref<EditorDebuggerPeer> take_connection();
+
+	EditorDebuggerServerTCP();
+	~EditorDebuggerServerTCP();
+};
+
 EditorDebuggerServerTCP::EditorDebuggerServerTCP() {
 	server.instance();
 	mutex = Mutex::create();
@@ -204,4 +227,8 @@ void EditorDebuggerServerTCP::_poll_func(void *p_ud) {
 		me->mutex->unlock();
 		OS::get_singleton()->delay_usec(50);
 	}
+}
+
+EditorDebuggerServer *EditorDebuggerServer::create_default() {
+	return memnew(EditorDebuggerServerTCP);
 }

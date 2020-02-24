@@ -31,8 +31,7 @@
 #ifndef EDITOR_DEBUGGER_CONNECTION_H
 #define EDITOR_DEBUGGER_CONNECTION_H
 
-#include "core/io/packet_peer.h"
-#include "core/io/tcp_server.h"
+#include "core/reference.h"
 
 class EditorDebuggerPeer : public Reference {
 
@@ -49,6 +48,7 @@ public:
 class EditorDebuggerServer : public Reference {
 
 public:
+	static EditorDebuggerServer *create_default();
 	virtual Error start() = 0;
 	virtual void stop() = 0;
 	virtual bool is_active() const = 0;
@@ -56,27 +56,4 @@ public:
 	virtual Ref<EditorDebuggerPeer> take_connection() = 0;
 };
 
-class Thread;
-class Mutex;
-class EditorDebuggerServerTCP : public EditorDebuggerServer {
-
-private:
-	Ref<TCP_Server> server;
-	List<Ref<EditorDebuggerPeer> > peers;
-	Thread *thread = NULL;
-	Mutex *mutex = NULL;
-	bool running = false;
-
-	static void _poll_func(void *p_ud);
-
-public:
-	virtual Error start();
-	virtual void stop();
-	virtual bool is_active() const;
-	virtual bool is_connection_available() const;
-	virtual Ref<EditorDebuggerPeer> take_connection();
-
-	EditorDebuggerServerTCP();
-	~EditorDebuggerServerTCP();
-};
 #endif // EDITOR_DEBUGGER_CONNECTION_H

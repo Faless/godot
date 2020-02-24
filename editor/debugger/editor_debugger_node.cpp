@@ -198,7 +198,7 @@ Error EditorDebuggerNode::start() {
 		EditorNode::get_singleton()->make_bottom_panel_item_visible(this);
 	}
 
-	server = Ref<EditorDebuggerServerTCP>(memnew(EditorDebuggerServerTCP));
+	server = Ref<EditorDebuggerServer>(EditorDebuggerServer::create_default());
 	const Error err = server->start();
 	if (err != OK) {
 		return err;

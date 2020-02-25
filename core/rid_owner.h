@@ -298,7 +298,12 @@ public:
 			if (description) {
 				print_error("ERROR: " + itos(alloc_count) + " RID allocations of type '" + description + "' were leaked at exit.");
 			} else {
+#ifdef __cpp_rtti
 				print_error("ERROR: " + itos(alloc_count) + " RID allocations of type '" + typeid(T).name() + "' were leaked at exit.");
+#else
+				// typeid() needs rtti, which has big impact on binary code size, which affects performances on HTML5/WASM.
+				print_error("ERROR: " + itos(alloc_count) + " RID allocations of type 'unknown' (no rtti support) were leaked at exit.");
+#endif
 			}
 
 			for (size_t i = 0; i < max_alloc; i++) {

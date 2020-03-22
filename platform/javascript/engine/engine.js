@@ -1,5 +1,4 @@
 Function('return this')()['Engine'] = (function() {
-
 	var unloadAfterInit = true;
 	var canvas = null;
 	var resizeCanvasOnStart = false;
@@ -46,7 +45,7 @@ Function('return this')()['Engine'] = (function() {
 			}
 			load(basePath);
 		}
-		var config = {}
+		var config = {};
 		if (typeof stdout === 'function')
 			config.print = stdout;
 		if (typeof stderr === 'function')
@@ -102,7 +101,7 @@ Function('return this')()['Engine'] = (function() {
 			this.init(execName),
 			this.preloadFile(mainPack, mainPack)
 		]).then(function() {
-			var args = ['--main-pack', mainPack];
+			var args = [ '--main-pack', mainPack ];
 			if (extraArgs)
 				args = args.concat(extraArgs);
 			return me.start.apply(me, args);
@@ -138,10 +137,9 @@ Function('return this')()['Engine'] = (function() {
 
 	Engine.prototype.setProgressFunc = function(func) {
 		progressFunc = func;
-	}
+	};
 
 	Engine.prototype.setStdoutFunc = function(func) {
-
 		var print = function(text) {
 			if (arguments.length > 1) {
 				text = Array.prototype.slice.call(arguments).join(" ");
@@ -154,7 +152,6 @@ Function('return this')()['Engine'] = (function() {
 	};
 
 	Engine.prototype.setStderrFunc = function(func) {
-
 		var printErr = function(text) {
 			if (arguments.length > 1)
 				text = Array.prototype.slice.call(arguments).join(" ");
@@ -170,18 +167,18 @@ Function('return this')()['Engine'] = (function() {
 	Engine['isWebGLAvailable'] = Utils.isWebGLAvailable;
 	Engine['load'] = load;
 	Engine['unload'] = unload;
-	Engine.prototype['init'] = Engine.prototype.init
-	Engine.prototype['preloadFile'] = Engine.prototype.preloadFile
-	Engine.prototype['start'] = Engine.prototype.start
-	Engine.prototype['startGame'] = Engine.prototype.startGame
-	Engine.prototype['setWebAssemblyFilenameExtension'] = Engine.prototype.setWebAssemblyFilenameExtension
-	Engine.prototype['setUnloadAfterInit'] = Engine.prototype.setUnloadAfterInit
-	Engine.prototype['setCanvas'] = Engine.prototype.setCanvas
-	Engine.prototype['setCanvasResizedOnStart'] = Engine.prototype.setCanvasResizedOnStart
-	Engine.prototype['setLocale'] = Engine.prototype.setLocale
-	Engine.prototype['setExecutableName'] = Engine.prototype.setExecutableName
-	Engine.prototype['setProgressFunc'] = Engine.prototype.setProgressFunc
-	Engine.prototype['setStdoutFunc'] = Engine.prototype.setStdoutFunc
-	Engine.prototype['setStderrFunc'] = Engine.prototype.setStderrFunc
+	Engine.prototype['init'] = Engine.prototype.init;
+	Engine.prototype['preloadFile'] = Engine.prototype.preloadFile;
+	Engine.prototype['start'] = Engine.prototype.start;
+	Engine.prototype['startGame'] = Engine.prototype.startGame;
+	Engine.prototype['setWebAssemblyFilenameExtension'] = Engine.prototype.setWebAssemblyFilenameExtension;
+	Engine.prototype['setUnloadAfterInit'] = Engine.prototype.setUnloadAfterInit;
+	Engine.prototype['setCanvas'] = Engine.prototype.setCanvas;
+	Engine.prototype['setCanvasResizedOnStart'] = Engine.prototype.setCanvasResizedOnStart;
+	Engine.prototype['setLocale'] = Engine.prototype.setLocale;
+	Engine.prototype['setExecutableName'] = Engine.prototype.setExecutableName;
+	Engine.prototype['setProgressFunc'] = Engine.prototype.setProgressFunc;
+	Engine.prototype['setStdoutFunc'] = Engine.prototype.setStdoutFunc;
+	Engine.prototype['setStderrFunc'] = Engine.prototype.setStderrFunc;
 	return Engine;
 })();

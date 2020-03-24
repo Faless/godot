@@ -23,7 +23,7 @@ var Loader = /** @constructor */ function() {
 				reject(new Error('The engine must be initialized before it can be started'));
 			}
 			preloadedFiles.forEach(function(file) {
-				Utils.copyToFS(me.env['FS'], file.path, file.buffer);
+				Utils.copyToFS(me.env['FS'], me.env['ERRNO_CODES'], file.path, file.buffer);
 			});
 			preloadedFiles.length = 0; // Clear memory
 			me.env['callMain'](args);

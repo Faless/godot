@@ -29,7 +29,6 @@ var Utils = {
 
 	initBrowserFS: function(config, env) {
 		return new Promise(function(resolve, reject) {
-			console.log(config);
 			if (!config)
 				resolve();
 			BrowserFS.configure(config, function(e) {
@@ -50,7 +49,7 @@ var Utils = {
 		});
 	},
 
-	copyToFS: function(fs, path, buffer) {
+	copyToFS: function(fs, errnos, path, buffer) {
 		var p = path.lastIndexOf("/");
 		var dir = "/";
 		if (p > 0) {
@@ -59,7 +58,7 @@ var Utils = {
 		try {
 			fs.stat(dir);
 		} catch (e) {
-			if (e.errno !== 44) { // 'ENOENT', see https://github.com/emscripten-core/emscripten/blob/master/system/lib/libc/musl/arch/emscripten/bits/errno.h
+			if (e.errno !== errnos['ENOENT']) { // 'ENOENT', see https://github.com/emscripten-core/emscripten/blob/master/system/lib/libc/musl/arch/emscripten/bits/errno.h
 				throw e;
 			}
 			fs['mkdirTree'](dir);

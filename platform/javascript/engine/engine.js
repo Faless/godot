@@ -2,7 +2,7 @@ Function('return this')()['Engine'] = (function() {
 	var unloadAfterInit = true;
 	var canvas = null;
 	var resizeCanvasOnStart = false;
-	var customLocale = 'en_US';
+	var customLocale = null;
 	var wasmExt = '.wasm';
 
 	var preloader = new Preloader();
@@ -81,8 +81,32 @@ Function('return this')()['Engine'] = (function() {
 				if (!(canvas instanceof HTMLCanvasElement)) {
 					canvas = Utils.findCanvas();
 				}
+
+				// Canvas can grab focus on click, or key events won't work.
+				if (canvas.tabIndex < 0) {
+					canvas.tabIndex = 0;
+				}
+
+				// Disable right-click context menu.
+				canvas.addEventListener('contextmenu', function(ev) {
+					ev.preventDefault();
+				}, false);
+
+				// Until context restoration is implemented warn the user of context loss.
+				canvas.addEventListener('webglcontextlost', function(ev) {
+					alert("WebGL context lost, please reload the page");
+					ev.preventDefault();
+				}, false);
+
+				// Browser locale, or custom one if defined.
+				var locale = customLocale;
+				if (!locale) {
+					locale = navigator.languages ? navigator.languages[0] : navigator.language;
+					locale = locale.split('.')[0];
+				}
+
 				Utils.initBrowserFS(browserFSConfig, rtenv).then(function() {
-					rtenv['locale'] = customLocale;
+					rtenv['locale'] = locale;
 					rtenv['canvas'] = canvas;
 					rtenv['thisProgram'] = executableName;
 					rtenv['resizeCanvasOnStart'] = resizeCanvasOnStart;

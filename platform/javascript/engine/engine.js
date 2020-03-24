@@ -16,6 +16,7 @@ Function('return this')()['Engine'] = (function() {
 	var stderr = null;
 	var stdout = null;
 	var progressFunc = null;
+	var browserFSConfig = null;
 
 	function load(basePath) {
 		if (loadPromise == null) {
@@ -80,14 +81,16 @@ Function('return this')()['Engine'] = (function() {
 				if (!(canvas instanceof HTMLCanvasElement)) {
 					canvas = Utils.findCanvas();
 				}
-				rtenv['locale'] = customLocale;
-				rtenv['canvas'] = canvas;
-				rtenv['thisProgram'] = executableName;
-				rtenv['resizeCanvasOnStart'] = resizeCanvasOnStart;
-				loader.start(preloader.preloadedFiles, args).then(function() {
-					loader = null;
-					initPromise = null;
-					resolve();
+				Utils.initBrowserFS(browserFSConfig, rtenv).then(function() {
+					rtenv['locale'] = customLocale;
+					rtenv['canvas'] = canvas;
+					rtenv['thisProgram'] = executableName;
+					rtenv['resizeCanvasOnStart'] = resizeCanvasOnStart;
+					loader.start(preloader.preloadedFiles, args).then(function() {
+						loader = null;
+						initPromise = null;
+						resolve();
+					});
 				});
 			});
 		});
@@ -162,6 +165,10 @@ Function('return this')()['Engine'] = (function() {
 		stderr = printErr;
 	};
 
+	Engine.prototype.setBrowserFSConfig = function(config) {
+		browserFSConfig = config;
+	}
+
 	// Closure compiler exported engine methods.
 	/** @export */
 	Engine['isWebGLAvailable'] = Utils.isWebGLAvailable;
@@ -180,5 +187,6 @@ Function('return this')()['Engine'] = (function() {
 	Engine.prototype['setProgressFunc'] = Engine.prototype.setProgressFunc;
 	Engine.prototype['setStdoutFunc'] = Engine.prototype.setStdoutFunc;
 	Engine.prototype['setStderrFunc'] = Engine.prototype.setStderrFunc;
+	Engine.prototype['setBrowserFSConfig'] = Engine.prototype.setBrowserFSConfig;
 	return Engine;
 })();

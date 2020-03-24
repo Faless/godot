@@ -160,5 +160,5 @@ def configure(env):
 
     env.Append(LINKFLAGS=['-s', 'INVOKE_RUN=0'])
 
-    # callMain for manual start, FS for preloading.
-    env.Append(LINKFLAGS=['-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=["callMain", "FS"]'])
+    # callMain for manual start, FS for preloading, PATH and ERRNO_CODES for BrowserFS.
+    env.Append(LINKFLAGS=['-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=["callMain", "FS", "PATH", "ERRNO_CODES"]'])

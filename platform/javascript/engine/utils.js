@@ -27,6 +27,29 @@ var Utils = {
 		return instantiateWasm;
 	},
 
+	initBrowserFS: function(config, env) {
+		return new Promise(function(resolve, reject) {
+			console.log(config);
+			if (!config)
+				resolve();
+			BrowserFS.configure(config, function(e) {
+				if (e) {
+					// An error happened!
+					reject(new Error(e));
+					return;
+				}
+				// Setup persistent FS with BrowserFS
+				const FS = env['FS'];
+				const PATH = env['PATH'];
+				const ERRNO_CODES = env['ERRNO_CODES'];
+				var BFS = new BrowserFS.EmscriptenFS(FS, PATH, ERRNO_CODES);
+				// Mount BFS's root folder into the home folder.
+				FS.mount(BFS, {root: '/'}, '/home/web_user');
+				resolve();
+			});
+		});
+	},
+
 	copyToFS: function(fs, path, buffer) {
 		var p = path.lastIndexOf("/");
 		var dir = "/";

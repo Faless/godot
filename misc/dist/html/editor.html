@@ -114,15 +114,99 @@
 	</style>
 </head>
 <body>
+	<script src="https://unpkg.com/dropbox/dist/Dropbox-sdk.min.js"></script>
+	<script type='text/javascript'>//<![CDATA[
+		var CLIENT_ID = 'k6ogm5pdwudbkf8';
+
+		function parseQueryString(str) {
+			var ret = Object.create(null);
+
+			if (typeof str !== 'string') {
+				return ret;
+			}
+
+			str = str.trim().replace(/^(\?|#|&)/, '');
+
+			if (!str) {
+				return ret;
+			}
+
+			str.split('&').forEach(function (param) {
+				var parts = param.replace(/\+/g, ' ').split('=');
+				// Firefox (pre 40) decodes `%3D` to `=`
+				// https://github.com/sindresorhus/query-string/pull/37
+				var key = parts.shift();
+				var val = parts.length > 0 ? parts.join('=') : undefined;
+
+				key = decodeURIComponent(key);
+
+				// missing `=` should be `null`:
+				// http://w3.org/TR/2012/WD-url-20120524/#collect-url-parameters
+				val = val === undefined ? null : decodeURIComponent(val);
+
+				if (ret[key] === undefined) {
+					ret[key] = val;
+				} else if (Array.isArray(ret[key])) {
+					ret[key].push(val);
+				} else {
+					ret[key] = [ret[key], val];
+				}
+			});
+
+			return ret;
+		}
+
+		// Parses the url and gets the access token if it is in the urls hash
+		function getAccessTokenFromUrl() {
+		 return parseQueryString(window.location.hash).access_token;
+		}
+
+		// If the user was just redirected from authenticating, the urls hash will
+		// contain the access token.
+		function isAuthenticated() {
+			return !!getAccessTokenFromUrl();
+		}
+
+		function checkDropboxAuth() {
+			var select = document.getElementById('persistenceMode');
+			var value = select.selectedOptions[0].value;
+			if (value != 'dropbox') {
+				document.getElementById('startButton').disabled = false;
+				document.getElementById('dropbox-auth').style.display = 'none';
+				return;
+			}
+
+			if (isAuthenticated()) {
+				// Create an instance of Dropbox with the access token and use it to
+				// fetch and render the files in the users root directory.
+				document.getElementById('dropbox-auth').style.display = 'none';
+				var dbx = new Dropbox.Dropbox({ fetch, accessToken: getAccessTokenFromUrl() });
+				window['dropbox_client'] = dbx;
+			} else {
+				document.getElementById('startButton').disabled = true;
+				document.getElementById('dropbox-auth').style.display = 'block';
+				// Set the login anchors href using dbx.getAuthenticationUrl()
+				var dbx = new Dropbox.Dropbox({ fetch, clientId: CLIENT_ID });
+				var authUrl = dbx.getAuthenticationUrl('http://localhost:8060/godot.tools.html');
+				document.getElementById('dropbox-authlink').href = authUrl;
+			}
+		}
+	//]]></script>
 	<div style="color: white;" id="persistence">
 		<label for="persistenceMode">Select persistence mode:</label><br />
-		<select id="persistenceMode">
+		<select id="persistenceMode" onchange="checkDropboxAuth()">
 			<option value="none" selected="selected">None</option>
 			<option value="idbfs">IndexDB</option>
 			<option value="dropbox">Dropbox</option>
 			<option value="html5">Filesystem API</option>
 		</select>
 		<button id="startButton">Start Godot Editor</button>
+		<div id="dropbox-auth" style="display:none;">
+			<p>Dropbox needs authentication.</p>
+			<a href="" id="dropbox-authlink">Authenticate</a>
+			<p>Once authenticated, you will be able to start Godot with the dropbox backend.</p>
+		</div>
+
 	</div>
 	<canvas id='canvas' style="display: none;">
 		HTML5 canvas appears to be unsupported in the current browser.<br />

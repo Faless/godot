@@ -410,6 +410,7 @@
 			} else {
 				setStatusMode('indeterminate');
 				engine.setCanvas(canvas);
+				engine.setUnloadAfterInit(false); // Don't want to reload when starting game.
 				engine.init('godot.tools').then(function() {
 					selectPersistenceMode();
 					engine.start().then(function() {

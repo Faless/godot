@@ -6,7 +6,6 @@ Function('return this')()['Engine'] = (function() {
 	var wasmExt = '.wasm';
 
 	var preloader = new Preloader();
-	var loader = new Loader();
 	var rtenv = null;
 
 	var executableName = '';
@@ -39,7 +38,7 @@ Function('return this')()['Engine'] = (function() {
 		if (initPromise) {
 			return initPromise;
 		}
-		if (!loadPromise) {
+		if (loadPromise == null) {
 			if (!basePath) {
 				initPromise = Promise.reject(new Error("A base path must be provided when calling `init` and the engine is not loaded."));
 				return initPromise;
@@ -51,11 +50,13 @@ Function('return this')()['Engine'] = (function() {
 			config.print = stdout;
 		if (typeof stderr === 'function')
 			config.printErr = stderr;
-		initPromise = loader.init(loadPromise, loadPath, config).then(function() {
-			return new Promise(function(resolve, reject) {
-				rtenv = loader.env;
+		initPromise = new Promise(function(resolve, reject) {
+			config['locateFile'] = Utils.createLocateRewrite(loadPath);
+			config['instantiateWasm'] = Utils.createInstantiatePromise(loadPromise);
+			Godot(config).then(function(module) {
+				rtenv = module;
 				if (unloadAfterInit) {
-					loadPromise = null;
+					unload();
 				}
 				resolve();
 			});
@@ -76,46 +77,52 @@ Function('return this')()['Engine'] = (function() {
 			args.push(arguments[i]);
 		}
 		var me = this;
-		return new Promise(function(resolve, reject) {
-			return me.init().then(function() {
-				if (!(canvas instanceof HTMLCanvasElement)) {
-					canvas = Utils.findCanvas();
+		return me.init().then(function() {
+			if (!(canvas instanceof HTMLCanvasElement)) {
+				canvas = Utils.findCanvas();
+			}
+
+			// Canvas can grab focus on click, or key events won't work.
+			if (canvas.tabIndex < 0) {
+				canvas.tabIndex = 0;
+			}
+
+			// Disable right-click context menu.
+			canvas.addEventListener('contextmenu', function(ev) {
+				ev.preventDefault();
+			}, false);
+
+			// Until context restoration is implemented warn the user of context loss.
+			canvas.addEventListener('webglcontextlost', function(ev) {
+				alert("WebGL context lost, please reload the page");
+				ev.preventDefault();
+			}, false);
+
+			// Browser locale, or custom one if defined.
+			var locale = customLocale;
+			if (!locale) {
+				locale = navigator.languages ? navigator.languages[0] : navigator.language;
+				locale = locale.split('.')[0];
+			}
+			rtenv['locale'] = locale;
+			rtenv['canvas'] = canvas;
+			rtenv['thisProgram'] = executableName;
+			rtenv['resizeCanvasOnStart'] = resizeCanvasOnStart;
+			rtenv['engine'] = me;
+			// Setup persistent file system (if selected).
+			return Utils.initBrowserFS(browserFSConfig, rtenv);
+		}).then(function() {
+			return new Promise(function(resolve, reject) {
+				if (!rtenv) {
+					reject(new Error('The engine must be initialized before it can be started'));
 				}
-
-				// Canvas can grab focus on click, or key events won't work.
-				if (canvas.tabIndex < 0) {
-					canvas.tabIndex = 0;
-				}
-
-				// Disable right-click context menu.
-				canvas.addEventListener('contextmenu', function(ev) {
-					ev.preventDefault();
-				}, false);
-
-				// Until context restoration is implemented warn the user of context loss.
-				canvas.addEventListener('webglcontextlost', function(ev) {
-					alert("WebGL context lost, please reload the page");
-					ev.preventDefault();
-				}, false);
-
-				// Browser locale, or custom one if defined.
-				var locale = customLocale;
-				if (!locale) {
-					locale = navigator.languages ? navigator.languages[0] : navigator.language;
-					locale = locale.split('.')[0];
-				}
-
-				Utils.initBrowserFS(browserFSConfig, rtenv).then(function() {
-					rtenv['locale'] = locale;
-					rtenv['canvas'] = canvas;
-					rtenv['thisProgram'] = executableName;
-					rtenv['resizeCanvasOnStart'] = resizeCanvasOnStart;
-					loader.start(preloader.preloadedFiles, args).then(function() {
-						loader = null;
-						initPromise = null;
-						resolve();
-					});
+				preloader.preloadedFiles.forEach(function(file) {
+					Utils.copyToFS(rtenv['FS'], rtenv['ERRNO_CODES'], file.path, file.buffer);
 				});
+				preloader.preloadedFiles.length = 0; // Clear memory
+				rtenv['callMain'](args);
+				initPromise = null;
+				resolve();
 			});
 		});
 	};

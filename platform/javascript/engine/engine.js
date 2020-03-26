@@ -110,7 +110,8 @@ Function('return this')()['Engine'] = (function() {
 			rtenv['resizeCanvasOnStart'] = resizeCanvasOnStart;
 			rtenv['engine'] = me;
 			// Setup persistent file system (if selected).
-			return Utils.initBrowserFS(browserFSConfig, rtenv);
+			var fsCfg = JSON.parse(JSON.stringify(browserFSConfig)); // Deep copy, the config object will be modified.
+			return Utils.initBrowserFS(fsCfg, rtenv);
 		}).then(function() {
 			return new Promise(function(resolve, reject) {
 				if (!rtenv) {

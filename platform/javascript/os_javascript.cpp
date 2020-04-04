@@ -51,6 +51,25 @@
 #define DOM_BUTTON_XBUTTON2 4
 #define GODOT_CANVAS_SELECTOR "#canvas"
 
+void exit_callback() {
+	emscripten_cancel_main_loop(); // After this, we can exit!
+	EM_ASM({
+		const canvas = Module['canvas'];
+		var ctx = canvas.getContext('webgl');
+		if (!ctx)
+			ctx = canvas.getContext('webgl2');
+		if (ctx) {
+			ctx.clear(ctx.DEPTH_BUFFER_BIT);
+		}
+	});
+	Main::cleanup();
+	emscripten_force_exit(OS_JavaScript::get_singleton()->get_exit_code());
+}
+
+extern "C" EMSCRIPTEN_KEEPALIVE void cleanup_after_sync() {
+	emscripten_set_main_loop(exit_callback, -1, false);
+}
+
 // Window (canvas)
 
 static void focus_canvas() {
@@ -945,8 +964,8 @@ Error OS_JavaScript::initialize(const VideoMode &p_desired, int p_video_driver, 
 		}
 	}
 
-	EMSCRIPTEN_WEBGL_CONTEXT_HANDLE ctx = emscripten_webgl_create_context(GODOT_CANVAS_SELECTOR, &attributes);
-	if (emscripten_webgl_make_context_current(ctx) != EMSCRIPTEN_RESULT_SUCCESS) {
+	webgl_ctx = emscripten_webgl_create_context(GODOT_CANVAS_SELECTOR, &attributes);
+	if (emscripten_webgl_make_context_current(webgl_ctx) != EMSCRIPTEN_RESULT_SUCCESS) {
 		gl_initialization_error = true;
 	}
 
@@ -993,7 +1012,7 @@ Error OS_JavaScript::initialize(const VideoMode &p_desired, int p_video_driver, 
 	setenv("LANG", locale_ptr, true);
 
 	AudioDriverManager::initialize(p_audio_driver);
-	VisualServer *visual_server = memnew(VisualServerRaster());
+	visual_server = memnew(VisualServerRaster());
 	input = memnew(InputDefault);
 
 	EMSCRIPTEN_RESULT result;
@@ -1029,16 +1048,19 @@ Error OS_JavaScript::initialize(const VideoMode &p_desired, int p_video_driver, 
 
 	/* clang-format off */
 	EM_ASM_ARGS({
+		Module.listeners = {};
 		const send_notification = cwrap('send_notification', null, ['number']);
 		const notifications = arguments;
 		(['mouseover', 'mouseleave', 'focus', 'blur']).forEach(function(event, index) {
-			Module.canvas.addEventListener(event, send_notification.bind(null, notifications[index]));
+			Module.listeners[event] = send_notification.bind(null, notifications[index]);
+			Module.canvas.addEventListener(event, Module.listeners[event]);
 		});
 		// Clipboard
 		const update_clipboard = cwrap('update_clipboard', null, ['string']);
-		window.addEventListener('paste', function(evt) {
+		Module.listeners['paste'] = function(evt) {
 			update_clipboard(evt.clipboardData.getData('text'));
-		}, true);
+		};
+		window.addEventListener('paste', Module.listeners['paste'], true);
 	},
 		MainLoop::NOTIFICATION_WM_MOUSE_ENTER,
 		MainLoop::NOTIFICATION_WM_MOUSE_EXIT,
@@ -1066,12 +1088,25 @@ MainLoop *OS_JavaScript::get_main_loop() const {
 void OS_JavaScript::run_async() {
 
 	main_loop->init();
-	emscripten_set_main_loop(main_loop_callback, -1, false);
+	emscripten_resume_main_loop();
 }
 
 void OS_JavaScript::main_loop_callback() {
 
-	get_singleton()->main_loop_iterate();
+	if (get_singleton()->main_loop_iterate()) {
+		emscripten_cancel_main_loop(); // Quit requested!
+		EM_ASM({
+			// This will contain the list of operations that need to complete before cleanup.
+			Module.async_finish = [];
+		});
+		get_singleton()->get_main_loop()->finish();
+		get_singleton()->finalize_async(); // Will call all the async finish functions.
+		EM_ASM({
+			Promise.all(Module['async_finish']).then(function() {
+				ccall("cleanup_after_sync", null, []);
+			});
+		});
+	}
 }
 
 bool OS_JavaScript::main_loop_iterate() {
@@ -1128,9 +1163,25 @@ void OS_JavaScript::delete_main_loop() {
 	memdelete(main_loop);
 }
 
+void OS_JavaScript::finalize_async() {
+	audio_driver_javascript.finish_async();
+}
+
 void OS_JavaScript::finalize() {
 
 	memdelete(input);
+	visual_server->finish();
+	memdelete(visual_server);
+	emscripten_webgl_destroy_context(webgl_ctx);
+	EM_ASM({
+		Object.entries(Module.listeners).forEach(function(kv) {
+			if (kv[0] == 'paste') {
+				window.removeEventListener(kv[0], kv[1]);
+			} else {
+				Module.canvas.removeEventListener(kv[0], kv[1]);
+			}
+		});
+	});
 }
 
 // Miscellaneous
@@ -1337,6 +1388,7 @@ OS_JavaScript::OS_JavaScript(int p_argc, char *p_argv[]) {
 	transparency_enabled = false;
 
 	main_loop = NULL;
+	visual_server = NULL;
 
 	idb_available = false;
 	sync_wait_time = -1;

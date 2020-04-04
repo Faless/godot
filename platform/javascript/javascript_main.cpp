@@ -50,6 +50,12 @@ extern "C" EMSCRIPTEN_KEEPALIVE void main_after_fs_sync(char *p_idbfs_err) {
 
 int main(int argc, char *argv[]) {
 
+	new OS_JavaScript(argc, argv);
+	// TODO: Check error return value.
+	Main::setup(argv[0], argc - 1, &argv[1]);
+	emscripten_set_main_loop(OS_JavaScript::main_loop_callback, -1, false);
+	emscripten_pause_main_loop(); // Will need to wait for FS sync.
+
 	// Sync from persistent state into memory and then
 	// run the 'main_after_fs_sync' function.
 	/* clang-format off */
@@ -61,10 +67,6 @@ int main(int argc, char *argv[]) {
 		});
 	);
 	/* clang-format on */
-
-	new OS_JavaScript(argc, argv);
-	// TODO: Check error return value.
-	Main::setup(argv[0], argc - 1, &argv[1]);
 
 	return 0;
 	// Continued async in main_after_fs_sync() from the syncfs() callback.

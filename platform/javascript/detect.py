@@ -162,3 +162,5 @@ def configure(env):
 
     # callMain for manual start, FS for preloading, PATH and ERRNO_CODES for BrowserFS.
     env.Append(LINKFLAGS=['-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=["callMain", "FS", "PATH", "ERRNO_CODES"]'])
+    # Add code that allow exiting runtime.
+    env.Append(LINKFLAGS=['-s', 'EXIT_RUNTIME=1'])

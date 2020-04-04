@@ -48,6 +48,8 @@ class OS_JavaScript : public OS_Unix {
 	bool just_exited_fullscreen;
 	bool transparency_enabled;
 
+	EMSCRIPTEN_WEBGL_CONTEXT_HANDLE webgl_ctx;
+
 	InputDefault *input;
 	Ref<InputEventKey> deferred_key_event;
 	CursorShape cursor_shape;
@@ -62,6 +64,7 @@ class OS_JavaScript : public OS_Unix {
 	MainLoop *main_loop;
 	int video_driver_index;
 	AudioDriverJavaScript audio_driver_javascript;
+	VisualServer *visual_server;
 
 	bool idb_available;
 	int64_t sync_wait_time;
@@ -84,8 +87,6 @@ class OS_JavaScript : public OS_Unix {
 	static EM_BOOL gamepad_change_callback(int p_event_type, const EmscriptenGamepadEvent *p_event, void *p_user_data);
 	void process_joypads();
 
-	static void main_loop_callback();
-
 	static void file_access_close_callback(const String &p_file, int p_flags);
 
 protected:
@@ -98,10 +99,13 @@ protected:
 	virtual void delete_main_loop();
 
 	virtual void finalize();
+	void finalize_async();
 
 	virtual bool _check_internal_feature_support(const String &p_feature);
 
 public:
+	static void main_loop_callback();
+
 	// Override return type to make writing static callbacks less tedious.
 	static OS_JavaScript *get_singleton();
 

@@ -1,14 +1,8 @@
 Function('return this')()['Engine'] = (function() {
-	var unloadAfterInit = true;
-	var canvas = null;
-	var resizeCanvasOnStart = false;
-	var customLocale = null;
-	var wasmExt = '.wasm';
-
 	var preloader = new Preloader();
-	var rtenv = null;
 
-	var executableName = '';
+	var wasmExt = '.wasm';
+	var unloadAfterInit = true;
 	var loadPath = '';
 	var loadPromise = null;
 	var initPromise = null;
@@ -32,7 +26,13 @@ Function('return this')()['Engine'] = (function() {
 	};
 
 	/** @constructor */
-	function Engine() {};
+	function Engine() {
+		this.canvas = null;
+		this.executableName = '';
+		this.rtenv = null;
+		this.customLocale = null;
+		this.resizeCanvasOnStart = false;
+	};
 
 	Engine.prototype.init = /** @param {string=} basePath */ function(basePath) {
 		if (initPromise) {
@@ -50,15 +50,17 @@ Function('return this')()['Engine'] = (function() {
 			config.print = stdout;
 		if (typeof stderr === 'function')
 			config.printErr = stderr;
+		var me = this;
 		initPromise = new Promise(function(resolve, reject) {
 			config['locateFile'] = Utils.createLocateRewrite(loadPath);
 			config['instantiateWasm'] = Utils.createInstantiatePromise(loadPromise);
 			Godot(config).then(function(module) {
-				rtenv = module;
+				me.rtenv = module;
 				if (unloadAfterInit) {
 					unload();
 				}
 				resolve();
+				config = null;
 			});
 		});
 		return initPromise;
@@ -78,50 +80,50 @@ Function('return this')()['Engine'] = (function() {
 		}
 		var me = this;
 		return me.init().then(function() {
-			if (!(canvas instanceof HTMLCanvasElement)) {
-				canvas = Utils.findCanvas();
+			if (!(me.canvas instanceof HTMLCanvasElement)) {
+				me.canvas = Utils.findCanvas();
 			}
 
 			// Canvas can grab focus on click, or key events won't work.
-			if (canvas.tabIndex < 0) {
-				canvas.tabIndex = 0;
+			if (me.canvas.tabIndex < 0) {
+				me.canvas.tabIndex = 0;
 			}
 
 			// Disable right-click context menu.
-			canvas.addEventListener('contextmenu', function(ev) {
+			me.canvas.addEventListener('contextmenu', function(ev) {
 				ev.preventDefault();
 			}, false);
 
 			// Until context restoration is implemented warn the user of context loss.
-			canvas.addEventListener('webglcontextlost', function(ev) {
+			me.canvas.addEventListener('webglcontextlost', function(ev) {
 				alert("WebGL context lost, please reload the page");
 				ev.preventDefault();
 			}, false);
 
 			// Browser locale, or custom one if defined.
-			var locale = customLocale;
+			var locale = me.customLocale;
 			if (!locale) {
 				locale = navigator.languages ? navigator.languages[0] : navigator.language;
 				locale = locale.split('.')[0];
 			}
-			rtenv['locale'] = locale;
-			rtenv['canvas'] = canvas;
-			rtenv['thisProgram'] = executableName;
-			rtenv['resizeCanvasOnStart'] = resizeCanvasOnStart;
-			rtenv['engine'] = me;
+			me.rtenv['locale'] = locale;
+			me.rtenv['canvas'] = me.canvas;
+			me.rtenv['thisProgram'] = me.executableName;
+			me.rtenv['resizeCanvasOnStart'] = me.resizeCanvasOnStart;
+			me.rtenv['Engine'] = Engine;
 			// Setup persistent file system (if selected).
 			var fsCfg = JSON.parse(JSON.stringify(browserFSConfig)); // Deep copy, the config object will be modified.
-			return Utils.initBrowserFS(fsCfg, rtenv);
+			return Utils.initBrowserFS(fsCfg, me.rtenv);
 		}).then(function() {
 			return new Promise(function(resolve, reject) {
-				if (!rtenv) {
+				if (!me.rtenv) {
 					reject(new Error('The engine must be initialized before it can be started'));
 				}
 				preloader.preloadedFiles.forEach(function(file) {
-					Utils.copyToFS(rtenv['FS'], rtenv['ERRNO_CODES'], file.path, file.buffer);
+					Utils.copyToFS(me.rtenv['FS'], me.rtenv['ERRNO_CODES'], file.path, file.buffer);
 				});
 				preloader.preloadedFiles.length = 0; // Clear memory
-				rtenv['callMain'](args);
+				me.rtenv['callMain'](args);
 				initPromise = null;
 				resolve();
 			});
@@ -130,7 +132,7 @@ Function('return this')()['Engine'] = (function() {
 
 	Engine.prototype.startGame = function(execName, mainPack, extraArgs) {
 		// Start and init with execName as loadPath if not inited.
-		executableName = execName;
+		this.executableName = execName;
 		var me = this;
 		return Promise.all([
 			this.init(execName),
@@ -155,19 +157,19 @@ Function('return this')()['Engine'] = (function() {
 	};
 
 	Engine.prototype.setCanvas = function(canvasElem) {
-		canvas = canvasElem;
+		this.canvas = canvasElem;
 	};
 
 	Engine.prototype.setCanvasResizedOnStart = function(enabled) {
-		resizeCanvasOnStart = enabled;
+		this.resizeCanvasOnStart = enabled;
 	};
 
 	Engine.prototype.setLocale = function(locale) {
-		customLocale = locale;
+		this.customLocale = locale;
 	};
 
 	Engine.prototype.setExecutableName = function(newName) {
-		executableName = newName;
+		this.executableName = newName;
 	};
 
 	Engine.prototype.setProgressFunc = function(func) {
@@ -181,8 +183,8 @@ Function('return this')()['Engine'] = (function() {
 			}
 			func(text);
 		};
-		if (rtenv)
-			rtenv.print = print;
+		if (this.rtenv)
+			this.rtenv.print = print;
 		stdout = print;
 	};
 
@@ -192,8 +194,8 @@ Function('return this')()['Engine'] = (function() {
 				text = Array.prototype.slice.call(arguments).join(" ");
 			func(text);
 		};
-		if (rtenv)
-			rtenv.printErr = printErr;
+		if (this.rtenv)
+			this.rtenv.printErr = printErr;
 		stderr = printErr;
 	};
 

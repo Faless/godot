@@ -1324,9 +1324,19 @@ String OS_JavaScript::get_user_data_dir() const {
 	return "/userfs";
 };
 
-String OS_JavaScript::get_resource_dir() const {
+String OS_JavaScript::get_cache_path() const {
 
-	return "/";
+	return "/home/web_user/.cache";
+}
+
+String OS_JavaScript::get_config_path() const {
+
+	return "/home/web_user/.config";
+}
+
+String OS_JavaScript::get_data_path() const {
+
+	return "/home/web_user/.local/share";
 }
 
 OS::PowerState OS_JavaScript::get_power_state() {

@@ -31,12 +31,16 @@
 #include "os_javascript.h"
 
 #include "core/io/file_access_buffered_fa.h"
+#include "core/io/json.h"
 #include "drivers/gles2/rasterizer_gles2.h"
 #include "drivers/gles3/rasterizer_gles3.h"
 #include "drivers/unix/dir_access_unix.h"
 #include "drivers/unix/file_access_unix.h"
 #include "main/main.h"
 #include "servers/visual/visual_server_raster.h"
+#ifndef NO_THREADS
+#include "servers/visual/visual_server_wrap_mt.h"
+#endif
 
 #include <emscripten.h>
 #include <png.h>
@@ -1004,6 +1008,9 @@ Error OS_JavaScript::initialize(const VideoMode &p_desired, int p_video_driver, 
 
 	AudioDriverManager::initialize(p_audio_driver);
 	visual_server = memnew(VisualServerRaster());
+#ifndef NO_THREADS
+	visual_server = memnew(VisualServerWrapMT(visual_server, false));
+#endif
 	input = memnew(InputDefault);
 
 	EMSCRIPTEN_RESULT result;
@@ -1190,6 +1197,28 @@ void OS_JavaScript::finalize() {
 
 Error OS_JavaScript::execute(const String &p_path, const List<String> &p_arguments, bool p_blocking, ProcessID *r_child_id, String *r_pipe, int *r_exitcode, bool read_stderr, Mutex *p_pipe_mutex) {
 
+	if (p_path == get_executable_path()) {
+		Array args;
+		for (const List<String>::Element *E = p_arguments.front(); E; E = E->next()) {
+			args.push_back(E->get());
+		}
+		String json_args = JSON::print(args);
+		/* clang-format off */
+		EM_ASM({
+			const json_args = UTF8ToString($0);
+			const args = JSON.parse(json_args);
+			const Engine = Module['Engine'];
+			setTimeout(function() {
+				var engine = new Engine();
+				engine.setCanvasResizedOnStart(Module['resizeCanvasOnStart']);
+				engine.init().then(function() {
+					engine.start.apply(engine, args);
+				});
+			}, 100);
+		}, json_args.utf8().get_data());
+		/* clang-format on */
+		return OK;
+	}
 	ERR_FAIL_V_MSG(ERR_UNAVAILABLE, "OS::execute() is not available on the HTML5 platform.");
 }
 

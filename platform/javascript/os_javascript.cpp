@@ -53,15 +53,6 @@
 
 void exit_callback() {
 	emscripten_cancel_main_loop(); // After this, we can exit!
-	EM_ASM({
-		const canvas = Module['canvas'];
-		var ctx = canvas.getContext('webgl');
-		if (!ctx)
-			ctx = canvas.getContext('webgl2');
-		if (ctx) {
-			ctx.clear(ctx.DEPTH_BUFFER_BIT);
-		}
-	});
 	Main::cleanup();
 	emscripten_force_exit(OS_JavaScript::get_singleton()->get_exit_code());
 }
@@ -1173,6 +1164,7 @@ void OS_JavaScript::finalize() {
 	visual_server->finish();
 	memdelete(visual_server);
 	emscripten_webgl_destroy_context(webgl_ctx);
+	/* clang-format off */
 	EM_ASM({
 		Object.entries(Module.listeners).forEach(function(kv) {
 			if (kv[0] == 'paste') {
@@ -1181,7 +1173,17 @@ void OS_JavaScript::finalize() {
 				Module.canvas.removeEventListener(kv[0], kv[1]);
 			}
 		});
+		Module.async_finish = [];
+		Module.listeners = [];
+		const canvas = Module['canvas'];
+		var ctx = canvas.getContext('webgl');
+		if (!ctx)
+			ctx = canvas.getContext('webgl2');
+		if (ctx) {
+			ctx.clear(ctx.DEPTH_BUFFER_BIT);
+		}
 	});
+	/* clang-format on */
 }
 
 // Miscellaneous

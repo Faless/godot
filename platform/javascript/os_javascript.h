@@ -104,6 +104,8 @@ protected:
 	virtual bool _check_internal_feature_support(const String &p_feature);
 
 public:
+	String canvas_id;
+
 	static void main_loop_callback();
 
 	// Override return type to make writing static callbacks less tedious.

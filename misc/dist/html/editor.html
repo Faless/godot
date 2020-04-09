@@ -16,13 +16,13 @@
 			background-color: black;
 		}
 
-		#canvas {
+		#canvas, #gameCanvas {
 			display: block;
 			margin: 0;
 			color: white;
 		}
 
-		#canvas:focus {
+		#canvas:focus, #gameCanvas:focus {
 			outline: none;
 		}
 
@@ -212,6 +212,10 @@
 		HTML5 canvas appears to be unsupported in the current browser.<br />
 		Please try updating or use a different browser.
 	</canvas>
+	<canvas id='gameCanvas' style="display: none;" tabindex="1">
+		HTML5 canvas appears to be unsupported in the current browser.<br />
+		Please try updating or use a different browser.
+	</canvas>
 	<div id='status' style="display: none;">
 		<div id='status-progress' style='display: none;' oncontextmenu='event.preventDefault();'><div id ='status-progress-inner'></div></div>
 		<div id='status-indeterminate' style='display: none;' oncontextmenu='event.preventDefault();'>
@@ -298,6 +302,7 @@
 			const INDETERMINATE_STATUS_STEP_MS = 100;
 
 			var canvas = document.getElementById('canvas');
+			var gameCanvas = document.getElementById('gameCanvas');
 			var statusProgress = document.getElementById('status-progress');
 			var statusProgressInner = document.getElementById('status-progress-inner');
 			var statusIndeterminate = document.getElementById('status-indeterminate');
@@ -397,6 +402,34 @@
 				}
 			});
 
+			engine.setOnExecute((args) => {
+				const is_game = args.filter(function(v) { return v == '--editor' || v == '--project-manager' }).length == 0;
+				const editor = engine;
+				setTimeout(function() {
+					var engine = new Engine();
+					engine.setUnloadAfterInit(false);
+					engine.setOnExecute(editor.onExecute);
+					if (is_game) {
+						engine.setCanvas(gameCanvas);
+						engine.setCanvasResizedOnStart(true);
+						engine.setOnExit(function() {
+							console.log("Exiting!");
+							gameCanvas.style.display = "none";
+							canvas.style.display = "block";
+						});
+						canvas.style.display = "none";
+						gameCanvas.style.display = "block";
+					} else {
+						engine.setCanvas(canvas);
+					}
+					engine.init().then(function() {
+						requestAnimationFrame(function() {
+							engine.start.apply(engine, args);
+						});
+					});
+				}, 500);
+			});
+
 			function displayFailureNotice(err) {
 				var msg = err.message || err;
 				console.error(msg);
@@ -409,7 +442,7 @@
 				displayFailureNotice('WebGL not available');
 			} else {
 				setStatusMode('indeterminate');
-				engine.setCanvas(canvas);
+				engine.setCanvas(canvas, gameCanvas);
 				engine.setUnloadAfterInit(false); // Don't want to reload when starting game.
 				engine.init('godot.tools').then(function() {
 					selectPersistenceMode();

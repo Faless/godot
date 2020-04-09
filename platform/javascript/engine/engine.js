@@ -10,6 +10,7 @@ Function('return this')()['Engine'] = (function() {
 	var stdout = null;
 	var progressFunc = null;
 	var browserFSConfig = null;
+	var browserFSInited = false;
 
 	function load(basePath) {
 		if (loadPromise == null) {
@@ -32,6 +33,8 @@ Function('return this')()['Engine'] = (function() {
 		this.rtenv = null;
 		this.customLocale = null;
 		this.resizeCanvasOnStart = false;
+		this.onExecute = null;
+		this.onExit = null;
 	};
 
 	Engine.prototype.init = /** @param {string=} basePath */ function(basePath) {
@@ -110,10 +113,24 @@ Function('return this')()['Engine'] = (function() {
 			me.rtenv['canvas'] = me.canvas;
 			me.rtenv['thisProgram'] = me.executableName;
 			me.rtenv['resizeCanvasOnStart'] = me.resizeCanvasOnStart;
-			me.rtenv['Engine'] = Engine;
+			me.rtenv['onExecute'] = me.onExecute;
+			me.rtenv['onExit'] = me.onExit;
 			// Setup persistent file system (if selected).
 			var fsCfg = JSON.parse(JSON.stringify(browserFSConfig)); // Deep copy, the config object will be modified.
-			return Utils.initBrowserFS(fsCfg, me.rtenv);
+			if (browserFSInited) {
+				return new Promise(function(resolve, reject) {
+					resolve(true);
+				});
+			}
+			return Utils.initBrowserFS(fsCfg);
+		}).then(function(inited) {
+			if (inited) {
+				browserFSInited = true;
+				return Utils.mountBrowserFS(me.rtenv);
+			}
+			return new Promise(function(resolve, reject) {
+				resolve();
+			});
 		}).then(function() {
 			return new Promise(function(resolve, reject) {
 				if (!me.rtenv) {
@@ -203,6 +220,18 @@ Function('return this')()['Engine'] = (function() {
 		browserFSConfig = config;
 	}
 
+	Engine.prototype.setOnExecute = function(onExecute) {
+		if (this.rtenv)
+			this.rtenv.onExecute = onExecute;
+		this.onExecute = onExecute;
+	}
+
+	Engine.prototype.setOnExit = function(onExit) {
+		if (this.rtenv)
+			this.rtenv.onExit = onExit;
+		this.onExit = onExit;
+	}
+
 	// Closure compiler exported engine methods.
 	/** @export */
 	Engine['isWebGLAvailable'] = Utils.isWebGLAvailable;
@@ -222,5 +251,7 @@ Function('return this')()['Engine'] = (function() {
 	Engine.prototype['setStdoutFunc'] = Engine.prototype.setStdoutFunc;
 	Engine.prototype['setStderrFunc'] = Engine.prototype.setStderrFunc;
 	Engine.prototype['setBrowserFSConfig'] = Engine.prototype.setBrowserFSConfig;
+	Engine.prototype['setOnExecute'] = Engine.prototype.setOnExecute;
+	Engine.prototype['setOnExit'] = Engine.prototype.setOnExit;
 	return Engine;
 })();

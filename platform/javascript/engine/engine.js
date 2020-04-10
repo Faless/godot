@@ -114,7 +114,11 @@ Function('return this')()['Engine'] = (function() {
 			me.rtenv['thisProgram'] = me.executableName;
 			me.rtenv['resizeCanvasOnStart'] = me.resizeCanvasOnStart;
 			me.rtenv['onExecute'] = me.onExecute;
-			me.rtenv['onExit'] = me.onExit;
+			me.rtenv['onExit'] = function(code) {
+				if (me.onExit)
+					me.onExit(code);
+				me.rtenv = null;
+			}
 			// Setup persistent file system (if selected).
 			var fsCfg = JSON.parse(JSON.stringify(browserFSConfig)); // Deep copy, the config object will be modified.
 			if (browserFSInited) {
@@ -227,8 +231,6 @@ Function('return this')()['Engine'] = (function() {
 	}
 
 	Engine.prototype.setOnExit = function(onExit) {
-		if (this.rtenv)
-			this.rtenv.onExit = onExit;
 		this.onExit = onExit;
 	}
 

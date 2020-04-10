@@ -200,7 +200,15 @@
 			<option value="dropbox">Dropbox</option>
 			<option value="html5">Filesystem API</option>
 		</select>
+		<br />
+		<label for="videoMode">Select video driver:</label><br />
+		<select id="videoMode">
+			<option value="GLES2" selected="selected">WebGL</option>
+			<option value="GLES3">WebGL 2</option>
+		</select>
+		<br />
 		<button id="startButton">Start Godot Editor</button>
+		<br />
 		<div id="dropbox-auth" style="display:none;">
 			<p>Dropbox needs authentication.</p>
 			<a href="" id="dropbox-authlink">Authenticate</a>
@@ -238,6 +246,12 @@
 		var engine = new Engine;
 		var setStatusMode;
 		var setStatusNotice;
+		var video_driver = "GLES2";
+
+		function selectVideoMode() {
+			var select = document.getElementById('videoMode');
+			video_driver = select.selectedOptions[0].value;
+		}
 
 		function selectPersistenceMode() {
 			var select = document.getElementById('persistenceMode');
@@ -292,7 +306,9 @@
 					});
 					break;
 				default: // and "none"
-					engine.setBrowserFSConfig(null);
+					engine.setBrowserFSConfig({
+						fs: "InMemory"
+					});
 					break;
 			}
 		}
@@ -449,7 +465,8 @@
 				engine.setUnloadAfterInit(false); // Don't want to reload when starting game.
 				engine.init('godot.tools').then(function() {
 					selectPersistenceMode();
-					engine.start().then(function() {
+					selectVideoMode();
+					engine.start('--video-driver', video_driver).then(function() {
 						setStatusMode('hidden');
 						initializing = false;
 					});

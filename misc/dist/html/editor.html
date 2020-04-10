@@ -187,7 +187,7 @@
 				document.getElementById('dropbox-auth').style.display = 'block';
 				// Set the login anchors href using dbx.getAuthenticationUrl()
 				var dbx = new Dropbox.Dropbox({ fetch, clientId: CLIENT_ID });
-				var authUrl = dbx.getAuthenticationUrl('http://localhost:8060/godot.tools.html');
+				var authUrl = dbx.getAuthenticationUrl(window.location.origin + window.location.pathname);
 				document.getElementById('dropbox-authlink').href = authUrl;
 			}
 		}

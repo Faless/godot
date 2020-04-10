@@ -121,13 +121,12 @@ Function('return this')()['Engine'] = (function() {
 				me.rtenv = null;
 			}
 			// Setup persistent file system (if selected).
-			var fsCfg = JSON.parse(JSON.stringify(browserFSConfig)); // Deep copy, the config object will be modified.
 			if (browserFSInited) {
 				return new Promise(function(resolve, reject) {
 					resolve(true);
 				});
 			}
-			return Utils.initBrowserFS(fsCfg);
+			return Utils.initBrowserFS(browserFSConfig);
 		}).then(function(inited) {
 			if (inited) {
 				browserFSInited = true;

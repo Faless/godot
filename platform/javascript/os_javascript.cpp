@@ -1356,19 +1356,19 @@ String OS_JavaScript::get_data_path() const {
 
 OS::PowerState OS_JavaScript::get_power_state() {
 
-	WARN_PRINT("Power management is not supported for the HTML5 platform, defaulting to POWERSTATE_UNKNOWN");
+	WARN_PRINT_ONCE("Power management is not supported for the HTML5 platform, defaulting to POWERSTATE_UNKNOWN");
 	return OS::POWERSTATE_UNKNOWN;
 }
 
 int OS_JavaScript::get_power_seconds_left() {
 
-	WARN_PRINT("Power management is not supported for the HTML5 platform, defaulting to -1");
+	WARN_PRINT_ONCE("Power management is not supported for the HTML5 platform, defaulting to -1");
 	return -1;
 }
 
 int OS_JavaScript::get_power_percent_left() {
 
-	WARN_PRINT("Power management is not supported for the HTML5 platform, defaulting to -1");
+	WARN_PRINT_ONCE("Power management is not supported for the HTML5 platform, defaulting to -1");
 	return -1;
 }
 

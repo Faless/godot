@@ -99,14 +99,12 @@ protected:
 	virtual void delete_main_loop();
 
 	virtual void finalize();
-	void finalize_async();
 
 	virtual bool _check_internal_feature_support(const String &p_feature);
 
 public:
 	String canvas_id;
-
-	static void main_loop_callback();
+	void finalize_async();
 
 	// Override return type to make writing static callbacks less tedious.
 	static OS_JavaScript *get_singleton();
@@ -148,7 +146,6 @@ public:
 	virtual String get_clipboard() const;
 
 	virtual MainLoop *get_main_loop() const;
-	void run_async();
 	bool main_loop_iterate();
 
 	virtual Error execute(const String &p_path, const List<String> &p_arguments, bool p_blocking = true, ProcessID *r_child_id = NULL, String *r_pipe = NULL, int *r_exitcode = NULL, bool read_stderr = false, Mutex *p_pipe_mutex = NULL);

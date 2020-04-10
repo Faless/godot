@@ -54,26 +54,6 @@
 #define DOM_BUTTON_XBUTTON1 3
 #define DOM_BUTTON_XBUTTON2 4
 
-void exit_callback() {
-	emscripten_cancel_main_loop(); // After this, we can exit!
-	Main::cleanup();
-	int exit_code = OS_JavaScript::get_singleton()->get_exit_code();
-	/* clang-format off */
-	EM_ASM({
-		if (Module["onExit"]) {
-			requestAnimationFrame(function() {
-				Module["onExit"]($0);
-			});
-		}
-	}, exit_code);
-	/* clang-format on */
-	emscripten_force_exit(exit_code);
-}
-
-extern "C" EMSCRIPTEN_KEEPALIVE void cleanup_after_sync() {
-	emscripten_set_main_loop(exit_callback, -1, false);
-}
-
 // Window (canvas)
 
 extern "C" EMSCRIPTEN_KEEPALIVE void _set_canvas_id(uint8_t *p_data, int p_data_size) {
@@ -1063,7 +1043,7 @@ Error OS_JavaScript::initialize(const VideoMode &p_desired, int p_video_driver, 
 	SET_EM_CALLBACK(EMSCRIPTEN_EVENT_TARGET_WINDOW, mousemove, mousemove_callback)
 	SET_EM_CALLBACK(id.get_data(), mousedown, mouse_button_callback)
 	SET_EM_CALLBACK(EMSCRIPTEN_EVENT_TARGET_WINDOW, mouseup, mouse_button_callback)
-	SET_EM_CALLBACK(EMSCRIPTEN_EVENT_TARGET_WINDOW, wheel, wheel_callback)
+	SET_EM_CALLBACK(id.get_data(), wheel, wheel_callback)
 	SET_EM_CALLBACK(id.get_data(), touchstart, touch_press_callback)
 	SET_EM_CALLBACK(id.get_data(), touchmove, touchmove_callback)
 	SET_EM_CALLBACK(id.get_data(), touchend, touch_press_callback)
@@ -1115,31 +1095,6 @@ void OS_JavaScript::set_main_loop(MainLoop *p_main_loop) {
 MainLoop *OS_JavaScript::get_main_loop() const {
 
 	return main_loop;
-}
-
-void OS_JavaScript::run_async() {
-
-	main_loop->init();
-	emscripten_resume_main_loop();
-}
-
-void OS_JavaScript::main_loop_callback() {
-
-	if (get_singleton()->main_loop_iterate()) {
-		emscripten_cancel_main_loop(); // Quit requested!
-		EM_ASM({
-			// This will contain the list of operations that need to complete before cleanup.
-			Module.async_finish = [];
-		});
-		get_singleton()->get_main_loop()->finish();
-		get_singleton()->finalize_async(); // Will call all the async finish functions.
-		EM_ASM({
-			Promise.all(Module.async_finish).then(function() {
-				Module.async_finish = [];
-				ccall("cleanup_after_sync", null, []);
-			});
-		});
-	}
 }
 
 bool OS_JavaScript::main_loop_iterate() {

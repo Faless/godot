@@ -1085,7 +1085,7 @@ Error OS_JavaScript::initialize(const VideoMode &p_desired, int p_video_driver, 
 		const notifications = arguments;
 		(['mouseover', 'mouseleave', 'focus', 'blur']).forEach(function(event, index) {
 			Module.listeners[event] = send_notification.bind(null, notifications[index]);
-			canvas.addEventListener(event, Module.listeners[event]);
+			Module['canvas'].addEventListener(event, Module.listeners[event]);
 		});
 		// Clipboard
 		const update_clipboard = cwrap('update_clipboard', null, ['string']);
@@ -1200,7 +1200,7 @@ void OS_JavaScript::finalize_async() {
 	EM_ASM({
 		Object.entries(Module.listeners).forEach(function(kv) {
 			if (kv[0] == 'paste') {
-				window.removeEventListener(kv[0], kv[1]);
+				window.removeEventListener(kv[0], kv[1], true);
 			} else {
 				Module['canvas'].removeEventListener(kv[0], kv[1]);
 			}

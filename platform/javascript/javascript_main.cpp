@@ -40,16 +40,6 @@ void exit_callback() {
 	emscripten_cancel_main_loop(); // After this, we can exit!
 	Main::cleanup();
 	int exit_code = OS_JavaScript::get_singleton()->get_exit_code();
-	/* clang-format off */
-	EM_ASM({
-		console.log("No events should be received after this!");
-		if (Module["onExit"]) {
-			requestAnimationFrame(function() {
-				Module["onExit"]($0);
-			});
-		}
-	}, exit_code);
-	/* clang-format on */
 	memdelete(os);
 	os = NULL;
 	emscripten_force_exit(exit_code);

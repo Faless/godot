@@ -42,19 +42,19 @@ void exit_callback() {
 	int exit_code = OS_JavaScript::get_singleton()->get_exit_code();
 	memdelete(os);
 	os = NULL;
-	emscripten_force_exit(exit_code);
+	emscripten_force_exit(exit_code); // No matter that we call cancel_main_loop, regular "exit" will not work, forcing.
 }
 
 void main_loop_callback() {
 
 	if (os->main_loop_iterate()) {
-		emscripten_cancel_main_loop(); // Quit requested!
+		emscripten_cancel_main_loop(); // Cancel current loop and wait for finalize_async.
 		EM_ASM({
 			// This will contain the list of operations that need to complete before cleanup.
 			Module.async_finish = [];
 		});
 		os->get_main_loop()->finish();
-		os->finalize_async(); // Will call all the async finish functions.
+		os->finalize_async(); // Will add all the async finish functions.
 		EM_ASM({
 			Promise.all(Module.async_finish).then(function() {
 				Module.async_finish = [];

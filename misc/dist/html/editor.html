@@ -402,32 +402,35 @@
 				}
 			});
 
-			engine.setOnExecute((args) => {
+			engine.setOnExecute(function(args) {
 				const is_game = args.filter(function(v) { return v == '--editor' || v == '--project-manager' }).length == 0;
-				const editor = engine;
-				setTimeout(function() {
-					var engine = new Engine();
-					engine.setUnloadAfterInit(false);
-					engine.setOnExecute(editor.onExecute);
-					if (is_game) {
-						engine.setCanvas(gameCanvas);
-						engine.setCanvasResizedOnStart(true);
-						engine.setOnExit(function() {
-							console.log("Exiting!");
-							gameCanvas.style.display = "none";
-							canvas.style.display = "block";
-						});
-						canvas.style.display = "none";
-						gameCanvas.style.display = "block";
-					} else {
-						engine.setCanvas(canvas);
-					}
-					engine.init().then(function() {
+				if (is_game) {
+					var game = new Engine();
+					game.setUnloadAfterInit(false);
+					game.setOnExecute(engine.onExecute);
+					game.setCanvas(gameCanvas);
+					game.setCanvasResizedOnStart(true);
+					game.setOnExit(function() {
+						gameCanvas.style.display = "none";
+						canvas.style.display = "block";
+					});
+					canvas.style.display = "none";
+					gameCanvas.style.display = "block";
+					game.init().then(function() {
 						requestAnimationFrame(function() {
-							engine.start.apply(engine, args);
+							game.start.apply(game, args);
 						});
 					});
-				}, 500);
+				} else { // New editor instances will be run in the same canvas. We want to wait for it to exit.
+					engine.setOnExit(function(code) {
+						setTimeout(function() {
+							engine.init().then(function() {
+								engine.start.apply(engine, args);
+							});
+						}, 0);
+						engine.setOnExit(null);
+					});
+				}
 			});
 
 			function displayFailureNotice(err) {

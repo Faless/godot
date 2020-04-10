@@ -113,6 +113,7 @@ Function('return this')()['Engine'] = (function() {
 			me.rtenv['canvas'] = me.canvas;
 			me.rtenv['thisProgram'] = me.executableName;
 			me.rtenv['resizeCanvasOnStart'] = me.resizeCanvasOnStart;
+			me.rtenv['noExitRuntime'] = true;
 			me.rtenv['onExecute'] = me.onExecute;
 			me.rtenv['onExit'] = function(code) {
 				if (me.onExit)

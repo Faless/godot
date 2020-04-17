@@ -912,6 +912,7 @@ Error OS_JavaScript::initialize(const VideoMode &p_desired, int p_video_driver, 
 	emscripten_webgl_init_context_attributes(&attributes);
 	attributes.alpha = GLOBAL_GET("display/window/per_pixel_transparency/allowed");
 	attributes.antialias = false;
+	attributes.explicitSwapControl = true;
 	ERR_FAIL_INDEX_V(p_video_driver, VIDEO_DRIVER_MAX, ERR_INVALID_PARAMETER);
 
 	if (p_desired.layered) {
@@ -1086,6 +1087,10 @@ Error OS_JavaScript::initialize(const VideoMode &p_desired, int p_video_driver, 
 	return OK;
 }
 
+void OS_JavaScript::swap_buffers() {
+	emscripten_webgl_commit_frame();
+}
+
 void OS_JavaScript::set_main_loop(MainLoop *p_main_loop) {
 
 	main_loop = p_main_loop;
@@ -1169,19 +1174,9 @@ void OS_JavaScript::finalize() {
 
 	memdelete(input);
 	visual_server->finish();
-	memdelete(visual_server);
+	emscripten_webgl_commit_frame();
 	emscripten_webgl_destroy_context(webgl_ctx);
-	/* clang-format off */
-	EM_ASM({
-		const canvas = Module['canvas'];
-		var ctx = canvas.getContext('webgl');
-		if (!ctx)
-			ctx = canvas.getContext('webgl2');
-		if (ctx) {
-			ctx.clear(ctx.DEPTH_BUFFER_BIT);
-		}
-	});
-	/* clang-format on */
+	memdelete(visual_server);
 }
 
 // Miscellaneous

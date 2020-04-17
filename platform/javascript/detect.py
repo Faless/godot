@@ -153,6 +153,9 @@ def configure(env):
 
     env.Append(LINKFLAGS=['-s', 'INVOKE_RUN=0'])
 
+    # Allow use to take control of swapping WebGL buffers.
+    env.Append(LINKFLAGS=['-s', 'OFFSCREEN_FRAMEBUFFER=1'])
+
     # TODO: Reevaluate usage of this setting now that engine.js manages engine runtime.
     env.Append(LINKFLAGS=['-s', 'NO_EXIT_RUNTIME=1'])
 

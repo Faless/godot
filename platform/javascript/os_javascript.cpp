@@ -167,6 +167,7 @@ void OS_JavaScript::set_window_maximized(bool p_enabled) {
 	if (video_mode.fullscreen) {
 		window_maximized = p_enabled;
 		set_window_fullscreen(false);
+#ifndef TOOLS_ENABLED
 	} else if (!p_enabled) {
 		emscripten_exit_soft_fullscreen();
 		window_maximized = false;
@@ -180,6 +181,7 @@ void OS_JavaScript::set_window_maximized(bool p_enabled) {
 		strategy.canvasResizedCallback = NULL;
 		emscripten_enter_soft_fullscreen(canvas_id.utf8().get_data(), &strategy);
 		window_maximized = p_enabled;
+#endif
 	}
 }
 
@@ -1126,6 +1128,7 @@ bool OS_JavaScript::main_loop_iterate() {
 		process_joypads();
 
 	if (just_exited_fullscreen) {
+#ifndef TOOLS_ENABLED
 		if (window_maximized) {
 			EmscriptenFullscreenStrategy strategy;
 			strategy.scaleMode = EMSCRIPTEN_FULLSCREEN_SCALE_STRETCH;
@@ -1136,6 +1139,9 @@ bool OS_JavaScript::main_loop_iterate() {
 		} else {
 			emscripten_set_canvas_element_size(canvas_id.utf8().get_data(), windowed_size.width, windowed_size.height);
 		}
+#else
+		emscripten_set_canvas_element_size(canvas_id.utf8().get_data(), windowed_size.width, windowed_size.height);
+#endif
 		just_exited_fullscreen = false;
 	}
 

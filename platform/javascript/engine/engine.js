@@ -234,6 +234,13 @@ Function('return this')()['Engine'] = (function() {
 		this.onExit = onExit;
 	}
 
+	Engine.prototype.copyToFS = function(path, buffer) {
+		if (this.rtenv == null) {
+			throw new Error("Engine must be inited before copying files");
+		}
+		Utils.copyToFS(this.rtenv['FS'], this.rtenv['ERRNO_CODES'], path, buffer);
+	}
+
 	// Closure compiler exported engine methods.
 	/** @export */
 	Engine['isWebGLAvailable'] = Utils.isWebGLAvailable;
@@ -255,5 +262,6 @@ Function('return this')()['Engine'] = (function() {
 	Engine.prototype['setBrowserFSConfig'] = Engine.prototype.setBrowserFSConfig;
 	Engine.prototype['setOnExecute'] = Engine.prototype.setOnExecute;
 	Engine.prototype['setOnExit'] = Engine.prototype.setOnExit;
+	Engine.prototype['copyToFS'] = Engine.prototype.copyToFS;
 	return Engine;
 })();

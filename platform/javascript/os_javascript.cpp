@@ -83,10 +83,10 @@ static bool is_canvas_focused() {
 static Point2 compute_position_in_canvas(int x, int y) {
 	OS_JavaScript *os = OS_JavaScript::get_singleton();
 	int canvas_x = EM_ASM_INT({
-		return document.getElementById('canvas').getBoundingClientRect().x;
+		return Module['canvas'].getBoundingClientRect().x;
 	});
 	int canvas_y = EM_ASM_INT({
-		return document.getElementById('canvas').getBoundingClientRect().y;
+		return Module['canvas'].getBoundingClientRect().y;
 	});
 	int canvas_width;
 	int canvas_height;
@@ -1175,8 +1175,8 @@ void OS_JavaScript::finalize() {
 	memdelete(input);
 	visual_server->finish();
 	emscripten_webgl_commit_frame();
-	emscripten_webgl_destroy_context(webgl_ctx);
 	memdelete(visual_server);
+	emscripten_webgl_destroy_context(webgl_ctx);
 }
 
 // Miscellaneous

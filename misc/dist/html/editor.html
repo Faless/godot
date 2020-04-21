@@ -225,7 +225,7 @@
 			</div>
 		</div>
 		<div id='tab-editor' style="display: none;">
-			<canvas id='editor-canvas' tabindex="1">
+			<canvas id='editor-canvas' tabindex="1" ondrop="dropHandler(event)" ondragover="dragoverHandler(event)">
 				HTML5 canvas appears to be unsupported in the current browser.<br />
 				Please try updating or use a different browser.
 			</canvas>
@@ -370,7 +370,6 @@
 				var headerHeight = header.offsetHeight + 1;
 				var width = window.innerWidth;
 				var height = window.innerHeight - headerHeight;
-				console.log(height);
 				editorCanvas.width = width * scale;
 				editorCanvas.height = height * scale;
 				editorCanvas.style.width = width + "px";
@@ -502,6 +501,102 @@
 			}
 		};
 		document.getElementById("startButton").onclick = startEditor;
+
+		// Files upload.
+		var upload = [];
+		var uploadPromises = [];
+		function readFilePromise(entry, path) {
+			return new Promise(function(accept, reject) {
+				entry.file(function(file) {
+					var reader = new FileReader();
+					reader.onload = function() {
+						var f = {
+							"path": file.relativePath || file.webkitRelativePath,
+							"name": file.name,
+							"type": file.type,
+							"size": file.size,
+							"data": reader.result
+						};
+						if (!f['path'])
+							f['path'] = f['name'];
+						upload.push(f);
+						accept()
+					};
+					reader.onerror = function() {
+						console.log("Error reading file");
+						reject();
+					}
+
+					reader.readAsArrayBuffer(file);
+
+					}, function(err) {
+						console.log("Error!");
+						reject();
+					});
+			});
+		}
+
+		function readDirectoryPromise(entry) {
+			return new Promise(function(accept, reject) {
+				var reader = entry.createReader();
+				reader.readEntries(function(entries) {
+					for (var i = 0; i < entries.length; i++) {
+						var ent = entries[i];
+						if (ent.isDirectory) {
+							uploadPromises.push(readDirectoryPromise(ent));
+						} else if (ent.isFile) {
+							uploadPromises.push(readFilePromise(ent));
+						}
+					}
+					accept();
+				});
+			});
+		}
+		function dropHandler(ev) {
+			ev.preventDefault();
+			if (ev.dataTransfer.items) {
+				// Use DataTransferItemList interface to access the file(s)
+				for (var i = 0; i < ev.dataTransfer.items.length; i++) {
+					const item = ev.dataTransfer.items[i];
+					var entry = null;
+					if ("getAsEntry" in item) {
+						entry = item.getAsEntry();
+					} else if ("webkitGetAsEntry" in item) {
+						entry = item.webkitGetAsEntry();
+					}
+					if (!entry) {
+						console.error("File upload not supported");
+					} else if (entry.isDirectory) {
+						uploadPromises.push(readDirectoryPromise(entry));
+					} else if (entry.isFile) {
+						uploadPromises.push(readFilePromise(entry));
+					} else {
+						console.error("Unrecognized entry...", entry);
+					}
+				}
+			} else {
+				console.error("File upload not supported");
+			}
+			Promise.all(uploadPromises).then(function() {
+				var drops = [];
+				upload.forEach((elem) => {
+					var p = "/tmp/" + elem['path'];
+					engine.copyToFS(p, elem['data']);
+					drops.push(p);
+				});
+				uploadPromises = [];
+				upload = [];
+				engine.rtenv['drop_files'](drops);
+				drops.forEach((drop) => {
+					engine.rtenv['FS']['unlink'](drop);
+				});
+			});
+		}
+		function dragoverHandler(ev) {
+			// Prevent default behavior (Prevent file from being opened)
+			ev.preventDefault();
+		}
+
 	//]]></script>
 </body>
 </html>

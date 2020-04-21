@@ -1075,12 +1075,16 @@ Error OS_JavaScript::initialize(const VideoMode &p_desired, int p_video_driver, 
 		Module.listeners['paste'] = function(evt) {
 			update_clipboard(evt.clipboardData.getData('text'));
 		};
+		Module['request_quit'] = function() {
+			send_notification(notifications[notifications.length - 1]);
+		};
 		window.addEventListener('paste', Module.listeners['paste'], true);
 	},
 		MainLoop::NOTIFICATION_WM_MOUSE_ENTER,
 		MainLoop::NOTIFICATION_WM_MOUSE_EXIT,
 		MainLoop::NOTIFICATION_WM_FOCUS_IN,
-		MainLoop::NOTIFICATION_WM_FOCUS_OUT
+		MainLoop::NOTIFICATION_WM_FOCUS_OUT,
+		MainLoop::NOTIFICATION_WM_QUIT_REQUEST
 	);
 	/* clang-format on */
 

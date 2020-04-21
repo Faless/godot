@@ -579,16 +579,52 @@
 			}
 			Promise.all(uploadPromises).then(function() {
 				var drops = [];
+				var files = [];
+				var dirs = [];
 				upload.forEach((elem) => {
-					var p = "/tmp/" + elem['path'];
-					engine.copyToFS(p, elem['data']);
-					drops.push(p);
+					const DROP = "/tmp/drop/";
+					var path = elem['path'];
+					engine.copyToFS(DROP + path, elem['data']);
+					var idx = path.indexOf("/");
+					if (idx == -1) {
+						// Root file
+						console.log("Simple file ", DROP + path);
+						drops.push(DROP + path);
+					} else {
+						// Subdir
+						var sub = path.substr(0, idx);
+						console.log("Sub1", sub);
+						idx = sub.indexOf("/");
+						if (idx < 0 && drops.indexOf(DROP + sub) == -1) {
+							console.log("Adding to drops ", DROP + sub);
+							drops.push(DROP + sub);
+							dirs.push(DROP + sub);
+						}
+						var full = DROP;
+						while (idx > -1) {
+							// Keep track of created folders, so we can rmdir.
+							full += sub;
+							sub = sub.substr(0, idx);
+							if (dirs.indexOf(sub) == -1) {
+								dirs.push(full + sub);
+							}
+							idx = sub.indexOf("/");
+						}
+					}
+					files.push(DROP + path);
 				});
 				uploadPromises = [];
 				upload = [];
 				engine.rtenv['drop_files'](drops);
-				drops.forEach((drop) => {
-					engine.rtenv['FS']['unlink'](drop);
+				files.forEach(function (file) {
+					engine.rtenv['FS']['unlink'](file);
+				});
+				// Remove dirs.
+				dirs = dirs.sort(function(a, b) {
+					return (a.match(/\//g) || []).length > (b.match(/\//g) || []).length;
+				});
+				dirs.forEach(function(dir) {
+					engine.rtenv['FS']['rmdir'](dir);
 				});
 			});
 		}

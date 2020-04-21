@@ -36,6 +36,18 @@
 
 static OS_JavaScript *os = NULL;
 
+// Files drop (implemented in JS for now).
+extern "C" EMSCRIPTEN_KEEPALIVE void _drop_files(char *p_filev[], int p_filec) {
+	if (!os || !os->get_main_loop()) {
+		ERR_FAIL_MSG("Unable to drop files because the OS or MainLoop are not active");
+	}
+	Vector<String> files;
+	for (int i = 0; i < p_filec; i++) {
+		files.push_back(String::utf8(p_filev[i]));
+	}
+	os->get_main_loop()->drop_files(files);
+}
+
 void exit_callback() {
 	emscripten_cancel_main_loop(); // After this, we can exit!
 	Main::cleanup();
@@ -100,6 +112,18 @@ int main(int argc, char *argv[]) {
 		FS.syncfs(true, function(err) {
 			ccall('main_after_fs_sync', null, ['string'], [err ? err.message : ""])
 		});
+
+		// Add function for file drop
+		Module['drop_files'] = function(files) {
+			var args = files || [];
+			var argc = args.length;
+			var argv = stackAlloc((argc + 1) * Runtime.POINTER_SIZE);
+			for (var i = 0; i < argc; i++) {
+				HEAP32[(argv >> 2) + i] = allocateUTF8OnStack(args[i]);
+			}
+			HEAP32[(argv >> 2) + argc] = 0;
+			ccall('_drop_files', 'void', ['number', 'number'], [argv, argc]);
+		};
 	);
 	/* clang-format on */
 

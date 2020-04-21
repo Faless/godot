@@ -447,7 +447,12 @@
 			});
 
 			engine.setOnExecute(function(args) {
-				const is_game = args.filter(function(v) { return v == '--editor' || v == '--project-manager' }).length == 0;
+				const is_editor = args.filter(function(v) { return v == '--editor' }).length != 0;
+				const is_project_manager = args.filter(function(v) { return v == '--project-manager' }).length != 0;
+				const is_game = !is_editor && !is_project_manager;
+				if (is_project_manager) {
+					args.push('--video-driver', video_driver);
+				}
 				if (is_game) {
 					var game = new Engine();
 					game.setUnloadAfterInit(false);
@@ -505,6 +510,7 @@
 		// Files upload.
 		var upload = [];
 		var uploadPromises = [];
+		var uploadCallback = null;
 		function readFilePromise(entry, path) {
 			return new Promise(function(accept, reject) {
 				entry.file(function(file) {
@@ -552,6 +558,18 @@
 				});
 			});
 		}
+		function processUploadsPromises(accept, reject) {
+			if (uploadPromises.length == 0) {
+				accept();
+				return;
+			}
+			uploadPromises.pop().then(function() {
+				setTimeout(function() {
+					processUploadsPromises(accept, reject);
+					//processUploadsPromises.bind(null, accept, reject)
+				}, 0);
+			});
+		}
 		function dropHandler(ev) {
 			ev.preventDefault();
 			if (ev.dataTransfer.items) {
@@ -577,38 +595,23 @@
 			} else {
 				console.error("File upload not supported");
 			}
-			Promise.all(uploadPromises).then(function() {
+			uploadCallback = new Promise(processUploadsPromises).then(function() {
+				const DROP = "/tmp/drop-" + parseInt(Math.random() * Math.pow(2, 31)) + "/";
 				var drops = [];
 				var files = [];
-				var dirs = [];
 				upload.forEach((elem) => {
-					const DROP = "/tmp/drop/";
 					var path = elem['path'];
 					engine.copyToFS(DROP + path, elem['data']);
 					var idx = path.indexOf("/");
 					if (idx == -1) {
 						// Root file
-						console.log("Simple file ", DROP + path);
 						drops.push(DROP + path);
 					} else {
 						// Subdir
 						var sub = path.substr(0, idx);
-						console.log("Sub1", sub);
 						idx = sub.indexOf("/");
 						if (idx < 0 && drops.indexOf(DROP + sub) == -1) {
-							console.log("Adding to drops ", DROP + sub);
 							drops.push(DROP + sub);
-							dirs.push(DROP + sub);
-						}
-						var full = DROP;
-						while (idx > -1) {
-							// Keep track of created folders, so we can rmdir.
-							full += sub;
-							sub = sub.substr(0, idx);
-							if (dirs.indexOf(sub) == -1) {
-								dirs.push(full + sub);
-							}
-							idx = sub.indexOf("/");
 						}
 					}
 					files.push(DROP + path);
@@ -616,12 +619,28 @@
 				uploadPromises = [];
 				upload = [];
 				engine.rtenv['drop_files'](drops);
+				var dirs = [DROP.substr(0, DROP.length -1)];
 				files.forEach(function (file) {
 					engine.rtenv['FS']['unlink'](file);
+					var dir = file.replace(DROP, "");
+					var idx = dir.lastIndexOf("/");
+					while (idx > 0) {
+						dir = dir.substr(0, idx);
+						if (dirs.indexOf(DROP + dir) == -1) {
+							dirs.push(DROP + dir);
+						}
+						idx = dir.lastIndexOf("/");
+					}
 				});
 				// Remove dirs.
 				dirs = dirs.sort(function(a, b) {
-					return (a.match(/\//g) || []).length > (b.match(/\//g) || []).length;
+					var al = (a.match(/\//g) || []).length;
+					var bl = (b.match(/\//g) || []).length;
+					if (al > bl)
+						return -1;
+					else if (al < bl)
+						return 1;
+					return 0;
 				});
 				dirs.forEach(function(dir) {
 					engine.rtenv['FS']['rmdir'](dir);

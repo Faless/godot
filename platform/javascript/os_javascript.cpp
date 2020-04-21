@@ -1224,7 +1224,9 @@ extern "C" EMSCRIPTEN_KEEPALIVE void send_notification(int p_notification) {
 	if (p_notification == MainLoop::NOTIFICATION_WM_MOUSE_ENTER || p_notification == MainLoop::NOTIFICATION_WM_MOUSE_EXIT) {
 		cursor_inside_canvas = p_notification == MainLoop::NOTIFICATION_WM_MOUSE_ENTER;
 	}
-	OS_JavaScript::get_singleton()->get_main_loop()->notification(p_notification);
+	MainLoop *loop = OS_JavaScript::get_singleton()->get_main_loop();
+	if (loop)
+		loop->notification(p_notification);
 }
 
 bool OS_JavaScript::_check_internal_feature_support(const String &p_feature) {

@@ -484,7 +484,7 @@
 			});
 
 			engine.setOnExecute(function(args) {
-				const is_editor = args.filter(function(v) { return v == '--editor' }).length != 0;
+				const is_editor = args.filter(function(v) { return v == '--editor' || v == '-e' }).length != 0;
 				const is_project_manager = args.filter(function(v) { return v == '--project-manager' }).length != 0;
 				const is_game = !is_editor && !is_project_manager;
 				if (is_project_manager) {

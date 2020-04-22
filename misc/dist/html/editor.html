@@ -211,8 +211,8 @@
 					<option value="html5">Filesystem API</option>
 				</select>
 				<br />
-				<label for="videoMode">Select video driver:</label><br />
-				<select id="videoMode">
+				<label for="videoMode" style="display: none;">Select video driver:</label><br />
+				<select id="videoMode" style="display: none;">
 					<option value="GLES2" selected="selected">WebGL</option>
 					<option value="GLES3">WebGL 2</option>
 				</select>
@@ -546,7 +546,7 @@
 				engine.setUnloadAfterInit(false); // Don't want to reload when starting game.
 				engine.init('godot.tools').then(function() {
 					selectPersistenceMode();
-					selectVideoMode();
+					//selectVideoMode();
 					showTab('editor');
 					setLoaderEnabled(false);
 					engine.setOnExit(function() {

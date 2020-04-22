@@ -921,10 +921,11 @@ Error OS_JavaScript::initialize(const VideoMode &p_desired, int p_video_driver, 
 		set_window_per_pixel_transparency_enabled(true);
 	}
 
-	bool gles3 = true;
+	bool gles3 = false; // Disabled for demo.
 	if (p_video_driver == VIDEO_DRIVER_GLES2) {
 		gles3 = false;
 	}
+	p_video_driver = VIDEO_DRIVER_GLES2;
 
 	bool gl_initialization_error = false;
 

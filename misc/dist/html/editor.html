@@ -509,7 +509,9 @@
 					showTab('game');
 					game.init().then(function() {
 						requestAnimationFrame(function() {
-							game.start.apply(game, args);
+							game.start.apply(game, args).then(function() {
+								gameCanvas.focus();
+							});
 						});
 					});
 				} else { // New editor instances will be run in the same canvas. We want to wait for it to exit.

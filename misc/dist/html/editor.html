@@ -217,6 +217,8 @@
 					<option value="GLES3">WebGL 2</option>
 				</select>
 				<br />
+				<label for="zip-file">Preload project zip: </label><input id="zip-file" type="file" id="files" name="files"/>
+				<br />
 				<button id="startButton">Start Godot Editor</button>
 				<br />
 				<div id="dropbox-auth" style="display:none;">
@@ -376,7 +378,7 @@
 			}
 		}
 
-		function startEditor() {
+		function startEditor(zip) {
 
 			const INDETERMINATE_STATUS_STEP_MS = 100;
 
@@ -552,20 +554,26 @@
 						setLoaderEnabled(true);
 					});
 					engine.start('--video-driver', video_driver).then(function() {
-						setStatusMode('hidden');
-						initializing = false;
+						copyZip(engine, zip).then(function() {
+							setStatusMode('hidden');
+							initializing = false;
+						});
 					});
 				}).catch(displayFailureNotice);
 			}
 		};
-		document.getElementById("startButton").onclick = startEditor;
+		document.getElementById("startButton").onclick = function() {
+			preloadZip(document.getElementById('zip-file')).then(function(zip) {
+				startEditor(zip);
+			});
+		}
 
 		// Files upload.
 		var upload = [];
 		var uploadPromises = [];
 		var uploadCallback = null;
 		function readFilePromise(entry, path) {
-			return new Promise(function(accept, reject) {
+			return new Promise(function(resolve, reject) {
 				entry.file(function(file) {
 					var reader = new FileReader();
 					reader.onload = function() {
@@ -579,7 +587,7 @@
 						if (!f['path'])
 							f['path'] = f['name'];
 						upload.push(f);
-						accept()
+						resolve()
 					};
 					reader.onerror = function() {
 						console.log("Error reading file");
@@ -596,7 +604,7 @@
 		}
 
 		function readDirectoryPromise(entry) {
-			return new Promise(function(accept, reject) {
+			return new Promise(function(resolve, reject) {
 				var reader = entry.createReader();
 				reader.readEntries(function(entries) {
 					for (var i = 0; i < entries.length; i++) {
@@ -607,19 +615,19 @@
 							uploadPromises.push(readFilePromise(ent));
 						}
 					}
-					accept();
+					resolve();
 				});
 			});
 		}
-		function processUploadsPromises(accept, reject) {
+		function processUploadsPromises(resolve, reject) {
 			if (uploadPromises.length == 0) {
-				accept();
+				resolve();
 				return;
 			}
 			uploadPromises.pop().then(function() {
 				setTimeout(function() {
-					processUploadsPromises(accept, reject);
-					//processUploadsPromises.bind(null, accept, reject)
+					processUploadsPromises(resolve, reject);
+					//processUploadsPromises.bind(null, resolve, reject)
 				}, 0);
 			});
 		}
@@ -705,6 +713,50 @@
 			ev.preventDefault();
 		}
 
+		function preloadZip(target) {
+			return new Promise(function(resolve, reject) {
+				if (target.files.length > 0) {
+					target.files[0].arrayBuffer().then(function(data) {
+						resolve(data);
+					});
+				} else {
+					resolve();
+				}
+			});
+		}
+
+		function copyZip(engine, zip) {
+			return new Promise(function (resolve, reject) {
+				if (!zip) {
+					resolve();
+					return;
+				}
+				var Buffer = BrowserFS.BFSRequire('buffer').Buffer;
+				BrowserFS.FileSystem.ZipFS.Create({zipData: Buffer.from(zip)}, function(err, zfs) {
+					if (err) {
+						reject(err);
+						return;
+					}
+					var dirs = ["/"];
+					var files = [];
+					const flag = BrowserFS.BFSRequire('file_flag').getFileFlag('r');
+					while (dirs.length > 0) {
+						var d = dirs.pop();
+						var read = zfs.readdirSync(d);
+						read.forEach(function(elem) {
+							var fullPath = d == "/" ? d + elem : d + "/" + elem;
+							var stat = zfs.statSync(fullPath);
+							if (stat.isDirectory()) {
+								dirs.push(fullPath);
+							} else {
+								engine.copyToFS("/home/web_user" + fullPath, zfs.readFileSync(fullPath, null, flag));
+							}
+						});
+					}
+					resolve();
+				})
+			});
+		}
 	//]]></script>
 </body>
 </html>

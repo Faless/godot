@@ -139,6 +139,8 @@ protected:
 public:
 	static EditorDebuggerNode *get_singleton() { return singleton; }
 
+	void register_custom_profiler();
+
 	ScriptEditorDebugger *get_current_debugger() const;
 	ScriptEditorDebugger *get_default_debugger() const;
 	ScriptEditorDebugger *get_debugger(int p_debugger) const;

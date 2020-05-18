@@ -30,6 +30,7 @@
 
 #include "editor_plugin.h"
 
+#include "editor/debugger/editor_debugger_node.h"
 #include "editor/editor_export.h"
 #include "editor/editor_node.h"
 #include "editor/editor_settings.h"
@@ -272,6 +273,10 @@ void EditorInterface::set_distraction_free_mode(bool p_enter) {
 
 EditorInterface *EditorInterface::singleton = nullptr;
 
+EditorDebuggerNode *EditorInterface::get_debugger_node() {
+	return EditorDebuggerNode::get_singleton();
+}
+
 void EditorInterface::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("inspect_object", "object", "for_property"), &EditorInterface::inspect_object, DEFVAL(String()));
 	ClassDB::bind_method(D_METHOD("get_selection"), &EditorInterface::get_selection);
@@ -291,6 +296,7 @@ void EditorInterface::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_selected_path"), &EditorInterface::get_selected_path);
 	ClassDB::bind_method(D_METHOD("get_current_path"), &EditorInterface::get_current_path);
 	ClassDB::bind_method(D_METHOD("get_file_system_dock"), &EditorInterface::get_file_system_dock);
+	ClassDB::bind_method(D_METHOD("get_debugger_node"), &EditorInterface::get_debugger_node);
 
 	ClassDB::bind_method(D_METHOD("set_plugin_enabled", "plugin", "enabled"), &EditorInterface::set_plugin_enabled);
 	ClassDB::bind_method(D_METHOD("is_plugin_enabled", "plugin"), &EditorInterface::is_plugin_enabled);

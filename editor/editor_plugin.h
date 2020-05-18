@@ -55,6 +55,7 @@ class EditorFileSystem;
 class EditorToolAddons;
 class FileSystemDock;
 class ScriptEditor;
+class EditorDebuggerNode;
 
 class EditorInterface : public Node {
 	GDCLASS(EditorInterface, Node);
@@ -92,6 +93,7 @@ public:
 	FileSystemDock *get_file_system_dock();
 
 	Control *get_base_control();
+	EditorDebuggerNode *get_debugger_node();
 
 	void set_plugin_enabled(const String &p_plugin, bool p_enabled);
 	bool is_plugin_enabled(const String &p_plugin) const;

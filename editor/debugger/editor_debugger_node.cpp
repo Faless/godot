@@ -143,7 +143,12 @@ void EditorDebuggerNode::_text_editor_stack_goto(const ScriptEditorDebugger *p_d
 	stack_script.unref(); // Why?!?
 }
 
+void EditorDebuggerNode::register_custom_profiler() {
+	WARN_PRINT("Registering custom profiler");
+}
+
 void EditorDebuggerNode::_bind_methods() {
+	ClassDB::bind_method("register_custom_profiler", &EditorDebuggerNode::register_custom_profiler);
 	// LiveDebug.
 	ClassDB::bind_method("live_debug_create_node", &EditorDebuggerNode::live_debug_create_node);
 	ClassDB::bind_method("live_debug_instance_node", &EditorDebuggerNode::live_debug_instance_node);

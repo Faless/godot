@@ -45,6 +45,8 @@ public:
 	Error set_decode_key(PoolByteArray p_key);
 	PoolByteArray encrypt_ecb(PoolByteArray p_src);
 	PoolByteArray decrypt_ecb(PoolByteArray p_src);
+	Array encrypt_cbc(PoolByteArray p_src, PoolByteArray p_iv);
+	Array decrypt_cbc(PoolByteArray p_src, PoolByteArray p_iv);
 
 	AESContext();
 };

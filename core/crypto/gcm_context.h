@@ -1,5 +1,5 @@
 /*************************************************************************/
-/*  register_types.cpp                                                   */
+/*  gcm_context.h                                                        */
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
@@ -28,28 +28,40 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 
-#include "register_types.h"
+#ifndef GCM_CONTEXT_H
+#define GCM_CONTEXT_H
 
-#include "crypto_mbedtls.h"
-#include "dtls_server_mbedtls.h"
-#include "gcm_context_mbedtls.h"
-#include "packet_peer_mbed_dtls.h"
-#include "stream_peer_mbedtls.h"
+#include "core/reference.h"
 
-void register_mbedtls_types() {
+class GCMContext : public Reference {
+	GDCLASS(GCMContext, Reference);
 
-	CryptoMbedTLS::initialize_crypto();
-	StreamPeerMbedTLS::initialize_ssl();
-	PacketPeerMbedDTLS::initialize_dtls();
-	DTLSServerMbedTLS::initialize();
-	GCMContextMbedTLS::initialize();
-}
+protected:
+	static GCMContext *(*_create)();
+	static void _bind_methods();
 
-void unregister_mbedtls_types() {
+public:
+	static GCMContext *create();
 
-	DTLSServerMbedTLS::finalize();
-	PacketPeerMbedDTLS::finalize_dtls();
-	StreamPeerMbedTLS::finalize_ssl();
-	CryptoMbedTLS::finalize_crypto();
-	GCMContextMbedTLS::finalize();
-}
+	enum CypherType {
+		GCM_CYPHER_AES,
+		GCM_CYPHER_MAX
+	};
+
+	enum Operation {
+		GCM_OPERATION_ENCRYPT,
+		GCM_OPERATION_DECRYPT,
+		GCM_OPERATION_MAX
+	};
+
+	virtual Error start(Operation p_operation, CypherType p_cypher, Vector<uint8_t> p_key, Vector<uint8_t> p_iv, Vector<uint8_t> p_aad) = 0;
+	virtual Vector<uint8_t> update(Vector<uint8_t> p_chunk) = 0;
+	virtual Vector<uint8_t> finish(int p_tag_length) = 0;
+
+	GCMContext();
+};
+
+VARIANT_ENUM_CAST(GCMContext::CypherType);
+VARIANT_ENUM_CAST(GCMContext::Operation);
+
+#endif // GCM_CONTEXT_H

@@ -36,6 +36,7 @@
 #include "core/core_string_names.h"
 #include "core/crypto/aes_context.h"
 #include "core/crypto/crypto.h"
+#include "core/crypto/gcm_context.h"
 #include "core/crypto/hashing_context.h"
 #include "core/engine.h"
 #include "core/func_ref.h"
@@ -166,6 +167,7 @@ void register_core_types() {
 	// Crypto
 	ClassDB::register_class<HashingContext>();
 	ClassDB::register_class<AESContext>();
+	ClassDB::register_custom_instance_class<GCMContext>();
 	ClassDB::register_custom_instance_class<X509Certificate>();
 	ClassDB::register_custom_instance_class<CryptoKey>();
 	ClassDB::register_custom_instance_class<Crypto>();

@@ -1,5 +1,5 @@
 /*************************************************************************/
-/*  register_types.cpp                                                   */
+/*  gcm_context.cpp                                                      */
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
@@ -28,28 +28,25 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 
-#include "register_types.h"
+#include "gcm_context.h"
 
-#include "crypto_mbedtls.h"
-#include "dtls_server_mbedtls.h"
-#include "gcm_context_mbedtls.h"
-#include "packet_peer_mbed_dtls.h"
-#include "stream_peer_mbedtls.h"
-
-void register_mbedtls_types() {
-
-	CryptoMbedTLS::initialize_crypto();
-	StreamPeerMbedTLS::initialize_ssl();
-	PacketPeerMbedDTLS::initialize_dtls();
-	DTLSServerMbedTLS::initialize();
-	GCMContextMbedTLS::initialize();
+GCMContext *(*GCMContext::_create)() = NULL;
+GCMContext *GCMContext::create() {
+	if (_create)
+		return _create();
+	return NULL;
 }
 
-void unregister_mbedtls_types() {
+void GCMContext::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("start", "operation", "cypher", "key", "iv", "additional_authenticated_data"), &GCMContext::start);
+	ClassDB::bind_method(D_METHOD("update", "chunk"), &GCMContext::update);
+	ClassDB::bind_method(D_METHOD("finish", "tag_length"), &GCMContext::finish);
+	BIND_ENUM_CONSTANT(GCM_CYPHER_AES);
+	BIND_ENUM_CONSTANT(GCM_CYPHER_MAX);
+	BIND_ENUM_CONSTANT(GCM_OPERATION_ENCRYPT);
+	BIND_ENUM_CONSTANT(GCM_OPERATION_DECRYPT);
+	BIND_ENUM_CONSTANT(GCM_OPERATION_MAX);
+}
 
-	DTLSServerMbedTLS::finalize();
-	PacketPeerMbedDTLS::finalize_dtls();
-	StreamPeerMbedTLS::finalize_ssl();
-	CryptoMbedTLS::finalize_crypto();
-	GCMContextMbedTLS::finalize();
+GCMContext::GCMContext() {
 }

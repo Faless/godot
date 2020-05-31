@@ -1,5 +1,5 @@
 /*************************************************************************/
-/*  register_types.cpp                                                   */
+/*  gcm_context_mbedtls.h                                                */
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
@@ -28,28 +28,32 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 
-#include "register_types.h"
+#ifndef GCM_CONTEXT_MBEDTLS_H
+#define GCM_CONTEXT_MBEDTLS_H
 
-#include "crypto_mbedtls.h"
-#include "dtls_server_mbedtls.h"
-#include "gcm_context_mbedtls.h"
-#include "packet_peer_mbed_dtls.h"
-#include "stream_peer_mbedtls.h"
+#include "core/crypto/gcm_context.h"
 
-void register_mbedtls_types() {
+struct mbedtls_gcm_context;
 
-	CryptoMbedTLS::initialize_crypto();
-	StreamPeerMbedTLS::initialize_ssl();
-	PacketPeerMbedDTLS::initialize_dtls();
-	DTLSServerMbedTLS::initialize();
-	GCMContextMbedTLS::initialize();
-}
+class GCMContextMbedTLS : public GCMContext {
 
-void unregister_mbedtls_types() {
+private:
+	mbedtls_gcm_context *ctx = nullptr;
 
-	DTLSServerMbedTLS::finalize();
-	PacketPeerMbedDTLS::finalize_dtls();
-	StreamPeerMbedTLS::finalize_ssl();
-	CryptoMbedTLS::finalize_crypto();
-	GCMContextMbedTLS::finalize();
-}
+protected:
+	static void _bind_methods();
+
+public:
+	static GCMContext *create();
+	static void initialize() { GCMContext::_create = create; }
+	static void finalize() { GCMContext::_create = NULL; }
+
+	virtual Error start(Operation p_operation, CypherType p_cypher, Vector<uint8_t> p_key, Vector<uint8_t> p_iv, Vector<uint8_t> p_aad);
+	virtual Vector<uint8_t> update(Vector<uint8_t> p_chunk);
+	virtual Vector<uint8_t> finish(int p_tag_length);
+
+	GCMContextMbedTLS();
+	~GCMContextMbedTLS();
+};
+
+#endif // GCM_CONTEXT_MBEDTLS_H

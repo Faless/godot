@@ -31,10 +31,49 @@
 #include "core/os/keyboard.h"
 
 // See https://w3c.github.io/uievents-code/#code-value-tables
-int dom_code2godot_scancode(EM_UTF8 const p_code[32]) {
+int dom_code2godot_scancode(EM_UTF8 const p_code[32], EM_UTF8 const p_key[32]) {
 #define DOM2GODOT(p_str, p_godot_code)                                         \
 	if (memcmp((const void *)p_str, (void *)p_code, strlen(p_str) + 1) == 0) { \
 		return KEY_##p_godot_code;                                             \
+	}
+
+	// Numpad section.
+	DOM2GODOT("NumLock", NUMLOCK);
+	DOM2GODOT("Numpad0", KP_0);
+	DOM2GODOT("Numpad1", KP_1);
+	DOM2GODOT("Numpad2", KP_2);
+	DOM2GODOT("Numpad3", KP_3);
+	DOM2GODOT("Numpad4", KP_4);
+	DOM2GODOT("Numpad5", KP_5);
+	DOM2GODOT("Numpad6", KP_6);
+	DOM2GODOT("Numpad7", KP_7);
+	DOM2GODOT("Numpad8", KP_8);
+	DOM2GODOT("Numpad9", KP_9);
+	DOM2GODOT("NumpadAdd", KP_ADD);
+	DOM2GODOT("NumpadBackspace", BACKSPACE);
+	DOM2GODOT("NumpadClear", CLEAR);
+	DOM2GODOT("NumpadClearEntry", CLEAR);
+	//DOM2GODOT("NumpadComma", UNKNOWN);
+	DOM2GODOT("NumpadDecimal", KP_PERIOD);
+	DOM2GODOT("NumpadDivide", KP_DIVIDE);
+	DOM2GODOT("NumpadEnter", KP_ENTER);
+	DOM2GODOT("NumpadEqual", EQUAL);
+	//DOM2GODOT("NumpadHash", UNKNOWN);
+	//DOM2GODOT("NumpadMemoryAdd", UNKNOWN);
+	//DOM2GODOT("NumpadMemoryClear", UNKNOWN);
+	//DOM2GODOT("NumpadMemoryRecall", UNKNOWN);
+	//DOM2GODOT("NumpadMemoryStore", UNKNOWN);
+	//DOM2GODOT("NumpadMemorySubtract", UNKNOWN);
+	DOM2GODOT("NumpadMultiply", KP_MULTIPLY);
+	DOM2GODOT("NumpadParenLeft", PARENLEFT);
+	DOM2GODOT("NumpadParenRight", PARENRIGHT);
+	DOM2GODOT("NumpadStar", KP_MULTIPLY); // or ASTERISK ?
+	DOM2GODOT("NumpadSubtract", KP_SUBTRACT);
+
+	// Printable ASCII.
+	uint32_t k = (uint8_t)p_key[0];
+	if (k && k < 128) { // ASCII.
+		return p_key[0];
 	}
 
 	// Alphanumeric section.
@@ -121,39 +160,6 @@ int dom_code2godot_scancode(EM_UTF8 const p_code[32]) {
 	DOM2GODOT("ArrowLeft", LEFT);
 	DOM2GODOT("ArrowRight", RIGHT);
 	DOM2GODOT("ArrowUp", UP);
-
-	// Numpad section.
-	DOM2GODOT("NumLock", NUMLOCK);
-	DOM2GODOT("Numpad0", KP_0);
-	DOM2GODOT("Numpad1", KP_1);
-	DOM2GODOT("Numpad2", KP_2);
-	DOM2GODOT("Numpad3", KP_3);
-	DOM2GODOT("Numpad4", KP_4);
-	DOM2GODOT("Numpad5", KP_5);
-	DOM2GODOT("Numpad6", KP_6);
-	DOM2GODOT("Numpad7", KP_7);
-	DOM2GODOT("Numpad8", KP_8);
-	DOM2GODOT("Numpad9", KP_9);
-	DOM2GODOT("NumpadAdd", KP_ADD);
-	DOM2GODOT("NumpadBackspace", BACKSPACE);
-	DOM2GODOT("NumpadClear", CLEAR);
-	DOM2GODOT("NumpadClearEntry", CLEAR);
-	//DOM2GODOT("NumpadComma", UNKNOWN);
-	DOM2GODOT("NumpadDecimal", KP_PERIOD);
-	DOM2GODOT("NumpadDivide", KP_DIVIDE);
-	DOM2GODOT("NumpadEnter", KP_ENTER);
-	DOM2GODOT("NumpadEqual", EQUAL);
-	//DOM2GODOT("NumpadHash", UNKNOWN);
-	DOM2GODOT("NumpadMemoryAdd", UNKNOWN);
-	DOM2GODOT("NumpadMemoryClear", UNKNOWN);
-	DOM2GODOT("NumpadMemoryRecall", UNKNOWN);
-	DOM2GODOT("NumpadMemoryStore", UNKNOWN);
-	DOM2GODOT("NumpadMemorySubtract", UNKNOWN);
-	DOM2GODOT("NumpadMultiply", KP_MULTIPLY);
-	DOM2GODOT("NumpadParenLeft", PARENLEFT);
-	DOM2GODOT("NumpadParenRight", PARENRIGHT);
-	DOM2GODOT("NumpadStar", KP_MULTIPLY); // or ASTERISK ?
-	DOM2GODOT("NumpadSubtract", KP_SUBTRACT);
 
 	// Function section.
 	DOM2GODOT("Escape", ESCAPE);

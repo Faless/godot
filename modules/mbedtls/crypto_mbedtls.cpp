@@ -50,7 +50,7 @@ CryptoKey *CryptoKeyMbedTLS::create() {
 	return memnew(CryptoKeyMbedTLS);
 }
 
-Error CryptoKeyMbedTLS::load(String p_path) {
+Error CryptoKeyMbedTLS::load(String p_path, bool p_private_key) {
 	ERR_FAIL_COND_V_MSG(locks, ERR_ALREADY_IN_USE, "Key is in use");
 
 	PoolByteArray out;
@@ -66,22 +66,33 @@ Error CryptoKeyMbedTLS::load(String p_path) {
 	}
 	memdelete(f);
 
-	int ret = mbedtls_pk_parse_key(&pkey, out.read().ptr(), out.size(), NULL, 0);
+	int ret = 0;
+	if (p_private_key) {
+		ret = mbedtls_pk_parse_key(&pkey, out.read().ptr(), out.size(), NULL, 0);
+	} else {
+		ret = mbedtls_pk_parse_public_key(&pkey, out.read().ptr(), out.size());
+	}
 	// We MUST zeroize the memory for safety!
 	mbedtls_platform_zeroize(out.write().ptr(), out.size());
 	ERR_FAIL_COND_V_MSG(ret, FAILED, "Error parsing private key '" + itos(ret) + "'.");
 
+	key_is_private = p_private_key;
 	return OK;
 }
 
-Error CryptoKeyMbedTLS::save(String p_path) {
+Error CryptoKeyMbedTLS::save(String p_path, bool p_private_key) {
 	FileAccess *f = FileAccess::open(p_path, FileAccess::WRITE);
 	ERR_FAIL_COND_V_MSG(!f, ERR_INVALID_PARAMETER, "Cannot save CryptoKeyMbedTLS file '" + p_path + "'.");
 
 	unsigned char w[16000];
 	memset(w, 0, sizeof(w));
 
-	int ret = mbedtls_pk_write_key_pem(&pkey, w, sizeof(w));
+	int ret = 0;
+	if (p_private_key) {
+		ret = mbedtls_pk_write_key_pem(&pkey, w, sizeof(w));
+	} else {
+		ret = mbedtls_pk_write_pubkey_pem(&pkey, w, sizeof(w));
+	}
 	if (ret != 0) {
 		memdelete(f);
 		memset(w, 0, sizeof(w)); // Zeroize anything we might have written.
@@ -229,6 +240,7 @@ Ref<CryptoKey> CryptoMbedTLS::generate_rsa(int p_bytes) {
 	int ret = mbedtls_pk_setup(&(out->pkey), mbedtls_pk_info_from_type(MBEDTLS_PK_RSA));
 	ERR_FAIL_COND_V(ret != 0, NULL);
 	ret = mbedtls_rsa_gen_key(mbedtls_pk_rsa(out->pkey), mbedtls_ctr_drbg_random, &ctr_drbg, p_bytes, 65537);
+	out->key_is_private = true;
 	ERR_FAIL_COND_V(ret != 0, NULL);
 	return out;
 }

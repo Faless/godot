@@ -44,15 +44,17 @@ class CryptoKeyMbedTLS : public CryptoKey {
 
 private:
 	mbedtls_pk_context pkey;
-	int locks;
+	int locks = 0;
+	bool key_is_private = false;
 
 public:
 	static CryptoKey *create();
 	static void make_default() { CryptoKey::_create = create; }
 	static void finalize() { CryptoKey::_create = NULL; }
 
-	virtual Error load(String p_path);
-	virtual Error save(String p_path);
+	virtual Error load(String p_path, bool p_full);
+	virtual Error save(String p_path, bool p_full);
+	virtual bool is_private() const { return key_is_private; };
 
 	CryptoKeyMbedTLS() {
 		mbedtls_pk_init(&pkey);

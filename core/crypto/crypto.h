@@ -46,8 +46,9 @@ protected:
 
 public:
 	static CryptoKey *create();
-	virtual Error load(String p_path) = 0;
-	virtual Error save(String p_path) = 0;
+	virtual Error load(String p_path, bool p_private_key) = 0;
+	virtual Error save(String p_path, bool p_private_key) = 0;
+	virtual bool is_private() const = 0;
 };
 
 class X509Certificate : public Resource {

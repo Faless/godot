@@ -336,3 +336,27 @@ bool CryptoMbedTLS::verify(HashingContext::HashType p_hash_type, Vector<uint8_t>
 	Ref<CryptoKeyMbedTLS> key = static_cast<Ref<CryptoKeyMbedTLS> >(p_key);
 	return mbedtls_pk_verify(&(key->pkey), type, p_hash.ptr(), size, p_signature.ptr(), p_signature.size()) == 0;
 }
+
+Vector<uint8_t> CryptoMbedTLS::encrypt(Ref<CryptoKey> p_key, Vector<uint8_t> p_plaintext) {
+	Ref<CryptoKeyMbedTLS> key = static_cast<Ref<CryptoKeyMbedTLS> >(p_key);
+	uint8_t buf[1024];
+	size_t size;
+	Vector<uint8_t> out;
+	int ret = mbedtls_pk_encrypt(&(key->pkey), p_plaintext.ptr(), p_plaintext.size(), buf, &size, sizeof(buf), mbedtls_ctr_drbg_random, &ctr_drbg);
+	ERR_FAIL_COND_V_MSG(ret, out, "Error while encrypting: " + itos(ret));
+	out.resize(size);
+	copymem(out.ptrw(), buf, size);
+	return out;
+}
+
+Vector<uint8_t> CryptoMbedTLS::decrypt(Ref<CryptoKey> p_key, Vector<uint8_t> p_ciphertext) {
+	Ref<CryptoKeyMbedTLS> key = static_cast<Ref<CryptoKeyMbedTLS> >(p_key);
+	uint8_t buf[2048];
+	size_t size;
+	Vector<uint8_t> out;
+	int ret = mbedtls_pk_decrypt(&(key->pkey), p_ciphertext.ptr(), p_ciphertext.size(), buf, &size, sizeof(buf), mbedtls_ctr_drbg_random, &ctr_drbg);
+	ERR_FAIL_COND_V_MSG(ret, out, "Error while decrypting: " + itos(ret));
+	out.resize(size);
+	copymem(out.ptrw(), buf, size);
+	return out;
+}

@@ -95,14 +95,14 @@ Error CryptoKeyMbedTLS::save(String p_path, bool p_private_key) {
 	}
 	if (ret != 0) {
 		memdelete(f);
-		memset(w, 0, sizeof(w)); // Zeroize anything we might have written.
+		mbedtls_platform_zeroize(w, sizeof(w)); // Zeroize anything we might have written.
 		ERR_FAIL_V_MSG(FAILED, "Error writing key '" + itos(ret) + "'.");
 	}
 
 	size_t len = strlen((char *)w);
 	f->store_buffer(w, len);
 	memdelete(f);
-	memset(w, 0, sizeof(w)); // Zeroize temporary buffer.
+	mbedtls_platform_zeroize(w, sizeof(w)); // Zeroize temporary buffer.
 	return OK;
 }
 

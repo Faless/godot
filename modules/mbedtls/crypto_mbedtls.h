@@ -52,8 +52,8 @@ public:
 	static void make_default() { CryptoKey::_create = create; }
 	static void finalize() { CryptoKey::_create = NULL; }
 
-	virtual Error load(String p_path, bool p_full);
-	virtual Error save(String p_path, bool p_full);
+	virtual Error load(String p_path, bool p_private);
+	virtual Error save(String p_path, bool p_private);
 	virtual bool is_private() const { return key_is_private; };
 
 	CryptoKeyMbedTLS() {

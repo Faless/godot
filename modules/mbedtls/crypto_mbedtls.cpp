@@ -74,7 +74,7 @@ Error CryptoKeyMbedTLS::load(String p_path, bool p_private_key) {
 	}
 	// We MUST zeroize the memory for safety!
 	mbedtls_platform_zeroize(out.write().ptr(), out.size());
-	ERR_FAIL_COND_V_MSG(ret, FAILED, "Error parsing private key '" + itos(ret) + "'.");
+	ERR_FAIL_COND_V_MSG(ret, FAILED, "Error parsing key '" + itos(ret) + "'.");
 
 	key_is_private = p_private_key;
 	return OK;

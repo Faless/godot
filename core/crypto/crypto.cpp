@@ -44,8 +44,8 @@ CryptoKey *CryptoKey::create() {
 }
 
 void CryptoKey::_bind_methods() {
-	ClassDB::bind_method(D_METHOD("save", "path", "private_key"), &CryptoKey::save);
-	ClassDB::bind_method(D_METHOD("load", "path", "private_key"), &CryptoKey::load);
+	ClassDB::bind_method(D_METHOD("save", "path", "private_key"), &CryptoKey::save, DEFVAL(true));
+	ClassDB::bind_method(D_METHOD("load", "path", "private_key"), &CryptoKey::load, DEFVAL(true));
 	ClassDB::bind_method(D_METHOD("is_private"), &CryptoKey::is_private);
 }
 

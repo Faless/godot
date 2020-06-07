@@ -49,6 +49,8 @@ public:
 	static CryptoKey *create();
 	virtual Error load(String p_path, bool p_private_key) = 0;
 	virtual Error save(String p_path, bool p_private_key) = 0;
+	virtual String save_to_string(bool p_private_key) = 0;
+	virtual Error load_from_string(String p_string_key, bool p_private_key) = 0;
 	virtual bool is_private() const = 0;
 };
 

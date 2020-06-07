@@ -106,6 +106,38 @@ Error CryptoKeyMbedTLS::save(String p_path, bool p_private_key) {
 	return OK;
 }
 
+Error CryptoKeyMbedTLS::load_from_string(String p_string_key, bool p_private_key) {
+	int ret = 0;
+	if (p_private_key) {
+		ret = mbedtls_pk_parse_key(&pkey, (unsigned char *)p_string_key.utf8().get_data(), p_string_key.utf8().size(), NULL, 0);
+	} else {
+		ret = mbedtls_pk_parse_public_key(&pkey, (unsigned char *)p_string_key.utf8().get_data(), p_string_key.utf8().size());
+	}
+	ERR_FAIL_COND_V_MSG(ret, FAILED, "Error parsing key '" + itos(ret) + "'.");
+
+	key_is_private = p_private_key;
+	return OK;
+}
+
+String CryptoKeyMbedTLS::save_to_string(bool p_private_key) {
+	unsigned char w[16000];
+	memset(w, 0, sizeof(w));
+
+	int ret = 0;
+	if (p_private_key) {
+		ret = mbedtls_pk_write_key_pem(&pkey, w, sizeof(w));
+	} else {
+		ret = mbedtls_pk_write_pubkey_pem(&pkey, w, sizeof(w));
+	}
+	if (ret != 0) {
+		mbedtls_platform_zeroize(w, sizeof(w));
+		ERR_FAIL_V_MSG("", "Error saving key '" + itos(ret) + "'.");
+	}
+	String s = String::utf8((char *)w);
+	key_is_private = p_private_key;
+	return s;
+}
+
 X509Certificate *X509CertificateMbedTLS::create() {
 	return memnew(X509CertificateMbedTLS);
 }

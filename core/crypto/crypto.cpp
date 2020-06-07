@@ -47,6 +47,8 @@ void CryptoKey::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("save", "path", "private_key"), &CryptoKey::save, DEFVAL(true));
 	ClassDB::bind_method(D_METHOD("load", "path", "private_key"), &CryptoKey::load, DEFVAL(true));
 	ClassDB::bind_method(D_METHOD("is_private"), &CryptoKey::is_private);
+	ClassDB::bind_method(D_METHOD("save_to_string", "private_key"), &CryptoKey::save_to_string, DEFVAL(true));
+	ClassDB::bind_method(D_METHOD("load_from_string", "string_key", "private_key"), &CryptoKey::load_from_string, DEFVAL(true));
 }
 
 X509Certificate *(*X509Certificate::_create)() = NULL;

@@ -54,6 +54,8 @@ public:
 
 	virtual Error load(String p_path, bool p_private);
 	virtual Error save(String p_path, bool p_private);
+	virtual String save_to_string(bool p_private_key);
+	virtual Error load_from_string(String p_string_key, bool p_private_key);
 	virtual bool is_private() const { return key_is_private; };
 
 	CryptoKeyMbedTLS() {

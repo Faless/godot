@@ -134,7 +134,6 @@ String CryptoKeyMbedTLS::save_to_string(bool p_public_only) {
 		ERR_FAIL_V_MSG("", "Error saving key '" + itos(ret) + "'.");
 	}
 	String s = String::utf8((char *)w);
-	public_only = p_public_only;
 	return s;
 }
 

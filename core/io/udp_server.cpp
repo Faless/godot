@@ -33,10 +33,52 @@
 void UDPServer::_bind_methods() {
 
 	ClassDB::bind_method(D_METHOD("listen", "port", "bind_address"), &UDPServer::listen, DEFVAL("*"));
+	ClassDB::bind_method(D_METHOD("poll"), &UDPServer::poll);
 	ClassDB::bind_method(D_METHOD("is_connection_available"), &UDPServer::is_connection_available);
 	ClassDB::bind_method(D_METHOD("is_listening"), &UDPServer::is_listening);
 	ClassDB::bind_method(D_METHOD("take_connection"), &UDPServer::take_connection);
 	ClassDB::bind_method(D_METHOD("stop"), &UDPServer::stop);
+}
+
+Error UDPServer::poll() {
+	ERR_FAIL_COND_V(!_sock.is_valid(), ERR_UNAVAILABLE);
+	if (!_sock->is_open()) {
+		return ERR_UNCONFIGURED;
+	}
+	Error err;
+	int read;
+	IP_Address ip;
+	uint16_t port;
+	while (true) {
+		err = _sock->recvfrom(recv_buffer, sizeof(recv_buffer), read, ip, port);
+		if (err != OK) {
+			if (err == ERR_BUSY) {
+				break;
+			}
+			return FAILED;
+		}
+		Peer p;
+		p.ip = ip;
+		p.port = port;
+		List<Peer>::Element *E = peers.find(p);
+		if (!E) {
+			E = pending.find(p);
+		}
+		if (E) {
+			E->get().peer->store_packet(ip, port, recv_buffer, read);
+		} else {
+			// It's a new peer, add it to the pending list.
+			// TODO pending size limit.
+			Peer peer;
+			peer.ip = ip;
+			peer.port = port;
+			peer.peer = memnew(PacketPeerUDP);
+			peer.peer->connect_shared_socket(_sock, ip, port, this);
+			peer.peer->store_packet(ip, port, recv_buffer, read);
+			pending.push_back(peer);
+		}
+	}
+	return OK;
 }
 
 Error UDPServer::listen(uint16_t p_port, const IP_Address &p_bind_address) {
@@ -82,8 +124,7 @@ bool UDPServer::is_connection_available() const {
 	if (!_sock->is_open())
 		return false;
 
-	Error err = _sock->poll(NetSocket::POLL_TYPE_IN, 0);
-	return (err == OK);
+	return pending.size() > 0;
 }
 
 Ref<PacketPeerUDP> UDPServer::take_connection() {
@@ -93,11 +134,20 @@ Ref<PacketPeerUDP> UDPServer::take_connection() {
 		return conn;
 	}
 
-	conn = Ref<PacketPeerUDP>(memnew(PacketPeerUDP));
-	conn->connect_socket(_sock);
-	_sock = Ref<NetSocket>(NetSocket::create());
-	listen(bind_port, bind_address);
-	return conn;
+	Peer peer = pending[0];
+	pending.pop_front();
+	peers.push_back(peer);
+	return peer.peer;
+}
+
+void UDPServer::remove_peer(IP_Address p_ip, int p_port) {
+	Peer peer;
+	peer.ip = p_ip;
+	peer.port = p_port;
+	List<Peer>::Element *E = peers.find(peer);
+	if (E) {
+		peers.erase(E);
+	}
 }
 
 void UDPServer::stop() {
@@ -107,6 +157,19 @@ void UDPServer::stop() {
 	}
 	bind_port = 0;
 	bind_address = IP_Address();
+	List<Peer>::Element *E = peers.front();
+	while (E) {
+		E->get().peer->disconnect_shared_socket();
+		E = E->next();
+	}
+	E = pending.front();
+	while (E) {
+		E->get().peer->disconnect_shared_socket();
+		memdelete(E->get().peer);
+		E = E->next();
+	}
+	peers.clear();
+	pending.clear();
 }
 
 UDPServer::UDPServer() :

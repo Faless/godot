@@ -201,6 +201,9 @@ void UDPServer::stop() {
 }
 
 UDPServer::UDPServer() :
+		bind_port(0),
+		max_pending_connections(16),
+		refuse_new_connections(false),
 		_sock(Ref<NetSocket>(NetSocket::create())) {
 }
 

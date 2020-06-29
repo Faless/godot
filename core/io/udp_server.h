@@ -45,7 +45,11 @@ protected:
 	struct Peer {
 		PacketPeerUDP *peer;
 		IP_Address ip;
-		uint16_t port = 0;
+		uint16_t port;
+
+		Peer() {
+			port = 0;
+		}
 
 		bool operator==(const Peer &p_other) const {
 			return (ip == p_other.ip && port == p_other.port);
@@ -53,13 +57,13 @@ protected:
 	};
 	uint8_t recv_buffer[PACKET_BUFFER_SIZE];
 
-	int bind_port = 0;
+	int bind_port;
 	IP_Address bind_address;
 
 	List<Peer> peers;
 	List<Peer> pending;
-	int max_pending_connections = 16;
-	bool refuse_new_connections = false;
+	int max_pending_connections;
+	bool refuse_new_connections;
 
 	Ref<NetSocket> _sock;
 

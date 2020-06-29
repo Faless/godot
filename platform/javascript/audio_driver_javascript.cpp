@@ -72,12 +72,12 @@ Error AudioDriverJavaScript::init() {
 		const MIX_RATE = $0;
 		const LATENCY = $1 / 1000;
 		return Module.IDHandler.add({
-			'context': new (window.AudioContext || window.webkitAudioContext)({ sampleRate: MIX_RATE, latencyHint: LATENCY}),
+			'context': new (window.AudioContext || window.webkitAudioContext)({ sampleRate: MIX_RATE }),
 			'input': null,
 			'stream': null,
 			'script': null
 		});
-	}, mix_rate, latency);
+	}, mix_rate);
 	/* clang-format on */
 
 	int channel_count = get_total_channels_by_speaker_mode(get_speaker_mode());

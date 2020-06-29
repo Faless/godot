@@ -37,6 +37,7 @@
 static OS_JavaScript *os = NULL;
 static int last_width = 0;
 static int last_height = 0;
+static uint64_t target_ticks = 0;
 
 // Files drop (implemented in JS for now).
 extern "C" EMSCRIPTEN_KEEPALIVE void _drop_files_callback(char *p_filev[], int p_filec) {
@@ -59,7 +60,7 @@ void exit_callback() {
 	emscripten_force_exit(exit_code); // No matter that we call cancel_main_loop, regular "exit" will not work, forcing.
 }
 
-void check_size_force_redraw() {
+bool check_size_force_redraw() {
 	int canvas_width;
 	int canvas_height;
 	emscripten_get_canvas_element_size(os->canvas_id.utf8().get_data(), &canvas_width, &canvas_height);
@@ -69,12 +70,19 @@ void check_size_force_redraw() {
 		// Update the framebuffer size and for redraw.
 		emscripten_set_canvas_element_size(os->canvas_id.utf8().get_data(), canvas_width, canvas_height);
 		Main::force_redraw();
+		return true;
 	}
+	return false;
 }
 
 void main_loop_callback() {
 
-	check_size_force_redraw();
+	bool force_draw = check_size_force_redraw();
+	uint64_t current_ticks = os->get_ticks_usec();
+	if (current_ticks < target_ticks && !force_draw) {
+		return;
+	}
+	target_ticks = current_ticks + (uint64_t)(1000000 / Engine::get_singleton()->get_target_fps());
 	if (os->main_loop_iterate()) {
 		emscripten_cancel_main_loop(); // Cancel current loop and wait for finalize_async.
 		EM_ASM({

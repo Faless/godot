@@ -159,6 +159,7 @@ public:
 	String get_executable_path() const;
 	virtual Error shell_open(String p_uri);
 	virtual String get_name() const;
+	virtual void add_frame_delay() {}
 	virtual bool can_draw() const;
 
 	virtual String get_cache_path() const;

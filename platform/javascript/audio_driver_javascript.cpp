@@ -69,6 +69,9 @@ Error AudioDriverJavaScript::init() {
 
 	/* clang-format off */
 	_driver_id = EM_ASM_INT({
+		if (!(window.AudioContext || window.webkitAudioContext)) {
+			return -1;
+		}
 		const MIX_RATE = $0;
 		const LATENCY = $1 / 1000;
 		return Module.IDHandler.add({
@@ -78,6 +81,9 @@ Error AudioDriverJavaScript::init() {
 			'script': null
 		});
 	}, mix_rate);
+	if (_driver_id == -1) {
+		return ERR_UNAVAILABLE;
+	}
 	/* clang-format on */
 
 	int channel_count = get_total_channels_by_speaker_mode(get_speaker_mode());
@@ -147,6 +153,9 @@ void AudioDriverJavaScript::start() {
 }
 
 void AudioDriverJavaScript::resume() {
+	if (_driver_id == -1) {
+		return;
+	}
 	/* clang-format off */
 	EM_ASM({
 		const ref = Module.IDHandler.get($0);
@@ -207,7 +216,10 @@ void AudioDriverJavaScript::finish_async() {
 
 	/* clang-format off */
 	EM_ASM({
-		var ref = Module.IDHandler.get($0);
+		var ref = null;
+		if ($0 != -1) {
+			ref = Module.IDHandler.get($0);
+		}
 		Module.async_finish.push(new Promise(function(accept, reject) {
 			if (!ref) {
 				console.log("Ref not found!", $0, Module.IDHandler);

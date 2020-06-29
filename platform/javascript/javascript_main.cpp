@@ -35,6 +35,8 @@
 #include <emscripten/emscripten.h>
 
 static OS_JavaScript *os = NULL;
+static int last_width = 0;
+static int last_height = 0;
 
 // Files drop (implemented in JS for now).
 extern "C" EMSCRIPTEN_KEEPALIVE void _drop_files_callback(char *p_filev[], int p_filec) {
@@ -57,8 +59,22 @@ void exit_callback() {
 	emscripten_force_exit(exit_code); // No matter that we call cancel_main_loop, regular "exit" will not work, forcing.
 }
 
+void check_size_force_redraw() {
+	int canvas_width;
+	int canvas_height;
+	emscripten_get_canvas_element_size(os->canvas_id.utf8().get_data(), &canvas_width, &canvas_height);
+	if (last_width != canvas_width || last_height != canvas_height) {
+		last_width = canvas_width;
+		last_height = canvas_height;
+		// Update the framebuffer size and for redraw.
+		emscripten_set_canvas_element_size(os->canvas_id.utf8().get_data(), canvas_width, canvas_height);
+		Main::force_redraw();
+	}
+}
+
 void main_loop_callback() {
 
+	check_size_force_redraw();
 	if (os->main_loop_iterate()) {
 		emscripten_cancel_main_loop(); // Cancel current loop and wait for finalize_async.
 		EM_ASM({
@@ -106,7 +122,6 @@ extern "C" EMSCRIPTEN_KEEPALIVE void main_after_fs_sync(char *p_idbfs_err) {
 	EM_ASM({
 		stringToUTF8(Module['locale'], $0, 16);
 	}, locale_ptr);
-
 	/* clang-format on */
 	setenv("LANG", locale_ptr, true);
 

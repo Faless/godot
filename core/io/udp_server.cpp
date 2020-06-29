@@ -67,8 +67,11 @@ Error UDPServer::poll() {
 		if (E) {
 			E->get().peer->store_packet(ip, port, recv_buffer, read);
 		} else {
+			if (refuse_new_connections || pending.size() >= max_pending_connections) {
+				// Drop connection.
+				continue;
+			}
 			// It's a new peer, add it to the pending list.
-			// TODO pending size limit.
 			Peer peer;
 			peer.ip = ip;
 			peer.port = port;
@@ -125,6 +128,31 @@ bool UDPServer::is_connection_available() const {
 		return false;
 
 	return pending.size() > 0;
+}
+
+void UDPServer::set_max_pending_connections(int p_max) {
+	max_pending_connections = p_max;
+}
+
+int UDPServer::get_max_pending_connections() const {
+	return max_pending_connections;
+}
+
+void UDPServer::set_refuse_new_connections(bool p_refuse) {
+	refuse_new_connections = p_refuse;
+	if (p_refuse) {
+		// Drop already pending connections.
+		List<Peer>::Element *E = pending.front();
+		while (E) {
+			memdelete(E->get().peer);
+			E = E->next();
+		}
+		pending.clear();
+	}
+}
+
+bool UDPServer::is_refusing_new_connections() const {
+	return refuse_new_connections;
 }
 
 Ref<PacketPeerUDP> UDPServer::take_connection() {

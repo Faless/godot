@@ -58,6 +58,8 @@ protected:
 
 	List<Peer> peers;
 	List<Peer> pending;
+	int max_pending_connections = 16;
+	bool refuse_new_connections = false;
 
 	Ref<NetSocket> _sock;
 
@@ -69,6 +71,10 @@ public:
 	Error poll();
 	bool is_listening() const;
 	bool is_connection_available() const;
+	void set_max_pending_connections(int p_max);
+	int get_max_pending_connections() const;
+	void set_refuse_new_connections(bool p_refuse);
+	bool is_refusing_new_connections() const;
 	Ref<PacketPeerUDP> take_connection();
 
 	void stop();

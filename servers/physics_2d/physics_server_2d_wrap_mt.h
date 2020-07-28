@@ -323,7 +323,12 @@ public:
 		} else if (tm == 1) { // single safe
 			return memnew(PhysicsServer2DWrapMT(memnew(T), false));
 		} else { // multi threaded
+#ifndef NO_THREADS
 			return memnew(PhysicsServer2DWrapMT(memnew(T), true));
+#else
+			WARN_PRINT("Multithreading is not supported on this platform. Defaulting to single-safe physics thread model.");
+			return memnew(PhysicsServer2DWrapMT(memnew(T), false));
+#endif
 		}
 	}
 

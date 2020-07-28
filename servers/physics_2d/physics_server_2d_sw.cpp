@@ -1341,6 +1341,10 @@ PhysicsServer2DSW::PhysicsServer2DSW() {
 	island_count = 0;
 	active_objects = 0;
 	collision_pairs = 0;
+#ifndef NO_THREADS
 	using_threads = int(ProjectSettings::get_singleton()->get("physics/2d/thread_model")) == 2;
+#else
+	using_threads = false;
+#endif
 	flushing_queries = false;
 };

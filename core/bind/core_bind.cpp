@@ -2493,12 +2493,21 @@ bool _EngineDebugger::is_active() {
 }
 
 void _EngineDebugger::register_profiler(const StringName &p_name, const Callable &p_toggle, const Callable &p_add, const Callable &p_tick) {
-	EngineDebugger::Profiler profiler(p_toggle, p_add, p_tick);
+	ERR_FAIL_COND_MSG(profilers.has(p_name) || has_profiler(p_name), "Profiler already registered: " + p_name);
+	profilers.insert(p_name, ProfilerCallable(p_toggle, p_add, p_tick));
+	ProfilerCallable &p = profilers[p_name];
+	EngineDebugger::Profiler profiler(
+			&p,
+			&_EngineDebugger::call_toggle,
+			&_EngineDebugger::call_add,
+			&_EngineDebugger::call_tick);
 	EngineDebugger::register_profiler(p_name, profiler);
 }
 
 void _EngineDebugger::unregister_profiler(const StringName &p_name) {
+	ERR_FAIL_COND_MSG(!profilers.has(p_name), "Profiler not registered: " + p_name);
 	EngineDebugger::unregister_profiler(p_name);
+	profilers.erase(p_name);
 }
 
 bool _EngineDebugger::_EngineDebugger::is_profiling(const StringName &p_name) {
@@ -2520,12 +2529,17 @@ void _EngineDebugger::profiler_enable(const StringName &p_name, bool p_enabled, 
 }
 
 void _EngineDebugger::register_message_capture(const StringName &p_name, const Callable &p_callable) {
-	EngineDebugger::Capture capture(p_callable);
+	ERR_FAIL_COND_MSG(captures.has(p_name) || has_capture(p_name), "Capture already registered: " + p_name);
+	captures.insert(p_name, p_callable);
+	Callable &c = captures[p_name];
+	EngineDebugger::Capture capture(&c, &_EngineDebugger::call_capture);
 	EngineDebugger::register_message_capture(p_name, capture);
 }
 
 void _EngineDebugger::unregister_message_capture(const StringName &p_name) {
+	ERR_FAIL_COND_MSG(!captures.has(p_name), "Capture not registered: " + p_name);
 	EngineDebugger::unregister_message_capture(p_name);
+	captures.erase(p_name);
 }
 
 bool _EngineDebugger::has_capture(const StringName &p_name) {
@@ -2535,6 +2549,72 @@ bool _EngineDebugger::has_capture(const StringName &p_name) {
 void _EngineDebugger::send_message(const String &p_msg, const Array &p_data) {
 	ERR_FAIL_COND_MSG(!EngineDebugger::is_active(), "Can't send message. No active debugger");
 	EngineDebugger::get_singleton()->send_message(p_msg, p_data);
+}
+
+void _EngineDebugger::call_toggle(void *p_user, bool p_enable, const Array &p_opts) {
+	Callable &toggle = ((ProfilerCallable *)p_user)->callable_toggle;
+	if (toggle.is_null()) {
+		return;
+	}
+	Variant enable = p_enable, opts = p_opts;
+	const Variant *args[2] = { &enable, &opts };
+	Variant retval;
+	Callable::CallError err;
+	toggle.call(args, 2, retval, err);
+	ERR_FAIL_COND_MSG(err.error != Callable::CallError::CALL_OK, "Error calling 'toggle' to callable: " + Variant::get_callable_error_text(toggle, args, 2, err));
+}
+
+void _EngineDebugger::call_add(void *p_user, const Array &p_data) {
+	Callable &add = ((ProfilerCallable *)p_user)->callable_add;
+	if (add.is_null()) {
+		return;
+	}
+	Variant data = p_data;
+	const Variant *args[1] = { &data };
+	Variant retval;
+	Callable::CallError err;
+	add.call(args, 1, retval, err);
+	ERR_FAIL_COND_MSG(err.error != Callable::CallError::CALL_OK, "Error calling 'add' to callable: " + Variant::get_callable_error_text(add, args, 1, err));
+}
+
+void _EngineDebugger::call_tick(void *p_user, float p_frame_time, float p_idle_time, float p_physics_time, float p_physics_frame_time) {
+	Callable &tick = ((ProfilerCallable *)p_user)->callable_tick;
+	if (tick.is_null()) {
+		return;
+	}
+	Variant frame_time = p_frame_time, idle_time = p_idle_time, physics_time = p_physics_time, physics_frame_time = p_physics_frame_time;
+	const Variant *args[4] = { &frame_time, &idle_time, &physics_time, &physics_frame_time };
+	Variant retval;
+	Callable::CallError err;
+	tick.call(args, 4, retval, err);
+	ERR_FAIL_COND_MSG(err.error != Callable::CallError::CALL_OK, "Error calling 'tick' to callable: " + Variant::get_callable_error_text(tick, args, 4, err));
+}
+
+Error _EngineDebugger::call_capture(void *p_user, const String &p_cmd, const Array &p_data, bool &r_captured) {
+	Callable &capture = *(Callable *)p_user;
+	if (capture.is_null()) {
+		return FAILED;
+	}
+	Variant cmd = p_cmd, data = p_data;
+	const Variant *args[2] = { &cmd, &data };
+	Variant retval;
+	Callable::CallError err;
+	capture.call(args, 2, retval, err);
+	ERR_FAIL_COND_V_MSG(err.error != Callable::CallError::CALL_OK, FAILED, "Error calling 'capture' to callable: " + Variant::get_callable_error_text(capture, args, 2, err));
+	ERR_FAIL_COND_V_MSG(retval.get_type() != Variant::BOOL, FAILED, "Error calling 'capture' to callable: " + String(capture) + ". Return type is not bool.");
+	r_captured = retval;
+	return OK;
+}
+
+_EngineDebugger::~_EngineDebugger() {
+	for (Map<StringName, Callable>::Element *E = captures.front(); E; E = E->next()) {
+		EngineDebugger::unregister_message_capture(E->key());
+	}
+	captures.clear();
+	for (Map<StringName, ProfilerCallable>::Element *E = profilers.front(); E; E = E->next()) {
+		EngineDebugger::unregister_profiler(E->key());
+	}
+	profilers.clear();
 }
 
 _EngineDebugger *_EngineDebugger::singleton = nullptr;

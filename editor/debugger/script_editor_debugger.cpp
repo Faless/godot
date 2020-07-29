@@ -702,21 +702,22 @@ void ScriptEditorDebugger::_parse_message(const String &p_msg, const Array &p_da
 
 	} else {
 		int colon_index = p_msg.find_char(':');
+		ERR_FAIL_COND_MSG(colon_index < 1, "Invalid message received");
+
 		bool parsed = false;
-
-		if (colon_index < 0) {
-			Map<StringName, EngineDebugger::Capture>::Element *element = captures.find(p_msg);
-			if (element) {
-				element->value().capture("", p_data, parsed);
-			}
-		}
-
-		if (!parsed && colon_index >= 0) {
-			const String cap = p_msg.substr(0, colon_index);
-			Map<StringName, EngineDebugger::Capture>::Element *element = captures.find(cap);
-			if (element) {
-				element->value().capture(p_msg.substr(colon_index + 1), p_data, parsed);
-			}
+		const String cap = p_msg.substr(0, colon_index);
+		Map<StringName, Callable>::Element *element = captures.find(cap);
+		if (element) {
+			Callable &c = element->value();
+			ERR_FAIL_COND_MSG(c.is_null(), "Invalid callable registered: " + cap);
+			Variant cmd = p_msg.substr(colon_index + 1), data = p_data;
+			const Variant *args[2] = { &cmd, &data };
+			Variant retval;
+			Callable::CallError err;
+			c.call(args, 2, retval, err);
+			ERR_FAIL_COND_MSG(err.error != Callable::CallError::CALL_OK, "Error calling 'capture' to callable: " + Variant::get_callable_error_text(c, args, 2, err));
+			ERR_FAIL_COND_MSG(retval.get_type() != Variant::BOOL, "Error calling 'capture' to callable: " + String(c) + ". Return type is not bool.");
+			parsed = retval;
 		}
 
 		if (!parsed) {
@@ -1468,14 +1469,9 @@ void ScriptEditorDebugger::send_message(const String &p_message, const Array &p_
 	_put_msg(p_message, p_args);
 }
 
-void ScriptEditorDebugger::_register_message_capture(const StringName &p_name, EngineDebugger::Capture p_func) {
-	ERR_FAIL_COND_MSG(has_capture(p_name), "Capture already registered: " + p_name);
-	captures.insert(p_name, p_func);
-}
-
 void ScriptEditorDebugger::register_message_capture(const StringName &p_name, const Callable &p_callable) {
-	EngineDebugger::Capture capture(p_callable);
-	_register_message_capture(p_name, capture);
+	ERR_FAIL_COND_MSG(has_capture(p_name), "Capture already registered: " + p_name);
+	captures.insert(p_name, p_callable);
 }
 
 void ScriptEditorDebugger::unregister_message_capture(const StringName &p_name) {

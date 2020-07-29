@@ -718,6 +718,26 @@ public:
 class _EngineDebugger : public Object {
 	GDCLASS(_EngineDebugger, Object);
 
+	class ProfilerCallable {
+		friend class _EngineDebugger;
+
+		Callable callable_toggle;
+		Callable callable_add;
+		Callable callable_tick;
+
+	public:
+		ProfilerCallable() {}
+
+		ProfilerCallable(const Callable &p_toggle, const Callable &p_add, const Callable &p_tick) {
+			callable_toggle = p_toggle;
+			callable_add = p_add;
+			callable_tick = p_tick;
+		}
+	};
+
+	Map<StringName, Callable> captures;
+	Map<StringName, ProfilerCallable> profilers;
+
 protected:
 	static void _bind_methods();
 	static _EngineDebugger *singleton;
@@ -740,7 +760,13 @@ public:
 
 	void send_message(const String &p_msg, const Array &p_data);
 
+	static void call_toggle(void *p_user, bool p_enable, const Array &p_opts);
+	static void call_add(void *p_user, const Array &p_data);
+	static void call_tick(void *p_user, float p_frame_time, float p_idle_time, float p_physics_time, float p_physics_frame_time);
+	static Error call_capture(void *p_user, const String &p_cmd, const Array &p_data, bool &r_captured);
+
 	_EngineDebugger() { singleton = this; }
+	~_EngineDebugger();
 };
 
 #endif // CORE_BIND_H

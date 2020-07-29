@@ -151,7 +151,7 @@ private:
 
 	Mutex send_mutex;
 
-	Map<StringName, EngineDebugger::Capture> captures;
+	Map<StringName, Callable> captures;
 
 	void _stack_dump_frame_selected();
 
@@ -196,8 +196,6 @@ private:
 
 	void _clear_execution();
 	void _stop_and_notify();
-
-	void _register_message_capture(const StringName &p_name, EngineDebugger::Capture p_func);
 
 protected:
 	void _notification(int p_what);

@@ -33,6 +33,7 @@
 
 #include "core/io/config_file.h"
 #include "core/undo_redo.h"
+#include "editor/debugger/editor_debugger_node.h"
 #include "editor/editor_inspector.h"
 #include "editor/editor_translation_parser.h"
 #include "editor/import/editor_import_plugin.h"
@@ -113,6 +114,8 @@ public:
 	void set_main_screen_editor(const String &p_name);
 	void set_distraction_free_mode(bool p_enter);
 	bool is_distraction_free_mode_enabled() const;
+
+	EditorDebuggerNode *get_debugger_node();
 
 	EditorInterface();
 };

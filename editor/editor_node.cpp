@@ -66,6 +66,7 @@
 
 #include "editor/audio_stream_preview.h"
 #include "editor/debugger/editor_debugger_node.h"
+#include "editor/debugger/script_editor_debugger.h"
 #include "editor/dependency_editor.h"
 #include "editor/editor_about.h"
 #include "editor/editor_audio_buses.h"
@@ -3616,6 +3617,8 @@ void EditorNode::register_editor_types() {
 	// FIXME: Is this stuff obsolete, or should it be ported to new APIs?
 	ClassDB::register_class<EditorScenePostImport>();
 	//ClassDB::register_type<EditorImportExport>();
+	ClassDB::register_virtual_class<EditorDebuggerNode>();
+	ClassDB::register_virtual_class<ScriptEditorDebugger>();
 }
 
 void EditorNode::unregister_editor_types() {

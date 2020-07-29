@@ -31,6 +31,7 @@
 #ifndef SCRIPT_EDITOR_DEBUGGER_H
 #define SCRIPT_EDITOR_DEBUGGER_H
 
+#include "core/debugger/engine_debugger.h"
 #include "core/os/os.h"
 #include "editor/debugger/editor_debugger_inspector.h"
 #include "editor/debugger/editor_debugger_node.h"
@@ -146,6 +147,12 @@ private:
 
 	EditorDebuggerNode::CameraOverride camera_override;
 
+	Map<StringName, Node *> custom_tabs;
+
+	Mutex send_mutex;
+
+	Map<StringName, EngineDebugger::Capture> captures;
+
 	void _stack_dump_frame_selected();
 
 	void _file_selected(const String &p_file);
@@ -189,6 +196,8 @@ private:
 
 	void _clear_execution();
 	void _stop_and_notify();
+
+	void _register_message_capture(const StringName &p_name, EngineDebugger::Capture p_func);
 
 protected:
 	void _notification(int p_what);
@@ -253,6 +262,17 @@ public:
 	bool is_skip_breakpoints();
 
 	virtual Size2 get_minimum_size() const override;
+
+	void add_custom_tab(const StringName &p_id, Node *p_node);
+	Node *get_custom_tab(const StringName &p_id);
+	void remove_custom_tab(const StringName &p_id);
+
+	void send_message(const String &p_message, const Array &p_args);
+
+	void register_message_capture(const StringName &p_name, const Callable &p_callable);
+	void unregister_message_capture(const StringName &p_name);
+	bool has_capture(const StringName &p_name);
+
 	ScriptEditorDebugger(EditorNode *p_editor = nullptr);
 	~ScriptEditorDebugger();
 };

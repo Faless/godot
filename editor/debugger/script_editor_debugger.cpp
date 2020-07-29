@@ -701,7 +701,27 @@ void ScriptEditorDebugger::_parse_message(const String &p_msg, const Array &p_da
 		performance_profiler->update_monitors(monitors);
 
 	} else {
-		WARN_PRINT("unknown message " + p_msg);
+		int colon_index = p_msg.find_char(':');
+		bool parsed = false;
+
+		if (colon_index < 0) {
+			Map<StringName, EngineDebugger::Capture>::Element *element = captures.find(p_msg);
+			if (element) {
+				element->value().capture("", p_data, parsed);
+			}
+		}
+
+		if (!parsed && colon_index >= 0) {
+			const String cap = p_msg.substr(0, colon_index);
+			Map<StringName, EngineDebugger::Capture>::Element *element = captures.find(cap);
+			if (element) {
+				element->value().capture(p_msg.substr(colon_index + 1), p_data, parsed);
+			}
+		}
+
+		if (!parsed) {
+			WARN_PRINT("unknown message " + p_msg);
+		}
 	}
 }
 
@@ -847,6 +867,7 @@ void ScriptEditorDebugger::start(Ref<RemoteDebuggerPeer> p_peer) {
 	tabs->set_current_tab(0);
 	_set_reason_text(TTR("Debug session started."), MESSAGE_SUCCESS);
 	_update_buttons_state();
+	emit_signal("session_toggle", true);
 }
 
 void ScriptEditorDebugger::_update_buttons_state() {
@@ -890,6 +911,7 @@ void ScriptEditorDebugger::stop() {
 
 	inspector->edit(nullptr);
 	_update_buttons_state();
+	emit_signal("session_toggle", false);
 }
 
 void ScriptEditorDebugger::_profiler_activate(bool p_enable, int p_type) {
@@ -1394,6 +1416,16 @@ void ScriptEditorDebugger::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("live_debug_reparent_node"), &ScriptEditorDebugger::live_debug_reparent_node);
 	ClassDB::bind_method(D_METHOD("request_remote_object", "id"), &ScriptEditorDebugger::request_remote_object);
 	ClassDB::bind_method(D_METHOD("update_remote_object", "id", "property", "value"), &ScriptEditorDebugger::update_remote_object);
+	ClassDB::bind_method(D_METHOD("add_custom_tab", "id", "node"), &ScriptEditorDebugger::add_custom_tab);
+	ClassDB::bind_method(D_METHOD("get_custom_tab", "id"), &ScriptEditorDebugger::get_custom_tab);
+	ClassDB::bind_method(D_METHOD("remove_custom_tab", "id"), &ScriptEditorDebugger::remove_custom_tab);
+	ClassDB::bind_method(D_METHOD("send_message", "message", "data"), &ScriptEditorDebugger::send_message);
+	ClassDB::bind_method(D_METHOD("register_message_capture", "name", "callable"), &ScriptEditorDebugger::register_message_capture);
+	ClassDB::bind_method(D_METHOD("unregister_message_capture", "name"), &ScriptEditorDebugger::unregister_message_capture);
+	ClassDB::bind_method(D_METHOD("has_capture", "name"), &ScriptEditorDebugger::has_capture);
+	ClassDB::bind_method(D_METHOD("is_breaked"), &ScriptEditorDebugger::is_breaked);
+	ClassDB::bind_method(D_METHOD("is_debuggable"), &ScriptEditorDebugger::is_debuggable);
+	ClassDB::bind_method(D_METHOD("is_session_active"), &ScriptEditorDebugger::is_session_active);
 
 	ADD_SIGNAL(MethodInfo("stopped"));
 	ADD_SIGNAL(MethodInfo("stop_requested"));
@@ -1406,6 +1438,53 @@ void ScriptEditorDebugger::_bind_methods() {
 	ADD_SIGNAL(MethodInfo("remote_object_updated", PropertyInfo(Variant::INT, "id")));
 	ADD_SIGNAL(MethodInfo("remote_object_property_updated", PropertyInfo(Variant::INT, "id"), PropertyInfo(Variant::STRING, "property")));
 	ADD_SIGNAL(MethodInfo("remote_tree_updated"));
+	ADD_SIGNAL(MethodInfo("session_toggle", PropertyInfo(Variant::BOOL, "enable")));
+}
+
+void ScriptEditorDebugger::add_custom_tab(const StringName &p_id, Node *p_node) {
+	ERR_FAIL_COND_MSG(get_custom_tab(p_id), "Custom tab with id '" + String(p_id) + "' already exists.");
+	ERR_FAIL_COND_MSG(!p_node, "Node argument is empty");
+	custom_tabs.insert(p_id, p_node);
+	tabs->add_child(p_node);
+}
+
+Node *ScriptEditorDebugger::get_custom_tab(const StringName &p_id) {
+	Map<StringName, Node *>::Element *element = custom_tabs.find(p_id);
+	if (element) {
+		return element->value();
+	}
+	return nullptr;
+}
+
+void ScriptEditorDebugger::remove_custom_tab(const StringName &p_id) {
+	Node *node = get_custom_tab(p_id);
+	ERR_FAIL_COND_MSG(!node, "Custom tab with id '" + String(p_id) + "' doesn't exists.");
+	custom_tabs.erase(p_id);
+	tabs->remove_child(node);
+}
+
+void ScriptEditorDebugger::send_message(const String &p_message, const Array &p_args) {
+	MutexLock<Mutex> lock(send_mutex);
+	_put_msg(p_message, p_args);
+}
+
+void ScriptEditorDebugger::_register_message_capture(const StringName &p_name, EngineDebugger::Capture p_func) {
+	ERR_FAIL_COND_MSG(has_capture(p_name), "Capture already registered: " + p_name);
+	captures.insert(p_name, p_func);
+}
+
+void ScriptEditorDebugger::register_message_capture(const StringName &p_name, const Callable &p_callable) {
+	EngineDebugger::Capture capture(p_callable);
+	_register_message_capture(p_name, capture);
+}
+
+void ScriptEditorDebugger::unregister_message_capture(const StringName &p_name) {
+	ERR_FAIL_COND_MSG(!has_capture(p_name), "Capture not registered: " + p_name);
+	captures.erase(p_name);
+}
+
+bool ScriptEditorDebugger::has_capture(const StringName &p_name) {
+	return captures.has(p_name);
 }
 
 ScriptEditorDebugger::ScriptEditorDebugger(EditorNode *p_editor) {

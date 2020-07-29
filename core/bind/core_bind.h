@@ -715,4 +715,32 @@ public:
 	_JSON() { singleton = this; }
 };
 
+class _EngineDebugger : public Object {
+	GDCLASS(_EngineDebugger, Object);
+
+protected:
+	static void _bind_methods();
+	static _EngineDebugger *singleton;
+
+public:
+	static _EngineDebugger *get_singleton() { return singleton; }
+
+	bool is_active();
+
+	void register_profiler(const StringName &p_name, const Callable &p_toggle, const Callable &p_add, const Callable &p_tick);
+	void unregister_profiler(const StringName &p_name);
+	bool is_profiling(const StringName &p_name);
+	bool has_profiler(const StringName &p_name);
+	void profiler_add_frame_data(const StringName &p_name, const Array &p_data);
+	void profiler_enable(const StringName &p_name, bool p_enabled, const Array &p_opts = Array());
+
+	void register_message_capture(const StringName &p_name, const Callable &p_callable);
+	void unregister_message_capture(const StringName &p_name);
+	bool has_capture(const StringName &p_name);
+
+	void send_message(const String &p_msg, const Array &p_data);
+
+	_EngineDebugger() { singleton = this; }
+};
+
 #endif // CORE_BIND_H

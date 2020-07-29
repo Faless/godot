@@ -114,6 +114,15 @@ ScriptEditorDebugger *EditorDebuggerNode::_add_debugger() {
 		tabs->add_theme_style_override("panel", EditorNode::get_singleton()->get_gui_base()->get_theme_stylebox("DebuggerPanel", "EditorStyles"));
 	}
 
+	if (!profiler_scenes.empty()) {
+		for (Map<StringName, Ref<PackedScene>>::Element *i = profiler_scenes.front(); i; i = i->next()) {
+			Node *scene_instance = i->value()->instance();
+			if (scene_instance) {
+				node->add_custom_tab(i->key(), scene_instance);
+			}
+		}
+	}
+
 	return node;
 }
 
@@ -152,6 +161,13 @@ void EditorDebuggerNode::_bind_methods() {
 	ClassDB::bind_method("live_debug_restore_node", &EditorDebuggerNode::live_debug_restore_node);
 	ClassDB::bind_method("live_debug_duplicate_node", &EditorDebuggerNode::live_debug_duplicate_node);
 	ClassDB::bind_method("live_debug_reparent_node", &EditorDebuggerNode::live_debug_reparent_node);
+	ClassDB::bind_method(D_METHOD("register_profiler_scene", "id", "scene"), &EditorDebuggerNode::register_profiler_scene);
+	ClassDB::bind_method(D_METHOD("unregister_profiler_scene", "id"), &EditorDebuggerNode::unregister_profiler_scene);
+	ClassDB::bind_method(D_METHOD("has_profiler_scene", "id"), &EditorDebuggerNode::has_profiler_scene);
+	ClassDB::bind_method(D_METHOD("get_profiler_scene_debugger", "root_node"), &EditorDebuggerNode::get_profiler_scene_debugger);
+	ClassDB::bind_method(D_METHOD("get_current_debugger"), &EditorDebuggerNode::get_current_debugger);
+	ClassDB::bind_method(D_METHOD("get_default_debugger"), &EditorDebuggerNode::get_default_debugger);
+	ClassDB::bind_method(D_METHOD("get_debugger", "id"), &EditorDebuggerNode::get_debugger);
 
 	ADD_SIGNAL(MethodInfo("goto_script_line"));
 	ADD_SIGNAL(MethodInfo("set_execution", PropertyInfo("script"), PropertyInfo(Variant::INT, "line")));
@@ -617,4 +633,42 @@ void EditorDebuggerNode::live_debug_reparent_node(const NodePath &p_at, const No
 	_for_all(tabs, [&](ScriptEditorDebugger *dbg) {
 		dbg->live_debug_reparent_node(p_at, p_new_place, p_new_name, p_at_pos);
 	});
+}
+
+void EditorDebuggerNode::register_profiler_scene(const StringName &p_id, const Ref<PackedScene> &p_scene) {
+	ERR_FAIL_COND_MSG(has_profiler_scene(p_id), "Profiler scene with id '" + String(p_id) + "' already exists.");
+	profiler_scenes.insert(p_id, p_scene);
+
+	for (int i = 0; get_debugger(i); i++) {
+		Node *scene_instance = p_scene->instance();
+		if (scene_instance) {
+			get_debugger(i)->add_custom_tab(p_id, scene_instance);
+		}
+	}
+}
+
+void EditorDebuggerNode::unregister_profiler_scene(const StringName &p_id) {
+	ERR_FAIL_COND_MSG(!has_profiler_scene(p_id), "Profiler scene with id '" + String(p_id) + "' doesn't exists.");
+	profiler_scenes.erase(p_id);
+
+	for (int i = 0; get_debugger(i); i++) {
+		if (get_debugger(i)->get_custom_tab(p_id)) {
+			get_debugger(i)->remove_custom_tab(p_id);
+		}
+	}
+}
+
+bool EditorDebuggerNode::has_profiler_scene(const StringName &p_id) {
+	return profiler_scenes.has(p_id);
+}
+
+ScriptEditorDebugger *EditorDebuggerNode::get_profiler_scene_debugger(Node *p_root_node) {
+	for (int i = 0; get_debugger(i); i++) {
+		for (Map<StringName, Ref<PackedScene>>::Element *iter = profiler_scenes.front(); iter; iter = iter->next()) {
+			if (p_root_node == get_debugger(i)->get_custom_tab(iter->key())) {
+				return get_debugger(i);
+			}
+		}
+	}
+	return nullptr;
 }

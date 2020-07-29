@@ -31,6 +31,7 @@
 #include "core_bind.h"
 
 #include "core/crypto/crypto_core.h"
+#include "core/debugger/engine_debugger.h"
 #include "core/io/file_access_compressed.h"
 #include "core/io/file_access_encrypted.h"
 #include "core/io/json.h"
@@ -2466,3 +2467,74 @@ Ref<JSONParseResult> _JSON::parse(const String &p_json) {
 }
 
 _JSON *_JSON::singleton = nullptr;
+
+////// _EngineDebugger //////
+
+void _EngineDebugger::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("is_active"), &_EngineDebugger::is_active);
+
+	ClassDB::bind_method(D_METHOD("register_profiler", "name", "toggle", "add", "tick"), &_EngineDebugger::register_profiler);
+	ClassDB::bind_method(D_METHOD("unregister_profiler", "name"), &_EngineDebugger::unregister_profiler);
+	ClassDB::bind_method(D_METHOD("is_profiling", "name"), &_EngineDebugger::is_profiling);
+	ClassDB::bind_method(D_METHOD("has_profiler", "name"), &_EngineDebugger::has_profiler);
+
+	ClassDB::bind_method(D_METHOD("profiler_add_frame_data", "name", "data"), &_EngineDebugger::profiler_add_frame_data);
+	ClassDB::bind_method(D_METHOD("profiler_enable", "name", "enable", "arguments"), &_EngineDebugger::profiler_enable, DEFVAL(Array()));
+
+	ClassDB::bind_method(D_METHOD("register_message_capture", "name", "callable"), &_EngineDebugger::register_message_capture);
+	ClassDB::bind_method(D_METHOD("unregister_message_capture", "name"), &_EngineDebugger::unregister_message_capture);
+	ClassDB::bind_method(D_METHOD("has_capture", "name"), &_EngineDebugger::has_capture);
+
+	ClassDB::bind_method(D_METHOD("send_message", "message", "data"), &_EngineDebugger::send_message);
+}
+
+bool _EngineDebugger::is_active() {
+	return EngineDebugger::is_active();
+}
+
+void _EngineDebugger::register_profiler(const StringName &p_name, const Callable &p_toggle, const Callable &p_add, const Callable &p_tick) {
+	EngineDebugger::Profiler profiler(p_toggle, p_add, p_tick);
+	EngineDebugger::register_profiler(p_name, profiler);
+}
+
+void _EngineDebugger::unregister_profiler(const StringName &p_name) {
+	EngineDebugger::unregister_profiler(p_name);
+}
+
+bool _EngineDebugger::_EngineDebugger::is_profiling(const StringName &p_name) {
+	return EngineDebugger::is_profiling(p_name);
+}
+
+bool _EngineDebugger::has_profiler(const StringName &p_name) {
+	return EngineDebugger::has_profiler(p_name);
+}
+
+void _EngineDebugger::profiler_add_frame_data(const StringName &p_name, const Array &p_data) {
+	EngineDebugger::profiler_add_frame_data(p_name, p_data);
+}
+
+void _EngineDebugger::profiler_enable(const StringName &p_name, bool p_enabled, const Array &p_opts) {
+	if (EngineDebugger::get_singleton()) {
+		EngineDebugger::get_singleton()->profiler_enable(p_name, p_enabled, p_opts);
+	}
+}
+
+void _EngineDebugger::register_message_capture(const StringName &p_name, const Callable &p_callable) {
+	EngineDebugger::Capture capture(p_callable);
+	EngineDebugger::register_message_capture(p_name, capture);
+}
+
+void _EngineDebugger::unregister_message_capture(const StringName &p_name) {
+	EngineDebugger::unregister_message_capture(p_name);
+}
+
+bool _EngineDebugger::has_capture(const StringName &p_name) {
+	return EngineDebugger::has_capture(p_name);
+}
+
+void _EngineDebugger::send_message(const String &p_msg, const Array &p_data) {
+	ERR_FAIL_COND_MSG(!EngineDebugger::is_active(), "Can't send message. No active debugger");
+	EngineDebugger::get_singleton()->send_message(p_msg, p_data);
+}
+
+_EngineDebugger *_EngineDebugger::singleton = nullptr;

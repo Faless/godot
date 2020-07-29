@@ -32,6 +32,7 @@
 #define ENGINE_DEBUGGER_H
 
 #include "core/array.h"
+#include "core/callable.h"
 #include "core/map.h"
 #include "core/string_name.h"
 #include "core/ustring.h"
@@ -54,34 +55,67 @@ public:
 	class Profiler {
 		friend class EngineDebugger;
 
-		ProfilingToggle toggle = nullptr;
-		ProfilingAdd add = nullptr;
-		ProfilingTick tick = nullptr;
-		void *data = nullptr;
-		bool active = false;
+		bool active;
+
+		enum Type {
+			CALLABLE,
+			FUNCTION_POINTER,
+		} type;
+
+		union {
+			struct {
+				Callable toggle;
+				Callable add;
+				Callable tick;
+			} callables;
+
+			struct {
+				ProfilingToggle toggle;
+				ProfilingAdd add;
+				ProfilingTick tick;
+				void *data;
+			} function_pointers;
+		};
 
 	public:
-		Profiler() {}
-		Profiler(void *p_data, ProfilingToggle p_toggle, ProfilingAdd p_add, ProfilingTick p_tick) {
-			data = p_data;
-			toggle = p_toggle;
-			add = p_add;
-			tick = p_tick;
-		}
+		Profiler();
+		Profiler(void *p_data, ProfilingToggle p_toggle, ProfilingAdd p_add, ProfilingTick p_tick);
+		Profiler(const Callable &p_toggle, const Callable &p_add, const Callable &p_tick);
+		Profiler &operator=(const Profiler &p_profiler);
+
+		void toggle(bool p_enable, const Array &p_opts);
+		void tick(float p_frame_time, float p_idle_time, float p_physics_time, float p_physics_frame_time);
+		void add(const Array &p_arr);
+
+		~Profiler();
 	};
 
 	class Capture {
 		friend class EngineDebugger;
 
-		CaptureFunc capture = nullptr;
-		void *data = nullptr;
+		enum Type {
+			CALLABLE,
+			FUNCTION_POINTER,
+		} type;
+
+		union {
+			Callable callable;
+			struct {
+				CaptureFunc capture;
+				void *data;
+			} function_pointer;
+		};
 
 	public:
-		Capture() {}
-		Capture(void *p_data, CaptureFunc p_capture) {
-			data = p_data;
-			capture = p_capture;
-		}
+		Capture();
+		Capture(void *p_data, CaptureFunc p_capture_function);
+		Capture(const Callable &p_callable);
+		Capture(const Capture &p_capture);
+		Capture &operator=(const Capture &p_capture);
+
+		Error capture(const String &p_msg, const Array &p_args, bool &r_captured) const;
+
+		~Capture();
 	};
 
 private:

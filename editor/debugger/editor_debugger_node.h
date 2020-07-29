@@ -33,6 +33,7 @@
 
 #include "editor/debugger/editor_debugger_server.h"
 #include "scene/gui/margin_container.h"
+#include "scene/resources/packed_scene.h"
 
 class Button;
 class EditorDebuggerTree;
@@ -102,6 +103,8 @@ private:
 	bool hide_on_stop = true;
 	CameraOverride camera_override = OVERRIDE_NONE;
 	Map<Breakpoint, bool> breakpoints;
+
+	Map<StringName, Ref<PackedScene>> profiler_scenes;
 
 	ScriptEditorDebugger *_add_debugger();
 	EditorDebuggerRemoteObject *get_inspected_remote_object();
@@ -186,5 +189,10 @@ public:
 	Error start(const String &p_protocol = "tcp://");
 
 	void stop();
+
+	void register_profiler_scene(const StringName &p_id, const Ref<PackedScene> &p_scene);
+	void unregister_profiler_scene(const StringName &p_id);
+	bool has_profiler_scene(const StringName &p_id);
+	ScriptEditorDebugger *get_profiler_scene_debugger(Node *p_root_node);
 };
 #endif // EDITOR_DEBUGGER_NODE_H

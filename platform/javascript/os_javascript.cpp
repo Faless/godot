@@ -731,6 +731,12 @@ EM_BOOL OS_JavaScript::touch_press_callback(int p_event_type, const EmscriptenTo
 	Ref<InputEventScreenTouch> ev;
 	ev.instance();
 	int lowest_id_index = -1;
+	if (p_event_type == EMSCRIPTEN_EVENT_TOUCHSTART) {
+		EM_ASM({
+			Module['vkInput'].blur();
+			Module['vkTextArea'].blur();
+		});
+	}
 	for (int i = 0; i < p_event->numTouches; ++i) {
 
 		const EmscriptenTouchPoint &touch = p_event->touches[i];
@@ -772,6 +778,11 @@ EM_BOOL OS_JavaScript::touchmove_callback(int p_event_type, const EmscriptenTouc
 		os->input->parse_input_event(ev);
 	}
 	return true;
+}
+
+// Virtual Keyboard
+extern "C" EMSCRIPTEN_KEEPALIVE void input_text_callback(const char *p_text) {
+	OS::get_singleton()->get_main_loop()->input_text(p_text);
 }
 
 // Gamepad
@@ -1075,6 +1086,22 @@ Error OS_JavaScript::initialize(const VideoMode &p_desired, int p_video_driver, 
 		Module.listeners.add(window, 'paste', function(evt) {
 			update_clipboard(evt.clipboardData.getData('text'));
 		}, false);
+		// Virtual Keyboard
+		const vk_input = Module['vkInput'];
+		const input_text_callback = cwrap('input_text_callback', null, ['string']);
+		Module.listeners.add(vk_input, 'input', function(evt) {
+			input_text_callback(vk_input.value);
+		}, true);
+		Module.listeners.add(vk_input, 'blur', function(evt) {
+			vk_input.style.display = 'none';
+		}, true);
+		const vk_text_area = Module['vkTextArea'];
+		Module.listeners.add(vk_text_area, 'input', function(evt) {
+			input_text_callback(vk_text_area.value);
+		}, true);
+		Module.listeners.add(vk_text_area, 'blur', function(evt) {
+			vk_text_area.style.display = 'none';
+		}, true);
 		// Drag an drop
 		Module.listeners.add(canvas, 'dragover', function(ev) {
 			// Prevent default behavior (which would try to open the file(s))
@@ -1382,6 +1409,35 @@ int OS_JavaScript::get_power_percent_left() {
 
 	WARN_PRINT_ONCE("Power management is not supported for the HTML5 platform, defaulting to -1");
 	return -1;
+}
+
+bool OS_JavaScript::has_virtual_keyboard() const {
+	return has_touchscreen_ui_hint();
+}
+
+void OS_JavaScript::show_virtual_keyboard(const String &p_existing_text, const Rect2 &p_screen_rect, bool p_multiline, int p_max_input_length, int p_cursor_start, int p_cursor_end) {
+	int end = p_cursor_end == -1 ? p_cursor_start : p_cursor_end;
+	/* clang-format off */
+	EM_ASM({
+		const text = UTF8ToString($0);
+		const multiline = $1;
+		const start = $2;
+		const end = $3;
+		if (multiline) {
+			const textarea = Module['vkTextArea'];
+			textarea.style.display = "";
+			textarea.value = text;
+			textarea.focus();
+			textarea.setSelectionRange(start, end);
+		} else {
+			const input = Module['vkInput'];
+			input.style.display = "";
+			input.value = text;
+			input.focus();
+			input.setSelectionRange(start, end);
+		}
+	}, p_existing_text.utf8().get_data(), p_multiline, p_cursor_start, end);
+	/* clang-format on */
 }
 
 void OS_JavaScript::file_access_close_callback(const String &p_file, int p_flags) {

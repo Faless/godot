@@ -175,6 +175,9 @@ public:
 	virtual String get_data_path() const;
 	virtual String get_user_data_dir() const;
 
+	bool has_virtual_keyboard() const;
+	void show_virtual_keyboard(const String &p_existing_text, const Rect2 &p_screen_rect, bool p_multiline, int p_max_input_length, int p_cursor_start, int p_cursor_end);
+
 	virtual OS::PowerState get_power_state();
 	virtual int get_power_seconds_left();
 	virtual int get_power_percent_left();

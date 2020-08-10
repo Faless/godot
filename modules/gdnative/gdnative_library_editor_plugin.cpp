@@ -347,6 +347,12 @@ GDNativeLibraryEditor::GDNativeLibraryEditor() {
 		// Frameworks is actually a folder with files.
 		platform_ios.library_extension = "*.framework; Framework, *.xcframework; Binary Framework, *.a; Static Library, *.dylib; Dynamic Library";
 		platforms["iOS"] = platform_ios;
+
+		NativePlatformConfig platform_web;
+		platform_web.name = "HTML5";
+		platform_web.entries.push_back("web");
+		platform_web.library_extension = "*.wasm";
+		platforms["HTML5"] = platform_web;
 	}
 
 	VBoxContainer *container = memnew(VBoxContainer);

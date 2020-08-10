@@ -23,6 +23,7 @@ def get_opts():
         BoolVariable("javascript_eval", "Enable JavaScript eval interface", True),
         BoolVariable("threads_enabled", "Enable WebAssembly Threads support (limited browser support)", False),
         BoolVariable("use_closure_compiler", "Use closure compiler to minimize JavaScript code", False),
+        BoolVariable("gdnative_support", "Enable GDNative support (as .wasm libraries)", True),
     ]
 
 
@@ -79,6 +80,13 @@ def configure(env):
 
     ## Copy env variables.
     env["ENV"] = os.environ
+
+    # GDNative support
+    if env["gdnative_support"]:
+        env.Append(CCFLAGS=["-s", "RELOCATABLE=1"])
+        env.Append(LINKFLAGS=["-s", "RELOCATABLE=1"])
+        # Export for printf, malloc, ecc.
+        #env["ENV"]["EMCC_FORCE_STDLIBS"] = "1"
 
     # LTO
     if env["use_lto"]:
@@ -169,3 +177,4 @@ def configure(env):
     env.Append(LINKFLAGS=["-s", "EXTRA_EXPORTED_RUNTIME_METHODS=['callMain', 'FS']"])
     # Add code that allow exiting runtime.
     env.Append(LINKFLAGS=["-s", "EXIT_RUNTIME=1"])
+    env.Append(LINKFLAGS=["-s", "MAIN_MODULE=2"])

@@ -148,6 +148,10 @@ def configure(env):
     # be linked explicitly.
     env.Append(LIBS=["idbfs.js"])
 
+    if env["tools"]:
+        # Used to share temporary FS between editor and game when persistence is off.
+        env.Append(LIBS=["proxyfs.js"])
+
     env.Append(LINKFLAGS=["-s", "BINARYEN=1"])
     env.Append(LINKFLAGS=["-s", "MODULARIZE=1", "-s", "EXPORT_NAME='Godot'"])
 

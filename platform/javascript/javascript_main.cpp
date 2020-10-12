@@ -111,7 +111,9 @@ void main_loop_callback() {
 					});
 				});
 			}).then(function() {
-				ccall("cleanup_after_sync", null, []);
+				requestAnimationFrame(function () {
+					ccall("cleanup_after_sync", null, []);
+				});
 			});
 		});
 		/* clang-format on */

@@ -121,7 +121,10 @@ Function('return this')()['Engine'] = (function() {
 			me.rtenv['noExitRuntime'] = true;
 			me.rtenv['onExecute'] = me.onExecute;
 			me.rtenv['onExit'] = function(code) {
-				me.rtenv['deinitFS']();
+				const env = me.rtenv;
+				setTimeout(function() {
+					env['deinitFS']();
+				}, 0);
 				if (me.onExit)
 					me.onExit(code);
 				me.rtenv = null;

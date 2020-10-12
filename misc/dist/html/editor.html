@@ -379,7 +379,7 @@
 					}
 					setGameTabEnabled(true);
 					game = new Engine();
-					game.setPersistentPaths(persistentPaths);
+					game.setPersistentPaths(persistentPaths, engine.rtenv.FS);
 					game.setUnloadAfterInit(false);
 					game.setOnExecute(engine.onExecute);
 					game.setCanvas(gameCanvas);

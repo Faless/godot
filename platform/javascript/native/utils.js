@@ -28,7 +28,7 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 
-Module['initFS'] = function(persistentPaths) {
+Module['initFS'] = function(persistentPaths, proxyFS) {
 	Module.mount_points = ['/userfs'].concat(persistentPaths);
 
 	function createRecursive(dir) {
@@ -44,7 +44,11 @@ Module['initFS'] = function(persistentPaths) {
 
 	Module.mount_points.forEach(function(path) {
 		createRecursive(path);
-		FS.mount(IDBFS, {}, path);
+		if (proxyFS) {
+			FS.mount(PROXYFS, { root: path, fs: proxyFS }, path);
+		} else {
+			FS.mount(IDBFS, {}, path);
+		}
 	});
 	return new Promise(function(resolve, reject) {
 		FS.syncfs(true, function(err) {
@@ -53,7 +57,7 @@ Module['initFS'] = function(persistentPaths) {
 				Module.idbfs = false;
 				console.log("IndexedDB not available: " + err.message);
 			} else {
-				Module.idbfs = true;
+				Module.idbfs = proxyFS ? false : true;
 			}
 			resolve(err);
 		});

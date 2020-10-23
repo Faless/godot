@@ -1,5 +1,5 @@
 /*************************************************************************/
-/*  os_javascript.h                                                      */
+/*  library_godot_eval.js                                                */
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
@@ -28,69 +28,61 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 
-#ifndef OS_JAVASCRIPT_H
-#define OS_JAVASCRIPT_H
+var GodotEval = {
 
-#include "audio_driver_javascript.h"
-#include "core/input/input.h"
-#include "drivers/unix/os_unix.h"
-#include "servers/audio_server.h"
+	godot_js_eval__deps: ['$GodotOS'],
+	godot_js_eval: function(p_js, p_use_global_ctx, p_union_ptr, p_byte_arr, p_byte_arr_write, p_callback) {
+		const js_code = UTF8ToString(p_js);
+		var eval_ret;
+		try {
+			if (p_use_global_ctx) {
+				// indirect eval call grants global execution context
+				var global_eval = eval;
+				eval_ret = global_eval(js_code);
+			} else {
+				eval_ret = eval(js_code);
+			}
+		} catch (e) {
+			err(e);
+			eval_ret = null;
+		}
 
-#include <emscripten/html5.h>
+		switch (typeof eval_ret) {
 
-class OS_JavaScript : public OS_Unix {
-	MainLoop *main_loop = nullptr;
-	AudioDriverJavaScript *audio_driver_javascript = nullptr;
+			case 'boolean':
+				setValue(p_union_ptr, eval_ret, 'i32');
+				return 1; // BOOL
 
-	bool idb_is_syncing = false;
-	bool idb_available = false;
-	bool idb_needs_sync = false;
+			case 'number':
+				setValue(p_union_ptr, eval_ret, 'double');
+				return 3; // REAL
 
-	static void main_loop_callback();
+			case 'string':
+				let array_ptr = GodotOS.allocString(eval_ret);
+				setValue(p_union_ptr, array_ptr , '*');
+				return 4; // STRING
 
-	static void file_access_close_callback(const String &p_file, int p_flags);
-	static void fs_sync_callback();
+			case 'object':
+				if (eval_ret === null) {
+					break;
+				}
 
-protected:
-	void initialize() override;
+				if (ArrayBuffer.isView(eval_ret) && !(eval_ret instanceof Uint8Array)) {
+					eval_ret = new Uint8Array(eval_ret.buffer);
+				}
+				else if (eval_ret instanceof ArrayBuffer) {
+					eval_ret = new Uint8Array(eval_ret);
+				}
+				if (eval_ret instanceof Uint8Array) {
+					const func = GodotOS.get_func(p_callback);
+					var bytes_ptr = func(p_byte_arr, p_byte_arr_write,  eval_ret.length);
+					HEAPU8.set(eval_ret, bytes_ptr);
+					return 20; // POOL_BYTE_ARRAY
+				}
+				break;
+		}
+		return 0; // NIL
+	},
+}
 
-	void set_main_loop(MainLoop *p_main_loop) override;
-	void delete_main_loop() override;
-
-	void finalize() override;
-
-	bool _check_internal_feature_support(const String &p_feature) override;
-
-public:
-	// Override return type to make writing static callbacks less tedious.
-	static OS_JavaScript *get_singleton();
-
-	void initialize_joypads() override;
-
-	MainLoop *get_main_loop() const override;
-	bool main_loop_iterate();
-
-	Error execute(const String &p_path, const List<String> &p_arguments, bool p_blocking = true, ProcessID *r_child_id = nullptr, String *r_pipe = nullptr, int *r_exitcode = nullptr, bool read_stderr = false, Mutex *p_pipe_mutex = nullptr) override;
-	Error kill(const ProcessID &p_pid) override;
-	int get_process_id() const override;
-
-	String get_executable_path() const override;
-	Error shell_open(String p_uri) override;
-	String get_name() const override;
-	// Override default OS implementation which would block the main thread with delay_usec.
-	// Implemented in javascript_main.cpp loop callback instead.
-	void add_frame_delay(bool p_can_draw) override {}
-
-	String get_cache_path() const override;
-	String get_config_path() const override;
-	String get_data_path() const override;
-	String get_user_data_dir() const override;
-
-	bool is_userfs_persistent() const override;
-
-	void resume_audio();
-
-	OS_JavaScript();
-};
-
-#endif
+mergeInto(LibraryManager.library, GodotEval);

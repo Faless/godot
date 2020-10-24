@@ -6,6 +6,8 @@ var Utils = {
 				return execName + '.worker.js';
 			} else if (path.endsWith('.js')) {
 				return execName + '.js';
+			} else if (path.endsWith('-runtime.wasm')) {
+				return execName + '-runtime.wasm';
 			} else if (path.endsWith('.wasm')) {
 				return execName + '.wasm';
 			}

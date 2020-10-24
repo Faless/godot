@@ -13,7 +13,7 @@ Function('return this')()['Engine'] = (function() {
 	function load(basePath) {
 		if (loadPromise == null) {
 			loadPath = basePath;
-			loadPromise = preloader.loadPromise(basePath + wasmExt);
+			loadPromise = preloader.loadPromise(basePath + '-runtime' + wasmExt);
 			preloader.setProgressFunc(progressFunc);
 			requestAnimationFrame(preloader.animateProgress);
 		}
@@ -55,6 +55,7 @@ Function('return this')()['Engine'] = (function() {
 		var me = this;
 		initPromise = new Promise(function(resolve, reject) {
 			config['locateFile'] = Utils.createLocateRewrite(loadPath);
+			config['dynamicLibraries'] = [loadPath + wasmExt];
 			config['instantiateWasm'] = Utils.createInstantiatePromise(loadPromise);
 			Godot(config).then(function(module) {
 				module['initFS'](me.persistentPaths).then(function(fs_err) {

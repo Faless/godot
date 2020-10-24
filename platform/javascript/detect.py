@@ -64,6 +64,10 @@ def configure(env):
         env.Append(LINKFLAGS=["-O1", "-g"])
         env.Append(LINKFLAGS=["-s", "ASSERTIONS=1"])
 
+    # TODO
+    env.Append(CCFLAGS=["-s", "RELOCATABLE=1"])
+    env.Append(LINKFLAGS=["-s", "RELOCATABLE=1"])
+
     if env["tools"]:
         if not env["threads_enabled"]:
             raise RuntimeError(

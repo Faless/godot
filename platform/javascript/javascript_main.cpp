@@ -74,7 +74,7 @@ void main_loop_callback() {
 	}
 }
 
-int main(int argc, char *argv[]) {
+extern EMSCRIPTEN_KEEPALIVE int godot_js_main(int argc, char *argv[]) {
 	// Set locale
 	char locale_ptr[16];
 	godot_js_config_locale_get(locale_ptr, sizeof(locale_ptr));
@@ -91,4 +91,5 @@ int main(int argc, char *argv[]) {
 	// Immediately run the first iteration.
 	// We are inside an animation frame, we want to immediately draw on the newly setup canvas.
 	main_loop_callback();
+	return 0;
 }

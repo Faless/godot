@@ -108,6 +108,9 @@ public:
 				filepath += ".png";
 			}
 			ctype = "image/png";
+		} else if (req[1] == basereq + "-runtime.wasm") {
+			filepath += "-runtime.wasm";
+			ctype = "application/wasm";
 		} else if (req[1] == basereq + ".wasm") {
 			filepath += ".wasm";
 			ctype = "application/wasm";
@@ -447,6 +450,10 @@ Error EditorExportPlatformJavaScript::export_project(const Ref<EditorExportPrese
 
 			file = p_path.get_file().get_basename() + ".worker.js";
 
+		} else if (file == "godot-runtime.wasm") {
+
+			file = p_path.get_file().get_basename() + "-runtime.wasm";
+
 		} else if (file == "godot.wasm") {
 
 			file = p_path.get_file().get_basename() + ".wasm";
@@ -583,6 +590,7 @@ Error EditorExportPlatformJavaScript::run(const Ref<EditorExportPreset> &p_prese
 		DirAccess::remove_file_or_error(basepath + ".worker.js");
 		DirAccess::remove_file_or_error(basepath + ".pck");
 		DirAccess::remove_file_or_error(basepath + ".png");
+		DirAccess::remove_file_or_error(basepath + "-runtime.wasm");
 		DirAccess::remove_file_or_error(basepath + ".wasm");
 		DirAccess::remove_file_or_error(EditorSettings::get_singleton()->get_cache_dir().plus_file("favicon.png"));
 		return err;

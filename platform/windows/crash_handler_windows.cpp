@@ -35,7 +35,7 @@
 #include "core/version.h"
 #include "core/version_hash.gen.h"
 #include "main/main.h"
-
+;
 #ifdef CRASH_HANDLER_EXCEPTION
 
 // Backtrace code based on: https://stackoverflow.com/questions/6205981/windows-c-stack-trace-from-a-running-app

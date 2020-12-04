@@ -13,6 +13,7 @@ from collections import OrderedDict
 # Local
 import methods
 import glsl_builders
+import gles_builders
 
 # Scan possible build platforms
 
@@ -607,6 +608,11 @@ if selected_platform in platform_list:
             ),
             "GLSL_HEADER": env.Builder(
                 action=env.Run(glsl_builders.build_raw_headers, 'Building GLSL header: "$TARGET"'),
+                suffix="glsl.gen.h",
+                src_suffix=".glsl",
+            ),
+            "GLES2_GLSL": env.Builder(
+                action=env.Run(gles_builders.build_gles2_headers, 'Building GLES2_GLSL header: "$TARGET"'),
                 suffix="glsl.gen.h",
                 src_suffix=".glsl",
             ),

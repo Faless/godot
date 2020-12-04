@@ -61,6 +61,7 @@ private:
 	int last_height = 0;
 
 	bool swap_cancel_ok = false;
+	EMSCRIPTEN_WEBGL_CONTEXT_HANDLE webgl_ctx = 0;
 
 	// utilities
 	static Point2 compute_position_in_canvas(int p_x, int p_y);

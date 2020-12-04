@@ -265,7 +265,7 @@ $GODOT_HEAD_INCLUDE
 				setStatusMode('indeterminate');
 				engine.setCanvas(canvas);
 				engine.setGDNativeLibraries(GDNATIVE_LIBS);
-				engine.startGame(EXECUTABLE_NAME, MAIN_PACK, EXTRA_ARGS).then(() => {
+				engine.startGame(EXECUTABLE_NAME, MAIN_PACK, EXTRA_ARGS.concat('--video-driver', 'GLES2', '--single-window')).then(() => {
 					setStatusMode('hidden');
 					initializing = false;
 				}, displayFailureNotice);

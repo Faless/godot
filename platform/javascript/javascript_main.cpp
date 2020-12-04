@@ -81,7 +81,11 @@ extern EMSCRIPTEN_KEEPALIVE int godot_js_main(int argc, char *argv[]) {
 	// We must override main when testing is enabled
 	TEST_MAIN_OVERRIDE
 
-	Main::setup(argv[0], argc - 1, &argv[1]);
+	if (Main::setup(argv[0], argc - 1, &argv[1]) != OK) {
+		os->set_exit_code(1);
+		godot_js_os_finish_async(cleanup_after_sync);
+		return 0;
+	}
 
 	// Ease up compatibility.
 	ResourceLoader::set_abort_on_missing_resources(false);

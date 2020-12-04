@@ -31,6 +31,12 @@
 #include "platform/javascript/display_server_javascript.h"
 
 #include "drivers/dummy/rasterizer_dummy.h"
+#ifdef GLES2_BACKEND_ENABLED
+#include "drivers/gles2/rasterizer_gles2.h"
+#endif
+#ifdef GLES3_BACKEND_ENABLED
+#include "drivers/gles3/rasterizer_gles3.h"
+#endif
 #include "platform/javascript/os_javascript.h"
 
 #include <emscripten.h>
@@ -611,6 +617,7 @@ String DisplayServerJavaScript::get_joy_guid(int p_device) const {
 
 Vector<String> DisplayServerJavaScript::get_rendering_drivers_func() {
 	Vector<String> drivers;
+	drivers.push_back("GLES2");
 	drivers.push_back("dummy");
 	return drivers;
 }
@@ -715,41 +722,43 @@ DisplayServerJavaScript::DisplayServerJavaScript(const String &p_rendering_drive
 	// Expose method for requesting quit.
 	godot_js_os_request_quit_cb(request_quit_callback);
 
-	RasterizerDummy::make_current(); // TODO GLES2 in Godot 4.0... or webgpu?
-#if 0
 	EmscriptenWebGLContextAttributes attributes;
 	emscripten_webgl_init_context_attributes(&attributes);
-	attributes.alpha = GLOBAL_GET("display/window/per_pixel_transparency/allowed");
+	attributes.alpha = OS::get_singleton()->is_layered_allowed();
 	attributes.antialias = false;
-	ERR_FAIL_INDEX_V(p_video_driver, VIDEO_DRIVER_MAX, ERR_INVALID_PARAMETER);
 
-	if (p_desired.layered) {
-		set_window_per_pixel_transparency_enabled(true);
-	}
-
-	bool gl_initialization_error = false;
-
-	if (RasterizerGLES2::is_viable() == OK) {
+	if (p_rendering_driver == "dummy") {
+		RasterizerDummy::make_current();
+#ifdef GLES2_BACKEND_ENABLED
+	} else if (p_rendering_driver == "GLES2") {
 		attributes.majorVersion = 1;
-		RasterizerGLES2::register_config();
 		RasterizerGLES2::make_current();
-	} else {
-		gl_initialization_error = true;
-	}
-
-	EMSCRIPTEN_WEBGL_CONTEXT_HANDLE ctx = emscripten_webgl_create_context(canvas_id, &attributes);
-	if (emscripten_webgl_make_context_current(ctx) != EMSCRIPTEN_RESULT_SUCCESS) {
-		gl_initialization_error = true;
-	}
-
-	if (gl_initialization_error) {
-		OS::get_singleton()->alert("Your browser does not seem to support WebGL. Please update your browser version.",
-				"Unable to initialize video driver");
-		return ERR_UNAVAILABLE;
-	}
-
-	video_driver_index = p_video_driver;
+		webgl_ctx = emscripten_webgl_create_context(canvas_id, &attributes);
+		if (emscripten_webgl_make_context_current(webgl_ctx) != EMSCRIPTEN_RESULT_SUCCESS) {
+			alert("Your browser does not seem to support WebGL. Please update your browser version.",
+					"Unable to initialize rendering driver");
+			r_error = ERR_UNAVAILABLE;
+			return;
+		}
 #endif
+#if GLES3_BACKEND_ENABLED
+	} else if (p_rendering_driver == "GLES3") {
+		attributes.majorVersion = 2;
+		RasterizerGLES3::make_current();
+		webgl_ctx = emscripten_webgl_create_context(canvas_id, &attributes);
+		if (emscripten_webgl_make_context_current(webgl_ctx) != EMSCRIPTEN_RESULT_SUCCESS) {
+			alert("Your browser does not seem to support WebGL2. Please update your browser version.",
+					"Unable to initialize rendering driver");
+			r_error = ERR_UNAVAILABLE;
+			return;
+		}
+#endif
+	} else {
+		alert("Rendering driver: '" + p_rendering_driver + "' is not supported by the HTML5 platform.",
+				"Unable to initialize rendering driver");
+		r_error = ERR_UNAVAILABLE;
+		return;
+	}
 
 	window_set_mode(p_mode);
 	if (godot_js_config_is_resize_on_start()) {
@@ -803,8 +812,8 @@ DisplayServerJavaScript::DisplayServerJavaScript(const String &p_rendering_drive
 }
 
 DisplayServerJavaScript::~DisplayServerJavaScript() {
-	//emscripten_webgl_commit_frame();
-	//emscripten_webgl_destroy_context(webgl_ctx);
+	emscripten_webgl_commit_frame();
+	emscripten_webgl_destroy_context(webgl_ctx);
 }
 
 bool DisplayServerJavaScript::has_feature(Feature p_feature) const {
@@ -1039,5 +1048,5 @@ bool DisplayServerJavaScript::get_swap_cancel_ok() {
 }
 
 void DisplayServerJavaScript::swap_buffers() {
-	//emscripten_webgl_commit_frame();
+	emscripten_webgl_commit_frame();
 }

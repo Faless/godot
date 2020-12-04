@@ -404,9 +404,7 @@
 				const is_editor = args.filter(function(v) { return v == '--editor' || v == '-e' }).length != 0;
 				const is_project_manager = args.filter(function(v) { return v == '--project-manager' }).length != 0;
 				const is_game = !is_editor && !is_project_manager;
-				if (is_project_manager) {
-					args.push('--video-driver', video_driver);
-				}
+				args.push('--rendering-driver', video_driver, '--single-window');
 				if (is_game) {
 					if (game) {
 						console.error("A game is already running. Close it first");
@@ -481,7 +479,7 @@
 						showTab('loader');
 						setLoaderEnabled(true);
 					});
-					engine.start('--video-driver', video_driver).then(function() {
+					engine.start('--rendering-driver', video_driver, '--single-window').then(function() {
 						setStatusMode('hidden');
 						initializing = false;
 					});

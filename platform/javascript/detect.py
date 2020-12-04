@@ -84,9 +84,9 @@ def configure(env):
         if not env["threads_enabled"]:
             print("Threads must be enabled to build the editor. Please add the 'threads_enabled=yes' option")
             sys.exit(255)
-        if env["initial_memory"] < 32:
+        if env["initial_memory"] < 64:
             print("Editor build requires at least 32MiB of initial memory. Forcing it.")
-            env["initial_memory"] = 32
+            env["initial_memory"] = 64
     elif env["builtin_icu"]:
         env.Append(CCFLAGS=["-frtti"])
     else:
@@ -163,7 +163,7 @@ def configure(env):
     env["LIBSUFFIXES"] = ["$LIBSUFFIX"]
 
     env.Prepend(CPPPATH=["#platform/javascript"])
-    env.Append(CPPDEFINES=["JAVASCRIPT_ENABLED", "UNIX_ENABLED"])
+    env.Append(CPPDEFINES=["JAVASCRIPT_ENABLED", "UNIX_ENABLED", "GLES2_BACKEND_ENABLED"])
 
     if env["javascript_eval"]:
         env.Append(CPPDEFINES=["JAVASCRIPT_EVAL_ENABLED"])

@@ -146,11 +146,12 @@ bool DirAccessJAndroid::file_exists(String p_file) {
 	else
 		sd = current_dir.plus_file(p_file);
 
-	FileAccessJAndroid *f = memnew(FileAccessJAndroid);
-	bool exists = f->file_exists(sd);
-	memdelete(f);
+	return true;
+	//FileAccessJAndroid *f = memnew(FileAccessJAndroid);
+	//bool exists = f->file_exists(sd);
+	//memdelete(f);
 
-	return exists;
+	//return exists;
 }
 
 bool DirAccessJAndroid::dir_exists(String p_dir) {

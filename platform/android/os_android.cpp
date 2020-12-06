@@ -60,11 +60,7 @@ void OS_Android::initialize_core() {
 	if (use_apk_expansion)
 		FileAccess::make_default<FileAccessUnix>(FileAccess::ACCESS_RESOURCES);
 	else {
-#ifdef USE_JAVA_FILE_ACCESS
-		FileAccess::make_default<FileAccessJAndroid>(FileAccess::ACCESS_RESOURCES);
-#else
 		FileAccess::make_default<FileAccessAndroid>(FileAccess::ACCESS_RESOURCES);
-#endif
 	}
 	FileAccess::make_default<FileAccessUnix>(FileAccess::ACCESS_USERDATA);
 	FileAccess::make_default<FileAccessUnix>(FileAccess::ACCESS_FILESYSTEM);

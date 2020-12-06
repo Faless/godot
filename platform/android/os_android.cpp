@@ -33,12 +33,11 @@
 #include "core/config/project_settings.h"
 #include "drivers/unix/dir_access_unix.h"
 #include "drivers/unix/file_access_unix.h"
-#include "file_access_android.h"
 #include "main/main.h"
 #include "platform/android/display_server_android.h"
 
 #include "dir_access_jandroid.h"
-#include "file_access_jandroid.h"
+#include "file_access_android.h"
 #include "net_socket_android.h"
 
 #include <dlfcn.h>

@@ -1,0 +1,23 @@
+name: 'Upload Godot Artifact'
+description: 'Upload Godot artifact'
+inputs:
+  name:
+    description: "The artifact name."
+    required: true
+    default: ${{ github.job }}
+  path:
+    description: "The path to upload"
+    required: true
+    default: 'builddir/*'
+runs:
+  using: "composite"
+  steps:
+    - name: "Temporary disabled"
+      shell: bash
+      run: |
+        echo "Temporary disabled"
+#    - uses: actions/upload-artifact@v2
+#      with:
+#        name: ${{ github.job }}
+#        path: bin/*
+#        retention-days: 14

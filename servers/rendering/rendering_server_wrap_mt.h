@@ -77,8 +77,12 @@ public:
 #include "servers/server_wrap_mt_common.h"
 
 	//these go pass-through, as they can be called from any thread
-	virtual RID texture_2d_create(const Ref<Image> &p_image) { return rendering_server->texture_2d_create(p_image); }
-	virtual RID texture_2d_layered_create(const Vector<Ref<Image>> &p_layers, TextureLayeredType p_layered_type) { return rendering_server->texture_2d_layered_create(p_layers, p_layered_type); }
+	//virtual RID texture_2d_create(const Ref<Image> &p_image) { return rendering_server->texture_2d_create(p_image); }
+	//virtual RID texture_2d_layered_create(const Vector<Ref<Image>> &p_layers, TextureLayeredType p_layered_type) { return rendering_server->texture_2d_layered_create(p_layers, p_layered_type); }
+	// FIXME likely need a proper fix
+	FUNC1R(RID, texture_2d_create, const Ref<Image> &)
+	FUNC2R(RID, texture_2d_layered_create, const Vector<Ref<Image>> &, TextureLayeredType)
+
 	virtual RID texture_3d_create(Image::Format p_format, int p_width, int p_height, int p_depth, bool p_mipmaps, const Vector<Ref<Image>> &p_data) { return rendering_server->texture_3d_create(p_format, p_width, p_height, p_depth, p_mipmaps, p_data); }
 	virtual RID texture_proxy_create(RID p_base) { return rendering_server->texture_proxy_create(p_base); }
 

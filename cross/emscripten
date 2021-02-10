@@ -1,0 +1,18 @@
+[binaries]
+c = 'emcc'
+cpp = 'em++'
+objc = 'emcc'
+ar = 'emar'
+
+[properties]
+platform = 'javascript'
+shared_lib_suffix = 'js'
+static_lib_suffix = 'js'
+shared_module_suffix = 'js'
+exe_suffix = 'js'
+
+[host_machine]
+system = 'emscripten'
+cpu_family = 'wasm32'
+cpu = 'wasm32'
+endian = 'little'

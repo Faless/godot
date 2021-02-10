@@ -23,10 +23,48 @@ _target_javascript_run_icon = custom_target(
 )
 SOURCES += [_target_javascript_run_icon]
 
-
 ################################################################################
 # Host Machine Specifics
 ################################################################################
 if PLATFORM == 'javascript'
-    error('javascript not implemented yet')
+    dir_base = meson.current_source_dir()
+    _js_libs = [
+        join_paths(dir_base, 'js/libs/library_godot_audio.js'),
+        join_paths(dir_base, 'js/libs/library_godot_audio.js'),
+        join_paths(dir_base, 'js/libs/library_godot_display.js'),
+        join_paths(dir_base, 'js/libs/library_godot_http_request.js'),
+        join_paths(dir_base, 'js/libs/library_godot_os.js'),
+        join_paths(dir_base, 'js/libs/library_godot_runtime.js'),
+        join_paths(dir_base, 'js/libs/library_godot_eval.js'), # TODO
+    ]
+
+    # add the javascript main to main sources
+    MAIN_SOURCES += files('javascript_runtime.cpp')
+
+    # the src files for the javascript *platform* library
+    _javascript_srcs = files([
+        'audio_driver_javascript.cpp',
+        'display_server_javascript.cpp',
+        'http_client_javascript.cpp',
+        'javascript_eval.cpp',
+        'javascript_main.cpp',
+        'os_javascript.cpp',
+        'api/javascript_tools_editor_plugin.cpp',
+    ])
+
+    foreach js_lib : _js_libs
+        DEPENDENCIES += declare_dependency(link_args: ['--js-library', js_lib])
+    endforeach
+
+    # Explicit IDBFS dependency
+    DEPENDENCIES += declare_dependency(link_args: '-lidbfs.js')
+
+    CPP_ARGS += [
+        '-DJAVASCRIPT_ENABLED',
+        '-DUNIX_ENABLED',
+        '-DJAVASCRIPT_EVAL_ENABLED', # TODO
+	'-DNO_THREADS',
+    ]
+
+    SOURCES += _javascript_srcs
 endif

@@ -18,8 +18,8 @@ if 'gdnative' in MODULES_ENABLED
 endif
 
 if PLATFORM == 'javascript'
-    error('javascript not setup for webrtc')
-    # library_godot_webrtc.js
+    dir_base = meson.current_source_dir()
+    DEPENDENCIES += declare_dependency(link_args: ['--js-library', join_paths(dir_base, 'library_godot_webrtc.js')])
 endif
 
 lib_module_webrtc = library('module_webrtc', _module_webrtc_srcs, dependencies: _module_webrtc_deps, cpp_args: _module_webrtc_compile_args)

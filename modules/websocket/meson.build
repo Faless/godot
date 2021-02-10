@@ -17,8 +17,8 @@ _module_websocket_srcs = files([
 _module_websocket_deps = [DEP_GODOT_ALL]
 
 if PLATFORM == 'javascript'
-    error('javascript not setup for websocket')
-    # library_godot_websocket.js
+    dir_base = meson.current_source_dir()
+    DEPENDENCIES += declare_dependency(link_args: ['--js-library', join_paths(dir_base, 'library_godot_websocket.js')])
 else
     _module_websocket_deps += DEP_WSLAY
 endif

@@ -45,9 +45,9 @@ const Preloader = /** @constructor */ function () { // eslint-disable-line no-un
 		}), { headers: response.headers });
 	}
 
-	function loadFetch(file, tracker, raw) {
+	function loadFetch(file, tracker, fileSize, raw) {
 		tracker[file] = {
-			total: 0,
+			total: fileSize || 0,
 			loaded: 0,
 			done: false,
 		};
@@ -120,16 +120,16 @@ const Preloader = /** @constructor */ function () { // eslint-disable-line no-un
 		progressFunc = callback;
 	};
 
-	this.loadPromise = function (file, raw = false) {
-		return retry(loadFetch.bind(null, file, loadingFiles, raw), DOWNLOAD_ATTEMPTS_MAX);
+	this.loadPromise = function (file, fileSize, raw = false) {
+		return retry(loadFetch.bind(null, file, loadingFiles, fileSize, raw), DOWNLOAD_ATTEMPTS_MAX);
 	};
 
 	this.preloadedFiles = [];
-	this.preload = function (pathOrBuffer, destPath) {
+	this.preload = function (pathOrBuffer, destPath, fileSize) {
 		let buffer = null;
 		if (typeof pathOrBuffer === 'string') {
 			const me = this;
-			return this.loadPromise(pathOrBuffer).then(function (buffer) {
+			return this.loadPromise(pathOrBuffer, fileSize).then(function (buffer) {
 				me.preloadedFiles.push({
 					path: destPath || pathOrBuffer,
 					buffer: buffer,

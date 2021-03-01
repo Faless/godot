@@ -47,8 +47,6 @@ protected:
 	Array _get_data(int p_bytes);
 	Array _get_partial_data(int p_bytes);
 
-	bool big_endian = false;
-
 public:
 	virtual Error put_data(const uint8_t *p_data, int p_bytes) = 0; ///< put a whole chunk of data, blocking until it sent
 	virtual Error put_partial_data(const uint8_t *p_data, int p_bytes, int &r_sent) = 0; ///< put as much data as possible, without blocking.
@@ -57,9 +55,6 @@ public:
 	virtual Error get_partial_data(uint8_t *p_buffer, int p_bytes, int &r_received) = 0; ///< read as much data as p_bytes into buffer, if less was read, return in r_received
 
 	virtual int get_available_bytes() const = 0;
-
-	void set_big_endian(bool p_enable);
-	bool is_big_endian_enabled() const;
 
 	void put_8(int8_t p_val);
 	void put_u8(uint8_t p_val);

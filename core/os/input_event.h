@@ -271,6 +271,7 @@ class InputEventKey : public InputEventWithModifiers {
 	bool pressed; /// otherwise release
 
 	uint32_t scancode; ///< check keyboard.h , KeyCode enum, without modifier masks
+	uint32_t physical_scancode;
 	uint32_t unicode; ///unicode
 
 	bool echo; /// true if this is an echo key
@@ -285,6 +286,9 @@ public:
 	void set_scancode(uint32_t p_scancode);
 	uint32_t get_scancode() const;
 
+	void set_physical_scancode(uint32_t p_scancode);
+	uint32_t get_physical_scancode() const;
+
 	void set_unicode(uint32_t p_unicode);
 	uint32_t get_unicode() const;
 
@@ -292,6 +296,7 @@ public:
 	virtual bool is_echo() const;
 
 	uint32_t get_scancode_with_modifiers() const;
+	uint32_t get_physical_scancode_with_modifiers() const;
 
 	virtual bool action_match(const Ref<InputEvent> &p_event, bool *p_pressed, float *p_strength, float p_deadzone) const;
 	virtual bool shortcut_match(const Ref<InputEvent> &p_event) const;

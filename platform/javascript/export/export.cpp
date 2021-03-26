@@ -282,12 +282,17 @@ void EditorExportPlatformJavaScript::_fix_html(Vector<uint8_t> &p_html, const Re
 	config["fileSizes"] = p_file_sizes;
 	const String str_config = JSON::print(config);
 
+	String head_include;
+	if (p_preset->get("html/export_icon")) {
+		head_include += "<link id='-gd-engine-icon' rel='icon' type='image/png' href='" + p_name + ".icon.png' />\n";
+	}
+	head_include += static_cast<String>(p_preset->get("html/head_include"));
 	for (int i = 0; i < lines.size(); i++) {
 
 		String current_line = lines[i];
 		current_line = current_line.replace("$GODOT_URL", p_name + ".js");
 		current_line = current_line.replace("$GODOT_PROJECT_NAME", ProjectSettings::get_singleton()->get_setting("application/config/name"));
-		current_line = current_line.replace("$GODOT_HEAD_INCLUDE", p_preset->get("html/head_include"));
+		current_line = current_line.replace("$GODOT_HEAD_INCLUDE", head_include);
 		current_line = current_line.replace("$GODOT_CONFIG", str_config);
 		str_export += current_line + "\n";
 	}
@@ -331,6 +336,7 @@ void EditorExportPlatformJavaScript::get_export_options(List<ExportOption> *r_op
 	r_options->push_back(ExportOption(PropertyInfo(Variant::INT, "variant/export_type", PROPERTY_HINT_ENUM, "Regular,Threads,GDNative"), 0)); // Export type.
 	r_options->push_back(ExportOption(PropertyInfo(Variant::BOOL, "vram_texture_compression/for_desktop"), true)); // S3TC
 	r_options->push_back(ExportOption(PropertyInfo(Variant::BOOL, "vram_texture_compression/for_mobile"), false)); // ETC or ETC2, depending on renderer
+	r_options->push_back(ExportOption(PropertyInfo(Variant::BOOL, "html/export_icon"), true));
 	r_options->push_back(ExportOption(PropertyInfo(Variant::STRING, "html/custom_html_shell", PROPERTY_HINT_FILE, "*.html"), ""));
 	r_options->push_back(ExportOption(PropertyInfo(Variant::STRING, "html/head_include", PROPERTY_HINT_MULTILINE_TEXT), ""));
 	r_options->push_back(ExportOption(PropertyInfo(Variant::INT, "html/canvas_resize_policy", PROPERTY_HINT_ENUM, "None,Project,Adaptive"), 2));
@@ -407,6 +413,7 @@ Error EditorExportPlatformJavaScript::export_project(const Ref<EditorExportPrese
 	String custom_debug = p_preset->get("custom_template/debug");
 	String custom_release = p_preset->get("custom_template/release");
 	String custom_html = p_preset->get("html/custom_html_shell");
+	bool export_icon = p_preset->get("html/export_icon");
 
 	String template_path = p_debug ? custom_debug : custom_release;
 
@@ -576,18 +583,21 @@ Error EditorExportPlatformJavaScript::export_project(const Ref<EditorExportPrese
 
 	// Save a favicon that can be accessed without waiting for the project to finish loading.
 	// This way, the favicon can be displayed immediately when loading the page.
-	Ref<Image> favicon;
-	const String favicon_path = String(GLOBAL_GET("application/config/icon")).strip_edges();
-	if (!favicon_path.empty()) {
-		favicon.instance();
-		const Error err = favicon->load(favicon_path);
-		if (err) {
-			favicon.unref();
+	if (export_icon) {
+		Ref<Image> favicon;
+		const String favicon_path = String(GLOBAL_GET("application/config/icon")).strip_edges();
+		if (!favicon_path.empty()) {
+			favicon.instance();
+			const Error err = favicon->load(favicon_path);
+			if (err) {
+				favicon.unref();
+			}
 		}
-	}
 
-	if (favicon.is_valid()) {
-		const String favicon_png_path = p_path.get_base_dir().plus_file("favicon.png");
+		if (favicon.is_null()) {
+			favicon = EditorNode::get_singleton()->get_editor_theme()->get_icon("DefaultProjectIcon", "EditorIcons")->get_data();
+		}
+		const String favicon_png_path = p_path.get_base_dir().plus_file(p_path.get_file().get_basename() + ".icon.png");
 		if (favicon->save_png(favicon_png_path) != OK) {
 			EditorNode::get_singleton()->show_warning(TTR("Could not write file:") + "\n" + favicon_png_path);
 			return ERR_FILE_CANT_WRITE;
@@ -662,7 +672,7 @@ Error EditorExportPlatformJavaScript::run(const Ref<EditorExportPreset> &p_prese
 		DirAccess::remove_file_or_error(basepath + ".png");
 		DirAccess::remove_file_or_error(basepath + ".side.wasm");
 		DirAccess::remove_file_or_error(basepath + ".wasm");
-		DirAccess::remove_file_or_error(dest.plus_file("favicon.png"));
+		DirAccess::remove_file_or_error(basepath + ".icon.png");
 		return err;
 	}
 

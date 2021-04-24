@@ -40,7 +40,7 @@
 #include "core/io/stream_peer_tcp.h"
 #include "core/io/tcp_server.h"
 
-#define WSL_SERVER_TIMEOUT 1000
+#define WSL_SERVER_TIMEOUT 3000
 
 class WSLServer : public WebSocketServer {
 

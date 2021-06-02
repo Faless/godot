@@ -48,15 +48,17 @@ class RingBuffer {
 		const size = this.buffer.length;
 		let from = 0;
 		let to_write = output.length;
-		if (this.rpos + to_write > size) {
+		if (this.rpos + to_write >= size) {
 			const high = size - this.rpos;
 			output.set(this.buffer.subarray(this.rpos, size));
 			from = high;
 			to_write -= high;
 			this.rpos = 0;
 		}
-		output.set(this.buffer.subarray(this.rpos, this.rpos + to_write), from);
-		this.rpos += to_write;
+		if (to_write > 0) {
+			output.set(this.buffer.subarray(this.rpos, this.rpos + to_write), from);
+			this.rpos += to_write;
+		}
 		Atomics.add(this.avail, 0, -output.length);
 		Atomics.notify(this.avail, 0);
 	}

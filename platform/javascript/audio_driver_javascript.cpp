@@ -32,8 +32,6 @@
 
 #include "core/project_settings.h"
 
-#include <emscripten.h>
-
 AudioDriverJavaScript *AudioDriverJavaScript::singleton = nullptr;
 
 bool AudioDriverJavaScript::is_available() {

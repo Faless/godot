@@ -34,7 +34,6 @@
 #include "webrtc_peer_connection.h"
 
 #ifdef JAVASCRIPT_ENABLED
-#include "emscripten.h"
 #include "webrtc_peer_connection_js.h"
 #endif
 #ifdef WEBRTC_GDNATIVE_ENABLED

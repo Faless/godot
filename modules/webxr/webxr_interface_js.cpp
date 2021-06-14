@@ -33,10 +33,10 @@
 #include "webxr_interface_js.h"
 #include "core/os/input.h"
 #include "core/os/os.h"
-#include "emscripten.h"
 #include "godot_webxr.h"
 #include "main/input_default.h"
 #include "servers/visual/visual_server_globals.h"
+
 #include <stdlib.h>
 
 void _emwebxr_on_session_supported(char *p_session_mode, int p_supported) {
@@ -96,7 +96,7 @@ void _emwebxr_on_controller_changed() {
 	((WebXRInterfaceJS *)interface.ptr())->_on_controller_changed();
 }
 
-extern "C" EMSCRIPTEN_KEEPALIVE void _emwebxr_on_input_event(char *p_signal_name, int p_input_source) {
+void _emwebxr_on_input_event(char *p_signal_name, int p_input_source) {
 	ARVRServer *arvr_server = ARVRServer::get_singleton();
 	ERR_FAIL_NULL(arvr_server);
 
@@ -107,7 +107,7 @@ extern "C" EMSCRIPTEN_KEEPALIVE void _emwebxr_on_input_event(char *p_signal_name
 	interface->emit_signal(signal_name, p_input_source + 1);
 }
 
-extern "C" EMSCRIPTEN_KEEPALIVE void _emwebxr_on_simple_event(char *p_signal_name) {
+void _emwebxr_on_simple_event(char *p_signal_name) {
 	ARVRServer *arvr_server = ARVRServer::get_singleton();
 	ERR_FAIL_NULL(arvr_server);
 

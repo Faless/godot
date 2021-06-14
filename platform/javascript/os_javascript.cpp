@@ -42,7 +42,7 @@
 #endif
 
 #include <dlfcn.h>
-#include <emscripten.h>
+#include <emscripten/emscripten.h>
 #include <png.h>
 #include <stdlib.h>
 

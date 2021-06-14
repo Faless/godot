@@ -35,7 +35,6 @@
 #include "webrtc_data_channel_js.h"
 
 #include "core/io/json.h"
-#include "emscripten.h"
 
 void WebRTCPeerConnectionJS::_on_ice_candidate(void *p_obj, const char *p_mid_name, int p_mline_idx, const char *p_candidate) {
 	WebRTCPeerConnectionJS *peer = static_cast<WebRTCPeerConnectionJS *>(p_obj);

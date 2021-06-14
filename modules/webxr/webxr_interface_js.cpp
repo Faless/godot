@@ -33,7 +33,6 @@
 #include "webxr_interface_js.h"
 #include "core/input/input.h"
 #include "core/os/os.h"
-#include "emscripten.h"
 #include "godot_webxr.h"
 #include <stdlib.h>
 

@@ -31,7 +31,6 @@
 #ifdef JAVASCRIPT_EVAL_ENABLED
 
 #include "api/javascript_singleton.h"
-#include "emscripten.h"
 
 extern "C" {
 typedef union {

@@ -43,7 +43,7 @@
 #endif
 
 #include <dlfcn.h>
-#include <emscripten.h>
+#include <emscripten/emscripten.h>
 #include <stdlib.h>
 
 #include "godot_js.h"

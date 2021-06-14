@@ -33,7 +33,6 @@
 #include "emws_client.h"
 #include "core/config/project_settings.h"
 #include "core/io/ip.h"
-#include "emscripten.h"
 
 void EMWSClient::_esws_on_connect(void *obj, char *proto) {
 	EMWSClient *client = static_cast<EMWSClient *>(obj);

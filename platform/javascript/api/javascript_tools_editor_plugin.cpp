@@ -37,8 +37,6 @@
 #include "core/io/file_access.h"
 #include "editor/editor_node.h"
 
-#include <emscripten/emscripten.h>
-
 // JavaScript functions defined in library_godot_editor_tools.js
 extern "C" {
 extern int godot_js_os_download_buffer(const uint8_t *p_buf, int p_buf_size, const char *p_name, const char *p_mime);

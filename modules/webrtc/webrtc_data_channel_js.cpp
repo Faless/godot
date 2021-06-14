@@ -31,7 +31,6 @@
 #ifdef JAVASCRIPT_ENABLED
 
 #include "webrtc_data_channel_js.h"
-#include "emscripten.h"
 
 extern "C" {
 typedef void (*RTCChOnOpen)(void *p_obj);

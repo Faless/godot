@@ -32,7 +32,6 @@
 #include "core/config/project_settings.h"
 #include "core/error/error_macros.h"
 #ifdef JAVASCRIPT_ENABLED
-#include "emscripten.h"
 #include "emws_client.h"
 #include "emws_peer.h"
 #include "emws_server.h"

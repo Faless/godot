@@ -54,6 +54,7 @@ extern int godot_js_wrapper_object_setvar(int p_id, int p_key_type, godot_js_wra
 extern void godot_js_wrapper_object_set(int p_id, const char *p_name, int p_type, godot_js_wrapper_ex *p_val);
 extern void godot_js_wrapper_object_unref(int p_id);
 extern int godot_js_wrapper_create_cb(void *p_ref, void (*p_callback)(void *p_ref, int p_arg_id, int p_argc));
+extern void godot_js_wrapper_object_set_cb_ret(int p_type, godot_js_wrapper_ex *p_val);
 extern int godot_js_wrapper_create_object(const char *p_method, void **p_args, int p_argc, GodotJSWrapperVariant2JSCallback p_variant2js_callback, godot_js_wrapper_ex *p_cb_rval, void **p_lock, GodotJSWrapperFreeLockCallback p_lock_callback);
 };
 
@@ -256,7 +257,17 @@ void JavaScriptObjectImpl::_callback(void *p_ref, int p_args_id, int p_argc) {
 	Variant arg = arg_arr;
 	const Variant *argv[1] = { &arg };
 	Variant::CallError err;
-	obj->_ref->call(obj->_method, argv, 1, err);
+	Variant ret = obj->_ref->call(obj->_method, argv, 1, err);
+
+	// Set return value
+	godot_js_wrapper_ex exchange;
+	void *lock = nullptr;
+	const Variant *v = &ret;
+	int type = _variant2js((const void **)&v, 0, &exchange, &lock);
+	godot_js_wrapper_object_set_cb_ret(type, &exchange);
+	if (lock) {
+		_free_lock(&lock, type);
+	}
 }
 
 Ref<JavaScriptObject> JavaScript::create_callback(Object *p_ref, const StringName &p_method) {

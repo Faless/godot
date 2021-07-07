@@ -229,7 +229,7 @@ EM_BOOL DisplayServerJavaScript::mouse_button_callback(int p_event_type, const E
 	}
 
 	Input *input = Input::get_singleton();
-	MouseButton mask = input->get_mouse_button_mask();
+	int mask = input->get_mouse_button_mask();
 	MouseButton button_flag = MouseButton(1 << (ev->get_button_index() - 1));
 	if (ev->is_pressed()) {
 		// Since the event is consumed, focus manually. The containing iframe,
@@ -605,17 +605,17 @@ void DisplayServerJavaScript::process_joypads() {
 				Input::JoyAxisValue joy_axis;
 				joy_axis.min = 0;
 				joy_axis.value = value;
-				int a = b == 6 ? JOY_AXIS_TRIGGER_LEFT : JOY_AXIS_TRIGGER_RIGHT;
+				JoyAxis a = b == 6 ? JOY_AXIS_TRIGGER_LEFT : JOY_AXIS_TRIGGER_RIGHT;
 				input->joy_axis(idx, a, joy_axis);
 			} else {
-				input->joy_button(idx, b, value);
+				input->joy_button(idx, (JoyButton)b, value);
 			}
 		}
 		for (int a = 0; a < s_axes_num; a++) {
 			Input::JoyAxisValue joy_axis;
 			joy_axis.min = -1;
 			joy_axis.value = s_axes[a];
-			input->joy_axis(idx, a, joy_axis);
+			input->joy_axis(idx, (JoyAxis)a, joy_axis);
 		}
 	}
 }

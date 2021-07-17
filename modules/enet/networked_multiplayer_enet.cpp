@@ -890,6 +890,11 @@ uint32_t NetworkedMultiplayerENet::pop_host_statistic(HostStatistic p_stat) {
 	return ret;
 }
 
+void NetworkedMultiplayerENet::peer_throttle_configure(int p_peer, uint32_t p_interval, uint32_t p_acceleration, uint32_t p_deceleration) {
+	ERR_FAIL_COND_MSG(!peer_map.has(p_peer), vformat("Peer ID %d not found in the list of peers.", p_peer));
+	enet_peer_throttle_configure(peer_map[p_peer], p_interval, p_acceleration, p_deceleration);
+}
+
 void NetworkedMultiplayerENet::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("create_server", "port", "max_clients", "in_bandwidth", "out_bandwidth"), &NetworkedMultiplayerENet::create_server, DEFVAL(32), DEFVAL(0), DEFVAL(0));
 	ClassDB::bind_method(D_METHOD("create_client", "address", "port", "in_bandwidth", "out_bandwidth", "client_port"), &NetworkedMultiplayerENet::create_client, DEFVAL(0), DEFVAL(0), DEFVAL(0));
@@ -921,6 +926,7 @@ void NetworkedMultiplayerENet::_bind_methods() {
 
 	ClassDB::bind_method(D_METHOD("get_peer_statistic", "peer_id", "statistic"), &NetworkedMultiplayerENet::get_peer_statistic);
 	ClassDB::bind_method(D_METHOD("pop_host_statistic", "statistic"), &NetworkedMultiplayerENet::pop_host_statistic);
+	ClassDB::bind_method(D_METHOD("peer_throttle_configure", "peer_id", "interval", "acceleration", "deceleration"), &NetworkedMultiplayerENet::peer_throttle_configure);
 
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "compression_mode", PROPERTY_HINT_ENUM, "None,Range Coder,FastLZ,ZLib,ZStd"), "set_compression_mode", "get_compression_mode");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "transfer_channel"), "set_transfer_channel", "get_transfer_channel");
@@ -955,6 +961,8 @@ void NetworkedMultiplayerENet::_bind_methods() {
 	BIND_ENUM_CONSTANT(HOST_TOTAL_SENT_PACKETS);
 	BIND_ENUM_CONSTANT(HOST_TOTAL_RECEIVED_DATA);
 	BIND_ENUM_CONSTANT(HOST_TOTAL_RECEIVED_PACKETS);
+
+	BIND_CONSTANT(PACKET_THROTTLE_SCALE);
 }
 
 NetworkedMultiplayerENet::NetworkedMultiplayerENet() {

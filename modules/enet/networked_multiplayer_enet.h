@@ -41,6 +41,10 @@ class NetworkedMultiplayerENet : public NetworkedMultiplayerPeer {
 	GDCLASS(NetworkedMultiplayerENet, NetworkedMultiplayerPeer);
 
 public:
+	enum {
+		PACKET_THROTTLE_SCALE = ENET_PEER_PACKET_THROTTLE_SCALE,
+	};
+
 	enum CompressionMode {
 		COMPRESS_NONE,
 		COMPRESS_RANGE_CODER,
@@ -192,6 +196,7 @@ public:
 	bool is_server_relay_enabled() const;
 	double get_peer_statistic(int p_peer, PeerStatistic p_stat);
 	uint32_t pop_host_statistic(HostStatistic p_stat);
+	void peer_throttle_configure(int p_peer, uint32_t p_interval, uint32_t p_acceleration, uint32_t p_deceleration);
 
 	NetworkedMultiplayerENet();
 	~NetworkedMultiplayerENet();

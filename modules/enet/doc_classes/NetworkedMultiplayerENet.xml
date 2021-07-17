@@ -108,6 +108,26 @@
 				Returns the specified [code]statistic[/code] associated with a the peer identified by [code]peer_id[/code]. See [enum PeerStatistic].
 			</description>
 		</method>
+		<method name="peer_throttle_configure">
+			<return type="void">
+			</return>
+			<argument index="0" name="peer_id" type="int">
+			</argument>
+			<argument index="1" name="interval" type="int">
+			</argument>
+			<argument index="2" name="acceleration" type="int">
+			</argument>
+			<argument index="3" name="deceleration" type="int">
+			</argument>
+			<description>
+				Configures throttle parameter for a peer.
+				Unreliable packets are dropped by ENet in response to the varying conditions of the Internet connection to the peer. The throttle represents a probability that an unreliable packet should not be dropped and thus sent by ENet to the peer.
+				By measuring fluctuations in round trip times of reliable packets over the specified [code]interval[/code], ENet will either increase the probably by the amount specified in the [code]acceleration[/code] parameter, or decrease it by the amount specified in the [code]deceleration[/code] parameter (both are ratios to [constant PACKET_THROTTLE_SCALE]).
+				When the throttle has a value of [constant PACKET_THROTTLE_SCALE], no unreliable packets are dropped by ENet, and so 100% of all unreliable packets will be sent.
+				When the throttle has a value of 0, all unreliable packets are dropped by ENet, and so 0% of all unreliable packets will be sent.
+				Intermediate values for the throttle represent intermediate probabilities between 0% and 100% of unreliable packets being sent. The bandwidth limits of the local and foreign hosts are taken into account to determine a sensible limit for the throttle probability above which it should not raise even in the best of conditions.
+			</description>
+		</method>
 		<method name="pop_host_statistic">
 			<return type="int">
 			</return>
@@ -256,6 +276,9 @@
 		</constant>
 		<constant name="HOST_TOTAL_RECEIVED_PACKETS" value="3" enum="HostStatistic">
 			Used to retrieve the total received packets. See [method pop_host_statistic].
+		</constant>
+		<constant name="PACKET_THROTTLE_SCALE" value="32">
+			The scale used to determine peer throttling. See [method peer_throttle_configure]
 		</constant>
 	</constants>
 </class>

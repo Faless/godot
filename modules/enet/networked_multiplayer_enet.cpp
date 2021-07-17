@@ -831,6 +831,65 @@ bool NetworkedMultiplayerENet::is_server_relay_enabled() const {
 	return server_relay;
 }
 
+double NetworkedMultiplayerENet::get_peer_statistic(int p_peer_id, PeerStatistic p_stat) {
+	ERR_FAIL_COND_V_MSG(!peer_map.has(p_peer_id), 0, vformat("Peer ID %d not found in the list of peers.", p_peer_id));
+	ENetPeer *p = peer_map[p_peer_id];
+	switch (p_stat) {
+		case PEER_PACKET_LOSS:
+			return p->packetLoss;
+		case PEER_PACKET_LOSS_VARIANCE:
+			return p->packetLossVariance;
+		case PEER_PACKET_LOSS_EPOCH:
+			return p->packetLossEpoch;
+		case PEER_ROUND_TRIP_TIME:
+			return p->roundTripTime;
+		case PEER_ROUND_TRIP_TIME_VARIANCE:
+			return p->roundTripTimeVariance;
+		case PEER_LAST_ROUND_TRIP_TIME:
+			return p->lastRoundTripTime;
+		case PEER_LAST_ROUND_TRIP_TIME_VARIANCE:
+			return p->lastRoundTripTimeVariance;
+		case PEER_PACKET_THROTTLE:
+			return p->packetThrottle;
+		case PEER_PACKET_THROTTLE_LIMIT:
+			return p->packetThrottleLimit;
+		case PEER_PACKET_THROTTLE_COUNTER:
+			return p->packetThrottleCounter;
+		case PEER_PACKET_THROTTLE_EPOCH:
+			return p->packetThrottleEpoch;
+		case PEER_PACKET_THROTTLE_ACCELERATION:
+			return p->packetThrottleAcceleration;
+		case PEER_PACKET_THROTTLE_DECELERATION:
+			return p->packetThrottleDeceleration;
+		case PEER_PACKET_THROTTLE_INTERVAL:
+			return p->packetThrottleInterval;
+	}
+	ERR_FAIL_V(0);
+}
+
+uint32_t NetworkedMultiplayerENet::pop_host_statistic(HostStatistic p_stat) {
+	ERR_FAIL_COND_V_MSG(!active, 0, "The host statistics cannot be retrieved when the multiplayer instance is not active.");
+	uint32_t *ptr = nullptr;
+	switch (p_stat) {
+		case HOST_TOTAL_SENT_DATA:
+			ptr = &(host->totalSentData);
+			break;
+		case HOST_TOTAL_SENT_PACKETS:
+			ptr = &(host->totalSentPackets);
+			break;
+		case HOST_TOTAL_RECEIVED_DATA:
+			ptr = &(host->totalReceivedData);
+			break;
+		case HOST_TOTAL_RECEIVED_PACKETS:
+			ptr = &(host->totalReceivedPackets);
+			break;
+	}
+	ERR_FAIL_COND_V_MSG(ptr == nullptr, 0, "Invalid statistic: " + itos(p_stat));
+	uint32_t ret = *ptr;
+	*ptr = 0;
+	return ret;
+}
+
 void NetworkedMultiplayerENet::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("create_server", "port", "max_clients", "in_bandwidth", "out_bandwidth"), &NetworkedMultiplayerENet::create_server, DEFVAL(32), DEFVAL(0), DEFVAL(0));
 	ClassDB::bind_method(D_METHOD("create_client", "address", "port", "in_bandwidth", "out_bandwidth", "client_port"), &NetworkedMultiplayerENet::create_client, DEFVAL(0), DEFVAL(0), DEFVAL(0));
@@ -860,6 +919,9 @@ void NetworkedMultiplayerENet::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_server_relay_enabled", "enabled"), &NetworkedMultiplayerENet::set_server_relay_enabled);
 	ClassDB::bind_method(D_METHOD("is_server_relay_enabled"), &NetworkedMultiplayerENet::is_server_relay_enabled);
 
+	ClassDB::bind_method(D_METHOD("get_peer_statistic", "peer_id", "statistic"), &NetworkedMultiplayerENet::get_peer_statistic);
+	ClassDB::bind_method(D_METHOD("pop_host_statistic", "statistic"), &NetworkedMultiplayerENet::pop_host_statistic);
+
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "compression_mode", PROPERTY_HINT_ENUM, "None,Range Coder,FastLZ,ZLib,ZStd"), "set_compression_mode", "get_compression_mode");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "transfer_channel"), "set_transfer_channel", "get_transfer_channel");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "channel_count"), "set_channel_count", "get_channel_count");
@@ -873,6 +935,26 @@ void NetworkedMultiplayerENet::_bind_methods() {
 	BIND_ENUM_CONSTANT(COMPRESS_FASTLZ);
 	BIND_ENUM_CONSTANT(COMPRESS_ZLIB);
 	BIND_ENUM_CONSTANT(COMPRESS_ZSTD);
+
+	BIND_ENUM_CONSTANT(PEER_PACKET_LOSS);
+	BIND_ENUM_CONSTANT(PEER_PACKET_LOSS_VARIANCE);
+	BIND_ENUM_CONSTANT(PEER_PACKET_LOSS_EPOCH);
+	BIND_ENUM_CONSTANT(PEER_ROUND_TRIP_TIME);
+	BIND_ENUM_CONSTANT(PEER_ROUND_TRIP_TIME_VARIANCE);
+	BIND_ENUM_CONSTANT(PEER_LAST_ROUND_TRIP_TIME);
+	BIND_ENUM_CONSTANT(PEER_LAST_ROUND_TRIP_TIME_VARIANCE);
+	BIND_ENUM_CONSTANT(PEER_PACKET_THROTTLE);
+	BIND_ENUM_CONSTANT(PEER_PACKET_THROTTLE_LIMIT);
+	BIND_ENUM_CONSTANT(PEER_PACKET_THROTTLE_COUNTER);
+	BIND_ENUM_CONSTANT(PEER_PACKET_THROTTLE_EPOCH);
+	BIND_ENUM_CONSTANT(PEER_PACKET_THROTTLE_ACCELERATION);
+	BIND_ENUM_CONSTANT(PEER_PACKET_THROTTLE_DECELERATION);
+	BIND_ENUM_CONSTANT(PEER_PACKET_THROTTLE_INTERVAL);
+
+	BIND_ENUM_CONSTANT(HOST_TOTAL_SENT_DATA);
+	BIND_ENUM_CONSTANT(HOST_TOTAL_SENT_PACKETS);
+	BIND_ENUM_CONSTANT(HOST_TOTAL_RECEIVED_DATA);
+	BIND_ENUM_CONSTANT(HOST_TOTAL_RECEIVED_PACKETS);
 }
 
 NetworkedMultiplayerENet::NetworkedMultiplayerENet() {

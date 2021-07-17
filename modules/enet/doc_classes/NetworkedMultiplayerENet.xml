@@ -97,6 +97,26 @@
 				Returns the remote port of the given peer.
 			</description>
 		</method>
+		<method name="get_peer_statistic">
+			<return type="float">
+			</return>
+			<argument index="0" name="peer_id" type="int">
+			</argument>
+			<argument index="1" name="statistic" type="int" enum="NetworkedMultiplayerENet.PeerStatistic">
+			</argument>
+			<description>
+				Returns the specified [code]statistic[/code] associated with a the peer identified by [code]peer_id[/code]. See [enum PeerStatistic].
+			</description>
+		</method>
+		<method name="pop_host_statistic">
+			<return type="int">
+			</return>
+			<argument index="0" name="statistic" type="int" enum="NetworkedMultiplayerENet.HostStatistic">
+			</argument>
+			<description>
+				Returns the specified [code]statistic[/code] of the current host and resets it to [code]0[/code]. See [enum HostStatistic].
+			</description>
+		</method>
 		<method name="set_bind_ip">
 			<return type="void">
 			</return>
@@ -182,6 +202,60 @@
 		</constant>
 		<constant name="COMPRESS_ZSTD" value="4" enum="CompressionMode">
 			[url=https://facebook.github.io/zstd/]Zstandard[/url] compression.
+		</constant>
+		<constant name="PEER_PACKET_LOSS" value="0" enum="PeerStatistic">
+			Used to retrieve reliable channels packet loss. See [method get_peer_statistic].
+		</constant>
+		<constant name="PEER_PACKET_LOSS_VARIANCE" value="1" enum="PeerStatistic">
+			Used to retrieve reliable channels packet loss variance. See [method get_peer_statistic].
+		</constant>
+		<constant name="PEER_PACKET_LOSS_EPOCH" value="2" enum="PeerStatistic">
+			Used to retrieve reliable channels packet loss epoch. See [method get_peer_statistic].
+		</constant>
+		<constant name="PEER_ROUND_TRIP_TIME" value="3" enum="PeerStatistic">
+			Used to retrieve mean round trip time. See [method get_peer_statistic].
+		</constant>
+		<constant name="PEER_ROUND_TRIP_TIME_VARIANCE" value="4" enum="PeerStatistic">
+			Used to retrieve round trip time variance. See [method get_peer_statistic].
+		</constant>
+		<constant name="PEER_LAST_ROUND_TRIP_TIME" value="5" enum="PeerStatistic">
+			Used to retrieve last round trip time. See [method get_peer_statistic].
+		</constant>
+		<constant name="PEER_LAST_ROUND_TRIP_TIME_VARIANCE" value="6" enum="PeerStatistic">
+			Used to retrieve last round trip time variance. See [method get_peer_statistic].
+		</constant>
+		<constant name="PEER_PACKET_THROTTLE" value="7" enum="PeerStatistic">
+			Used to retrieve the throttle configuration of a peer. See [method get_peer_statistic].
+		</constant>
+		<constant name="PEER_PACKET_THROTTLE_LIMIT" value="8" enum="PeerStatistic">
+			Used to retrieve the throttle configuration of a peer. See [method get_peer_statistic].
+		</constant>
+		<constant name="PEER_PACKET_THROTTLE_COUNTER" value="9" enum="PeerStatistic">
+			Used to retrieve the throttle configuration of a peer. See [method get_peer_statistic].
+		</constant>
+		<constant name="PEER_PACKET_THROTTLE_EPOCH" value="10" enum="PeerStatistic">
+			Used to retrieve the throttle configuration of a peer. See [method get_peer_statistic].
+		</constant>
+		<constant name="PEER_PACKET_THROTTLE_ACCELERATION" value="11" enum="PeerStatistic">
+			Used to retrieve the throttle configuration of a peer. See [method get_peer_statistic].
+		</constant>
+		<constant name="PEER_PACKET_THROTTLE_DECELERATION" value="12" enum="PeerStatistic">
+			Used to retrieve the throttle configuration of a peer. See [method get_peer_statistic].
+		</constant>
+		<constant name="PEER_PACKET_THROTTLE_INTERVAL" value="13" enum="PeerStatistic">
+			Used to retrieve the throttle configuration of a peer. See [method get_peer_statistic].
+		</constant>
+		<constant name="HOST_TOTAL_SENT_DATA" value="0" enum="HostStatistic">
+			Used to retrieve the total sent data. See [method pop_host_statistic].
+		</constant>
+		<constant name="HOST_TOTAL_SENT_PACKETS" value="1" enum="HostStatistic">
+			Used to retrieve the total sent packets. See [method pop_host_statistic].
+		</constant>
+		<constant name="HOST_TOTAL_RECEIVED_DATA" value="2" enum="HostStatistic">
+			Used to retrieve the total received data. See [method pop_host_statistic].
+		</constant>
+		<constant name="HOST_TOTAL_RECEIVED_PACKETS" value="3" enum="HostStatistic">
+			Used to retrieve the total received packets. See [method pop_host_statistic].
 		</constant>
 	</constants>
 </class>

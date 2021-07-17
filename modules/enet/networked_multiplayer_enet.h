@@ -49,6 +49,30 @@ public:
 		COMPRESS_ZSTD
 	};
 
+	enum PeerStatistic {
+		PEER_PACKET_LOSS,
+		PEER_PACKET_LOSS_VARIANCE,
+		PEER_PACKET_LOSS_EPOCH,
+		PEER_ROUND_TRIP_TIME,
+		PEER_ROUND_TRIP_TIME_VARIANCE,
+		PEER_LAST_ROUND_TRIP_TIME,
+		PEER_LAST_ROUND_TRIP_TIME_VARIANCE,
+		PEER_PACKET_THROTTLE,
+		PEER_PACKET_THROTTLE_LIMIT,
+		PEER_PACKET_THROTTLE_COUNTER,
+		PEER_PACKET_THROTTLE_EPOCH,
+		PEER_PACKET_THROTTLE_ACCELERATION,
+		PEER_PACKET_THROTTLE_DECELERATION,
+		PEER_PACKET_THROTTLE_INTERVAL,
+	};
+
+	enum HostStatistic {
+		HOST_TOTAL_SENT_DATA,
+		HOST_TOTAL_SENT_PACKETS,
+		HOST_TOTAL_RECEIVED_DATA,
+		HOST_TOTAL_RECEIVED_PACKETS,
+	};
+
 private:
 	enum {
 		SYSMSG_ADD_PEER,
@@ -166,6 +190,8 @@ public:
 	bool is_always_ordered() const;
 	void set_server_relay_enabled(bool p_enabled);
 	bool is_server_relay_enabled() const;
+	double get_peer_statistic(int p_peer, PeerStatistic p_stat);
+	uint32_t pop_host_statistic(HostStatistic p_stat);
 
 	NetworkedMultiplayerENet();
 	~NetworkedMultiplayerENet();
@@ -180,5 +206,7 @@ public:
 };
 
 VARIANT_ENUM_CAST(NetworkedMultiplayerENet::CompressionMode);
+VARIANT_ENUM_CAST(NetworkedMultiplayerENet::PeerStatistic);
+VARIANT_ENUM_CAST(NetworkedMultiplayerENet::HostStatistic);
 
 #endif // NETWORKED_MULTIPLAYER_ENET_H

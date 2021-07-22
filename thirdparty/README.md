@@ -40,6 +40,14 @@ File extracted from a recent Fedora install:
 (It can't be extracted directly from the package,
 as it's generated on the user's system.)
 
+## curl
+- Upstream: https://github.com/curl/curl/tree/curl-7_78_0
+- Version: 7.78.0
+- License: Curl License (Inspired by MIT/X)
+
+Files extracted from upstream source:
+
+- all .c and .h files in the src, include, and lib directories (and their descendants).
 
 ## cvtt
 

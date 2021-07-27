@@ -35,36 +35,22 @@
 #include <stdio.h>
 #include <curl/curl.h>
 
-class Buffer {
-    Vector<uint8_t> data;
-    int roff = 0;
-    int woff = 0;
-
-public:
-    Buffer() {}
-    void set_data(uint8_t *p_data, int p_len);
-    int read_bytes(char *p_buf, int p_len);
-    int write_bytes(char *p_buf, int p_n);
-    void resize(size_t size);
-    void clear();
-    int size();
-    int remaining();
-    ~Buffer() {}
-};
-
 class RequestContext {
 public:
 
     RequestContext() {};
     ~RequestContext();
-
-    Buffer *read_buffer = nullptr;
+    
+    // List<String> *response_headers = nullptr;
+    int *response_code = nullptr;
+    RingBuffer<uint8_t> *read_buffer = nullptr;
     curl_slist *header_list = nullptr;
     int *body_size = nullptr;
     HTTPClient::Status *status = nullptr;
     Vector<PackedByteArray> *response_chunks = nullptr;
-
-    bool keep_alive = true;
+    bool *has_response = nullptr;
+    bool *chunked = nullptr;
+    bool *keep_alive = nullptr;
 };
 
 class HTTPClientCurl : public HTTPClient {
@@ -84,13 +70,20 @@ class HTTPClientCurl : public HTTPClient {
     int read_chunk_size = 0;
     bool in_flight = false;
 
+    String host;
+    
     Status status = STATUS_DISCONNECTED;
+    bool response_available = false;
     int response_code = 0;
     Vector<PackedByteArray> response_chunks;
     int body_size = 0;
+    bool chunked = false;
+    bool keep_alive = true;
+    // List<String> response_headers;
 
 protected:
     virtual IPAddress _resolve_dns(const String &p_hostname);
+    virtual Error _poll_curl();
 
 public:
 	static HTTPClient *_create_func();
@@ -101,11 +94,11 @@ public:
     virtual Ref<StreamPeer> get_connection() const override { return nullptr; }
     
     Status get_status() const override { return status; }
-    virtual bool has_response() const override { return response_code != 0; }
-    virtual bool is_response_chunked() const override { return false; }
+    virtual bool has_response() const override { return response_available; }
+    virtual bool is_response_chunked() const override { return chunked; }
     virtual int get_response_code() const override { return response_code; }
-    virtual Error get_response_headers(List<String> *r_response) override { return OK; }
-    virtual int get_response_body_length() const override { return body_size; }
+    virtual Error get_response_headers(List<String> *r_response) override;
+    virtual int get_response_body_length() const override { return is_response_chunked() ? -1 : body_size; }
     virtual PackedByteArray read_response_body_chunk() override;
     virtual void set_blocking_mode(bool p_enabled) override { blocking_mode = p_enabled; }
     virtual bool is_blocking_mode_enabled() const override { return blocking_mode; }

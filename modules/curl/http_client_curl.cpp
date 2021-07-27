@@ -82,7 +82,7 @@ size_t HTTPClientCurl::_write_callback(char *buffer, size_t size, size_t nitems,
     return b->write_bytes(buffer, nitems);
 }
 
-Error HTTPClientCurl::connect_to_host(const String &p_host, int p_port = -1, bool p_ssl = false, bool p_verify_host = true) {
+Error HTTPClientCurl::connect_to_host(const String &p_host, int p_port, bool p_ssl, bool p_verify_host) {
     curl = curl_multi_init();
     ssl = p_ssl;
     verify_host = p_verify_host;
@@ -163,4 +163,8 @@ Error HTTPClientCurl::poll() {
         curl_multi_remove_handle(curl, msg->easy_handle);
         curl_easy_cleanup(msg->easy_handle);
     }
+    
+    return OK;
 }
+
+HTTPClient *(*HTTPClient::_create)() = HTTPClientCurl::_create_func;

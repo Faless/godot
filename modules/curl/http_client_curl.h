@@ -35,17 +35,6 @@
 #include <stdio.h>
 #include <curl/curl.h>
 
-class RequestContext {
-public:
-
-    RequestContext();
-    ~RequestContext();
-
-    Buffer* read_buffer;
-    Buffer* write_buffer;
-    curl_slist *header_list;
-};
-
 class Buffer {
     Vector<uint8_t> data;
     int roff = 0;
@@ -63,13 +52,24 @@ public:
     ~Buffer() {}
 };
 
+class RequestContext {
+public:
+
+    RequestContext();
+    ~RequestContext();
+
+    Buffer* read_buffer;
+    Buffer* write_buffer;
+    curl_slist *header_list;
+};
+
 class HTTPClientCurl : public HTTPClient {
     
     static char* methods[10];
     static size_t _read_callback(char *buffer, size_t size, size_t nitems, void *userdata);
     static size_t _write_callback(char *buffer, size_t size, size_t nitems, void *userdata);
 
-    CURL* curl = nullptr;
+    CURLM* curl = nullptr;
     int still_running = 0;
     bool ssl = false;
     bool verify_host = false;

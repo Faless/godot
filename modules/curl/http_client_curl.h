@@ -55,19 +55,26 @@ public:
 class RequestContext {
 public:
 
-    RequestContext();
+    RequestContext() {};
     ~RequestContext();
 
-    Buffer* read_buffer;
-    Buffer* write_buffer;
-    curl_slist *header_list;
+    Buffer *read_buffer = nullptr;
+    curl_slist *header_list = nullptr;
+    int *body_size = nullptr;
+    HTTPClient::Status *status = nullptr;
+    Vector<PackedByteArray> *response_chunks = nullptr;
+
+    bool keep_alive = true;
 };
 
 class HTTPClientCurl : public HTTPClient {
     
     static char* methods[10];
+    static size_t _header_callback(char *buffer, size_t size, size_t nitems, void *userdata);
     static size_t _read_callback(char *buffer, size_t size, size_t nitems, void *userdata);
     static size_t _write_callback(char *buffer, size_t size, size_t nitems, void *userdata);
+    static curl_slist *_ip_addr_to_slist(const IPAddress &p_addr);
+    static String _hostname_from_url(const String &p_url);
 
     CURLM* curl = nullptr;
     int still_running = 0;
@@ -75,10 +82,15 @@ class HTTPClientCurl : public HTTPClient {
     bool verify_host = false;
     bool blocking_mode = false;
     int read_chunk_size = 0;
+    bool in_flight = false;
 
     Status status = STATUS_DISCONNECTED;
     int response_code = 0;
-    PackedByteArray response;
+    Vector<PackedByteArray> response_chunks;
+    int body_size = 0;
+
+protected:
+    virtual IPAddress _resolve_dns(const String &p_hostname);
 
 public:
 	static HTTPClient *_create_func();
@@ -93,8 +105,8 @@ public:
     virtual bool is_response_chunked() const override { return false; }
     virtual int get_response_code() const override { return response_code; }
     virtual Error get_response_headers(List<String> *r_response) override { return OK; }
-    virtual int get_response_body_length() const override { return response.size(); }
-    virtual PackedByteArray read_response_body_chunk() override { return response; }
+    virtual int get_response_body_length() const override { return body_size; }
+    virtual PackedByteArray read_response_body_chunk() override;
     virtual void set_blocking_mode(bool p_enabled) override { blocking_mode = p_enabled; }
     virtual bool is_blocking_mode_enabled() const override { return blocking_mode; }
     virtual void set_read_chunk_size(int p_size) override { read_chunk_size = p_size; }

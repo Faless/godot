@@ -37,7 +37,7 @@ size_t HTTPClientCurl::_header_callback(char *buffer, size_t size, size_t nitems
         return size*nitems;
     }
 
-    // ctx->response_headers->push_back(s);
+    ctx->response_headers->push_back(s);
 
     String header = parts[0].to_lower();
     String val = parts[1];
@@ -157,7 +157,7 @@ Error HTTPClientCurl::_poll_curl() {
 }
 
 Error HTTPClientCurl::get_response_headers(List<String> *r_response) {
-    // *r_response = response_headers;
+    *r_response = response_headers;
     return OK;
 }
 
@@ -207,7 +207,7 @@ Error HTTPClientCurl::request(Method p_method, const String &p_url, const Vector
     // curl_easy_setopt(eh, CURLOPT_RESOLVE, host);
     
     RequestContext* ctx = memnew(RequestContext);
-    // ctx->response_headers = &response_headers;
+    ctx->response_headers = &response_headers;
     ctx->body_size = &body_size;
     ctx->status = &status;
     ctx->response_chunks = &response_chunks;

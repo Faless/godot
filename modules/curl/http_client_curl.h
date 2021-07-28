@@ -41,7 +41,7 @@ public:
     RequestContext() {};
     ~RequestContext();
     
-    // List<String> *response_headers = nullptr;
+    List<String> *response_headers = nullptr;
     int *response_code = nullptr;
     RingBuffer<uint8_t> *read_buffer = nullptr;
     curl_slist *header_list = nullptr;
@@ -79,7 +79,7 @@ class HTTPClientCurl : public HTTPClient {
     int body_size = 0;
     bool chunked = false;
     bool keep_alive = true;
-    // List<String> response_headers;
+    List<String> response_headers;
 
 protected:
     virtual IPAddress _resolve_dns(const String &p_hostname);

@@ -74,7 +74,6 @@ size_t HTTPClientCurl::_read_callback(char *buffer, size_t size, size_t nitems, 
 }
 
 size_t HTTPClientCurl::_write_callback(char *buffer, size_t size, size_t nitems, void *userdata) {
-    
     RequestContext* ctx = (RequestContext*)userdata;
     PackedByteArray chunk;
     chunk.resize(size*nitems);
@@ -143,6 +142,71 @@ Error HTTPClientCurl::_poll_curl() {
     return OK;
 }
 
+RingBuffer<uint8_t> *HTTPClientCurl::_init_upload(CURL *p_chandle, Method p_method, uint8_t *p_body, int p_body_size) {
+    RingBuffer<uint8_t>* b = memnew(RingBuffer<uint8_t>);
+    b->resize(p_body_size);
+    b->write(p_body, p_body_size);
+
+    // Special cases for POST and PUT to configure uploads.
+    switch (p_method)
+    {
+    case METHOD_POST:
+        curl_easy_setopt(p_chandle, CURLOPT_POST, 1L);
+        curl_easy_setopt(p_chandle, CURLOPT_POSTFIELDSIZE_LARGE, (curl_off_t)p_body_size);
+        break;
+    case METHOD_PUT:
+        curl_easy_setopt(p_chandle, CURLOPT_UPLOAD, 1L);
+        curl_easy_setopt(p_chandle, CURLOPT_INFILESIZE_LARGE, (curl_off_t)p_body_size);
+        break;
+    }
+
+    // Somewhat counter intuitively, the read function is actually used by libcurl to send data,
+    // while the write function (see below) is used by libcurl to write response data to storage
+    // (or in our case, memory).
+    curl_easy_setopt(p_chandle, CURLOPT_READFUNCTION, _read_callback);
+    curl_easy_setopt(p_chandle, CURLOPT_READDATA, b);
+    return b;
+}
+
+RequestContext *HTTPClientCurl::_create_request_context() {
+    RequestContext* ctx = memnew(RequestContext);
+    ctx->response_headers = &response_headers;
+    ctx->body_size = &body_size;
+    ctx->status = &status;
+    ctx->response_chunks = &response_chunks;
+    ctx->has_response = &response_available;
+    ctx->chunked = &chunked;
+    ctx->keep_alive = &keep_alive;
+    return ctx;
+}
+
+Error HTTPClientCurl::_init_dns(CURL *p_chandle) {
+    // TODO: Is there a way to make this not block?
+    // TODO: Support resolving multiple addresses.
+    IPAddress addr = _resolve_dns(host);
+    curl_slist *h = _ip_addr_to_slist(addr);
+    CURLcode rc = curl_easy_setopt(p_chandle, CURLOPT_RESOLVE, h);
+    if (rc != CURLE_OK) {
+        ERR_PRINT("failed to initialize dns resolver: " + String::num_int64(rc));
+        return FAILED;
+    }
+    return OK;
+}
+
+Error HTTPClientCurl::_init_request_headers(CURL *p_chandler, Vector<String> p_headers, RequestContext *p_ctx) {
+    for (int i = 0; i < p_headers.size(); i++) {
+        p_ctx->header_list = curl_slist_append(p_ctx->header_list, p_headers[i].ascii().get_data());
+    }
+    if (p_ctx->header_list) {
+        CURLcode rc = curl_easy_setopt(p_chandler, CURLOPT_HTTPHEADER, p_ctx->header_list);
+        if (rc != CURLE_OK) {
+            ERR_PRINT("failed to set request headers: " + String::num_uint64(rc));
+            return FAILED;
+        }
+    }
+    return OK;
+}
+
 Error HTTPClientCurl::get_response_headers(List<String> *r_response) {
     *r_response = response_headers;
     return OK;
@@ -187,53 +251,22 @@ Error HTTPClientCurl::request(Method p_method, const String &p_url, const Vector
     CURL* eh = curl_easy_init();
     curl_easy_setopt(eh, CURLOPT_URL, (host+p_url).ascii().get_data());
     curl_easy_setopt(eh, CURLOPT_CUSTOMREQUEST, methods[(int)p_method]);
-    // TODO: Is there a way to make this not block?
-    // TODO: Support resolving multiple addresses.
-    IPAddress addr = _resolve_dns(host);
-    curl_slist *h = _ip_addr_to_slist(addr);
-    CURLcode rc = curl_easy_setopt(eh, CURLOPT_RESOLVE, h);
-    if (rc != CURLE_OK) {
-        ERR_PRINT("failed to initialize dns resolver: " + String::num_int64(rc));
-        return FAILED;
+    
+    Error err = _init_dns(eh);
+    if (err != OK) {
+        return err;
     }
     
-    RequestContext* ctx = memnew(RequestContext);
-    ctx->response_headers = &response_headers;
-    ctx->body_size = &body_size;
-    ctx->status = &status;
-    ctx->response_chunks = &response_chunks;
-    ctx->has_response = &response_available;
-    ctx->chunked = &chunked;
-    ctx->keep_alive = &keep_alive;
+    RequestContext *ctx = _create_request_context();
     
     if (p_body_size > 0) {
-        RingBuffer<uint8_t>* b = memnew(RingBuffer<uint8_t>);
-        b->resize(p_body_size);
-        b->write(p_body, p_body_size);
-
-        // Special cases for POST and PUT to configure uploads.
-        switch (p_method)
-        {
-        case METHOD_POST:
-            curl_easy_setopt(eh, CURLOPT_POST, 1L);
-            curl_easy_setopt(eh, CURLOPT_POSTFIELDSIZE_LARGE, (curl_off_t)p_body_size);
-            break;
-        case METHOD_PUT:
-            curl_easy_setopt(eh, CURLOPT_UPLOAD, 1L);
-            curl_easy_setopt(eh, CURLOPT_INFILESIZE_LARGE, (curl_off_t)p_body_size);
-            break;
-        }
-
-        // Somewhat counter intuitively, the read function is actually used by libcurl to send data,
-        // while the write function (see below) is used by libcurl to write response data to storage
-        // (or in our case, memory).
-        curl_easy_setopt(eh, CURLOPT_READFUNCTION, _read_callback);
-        curl_easy_setopt(eh, CURLOPT_READDATA, b);
-        ctx->read_buffer = b;
+        ctx->read_buffer = _init_upload(eh, p_method, (uint8_t*)p_body, p_body_size);
     }
+
     if (ssl) {
         curl_easy_setopt(eh, CURLOPT_USE_SSL, CURLUSESSL_ALL);
     }
+
     if (verify_host) {
         // When CURLOPT_SSL_VERIFYHOST is 2, that certificate must indicate 
         // that the server is the server to which you meant to connect, or 
@@ -242,9 +275,6 @@ Error HTTPClientCurl::request(Method p_method, const String &p_url, const Vector
         // @see https://curl.se/libcurl/c/CURLOPT_SSL_VERIFYHOST.html
         curl_easy_setopt(eh, CURLOPT_SSL_VERIFYHOST, 2L);
     }
-    
-    // Reset body size.
-    body_size = 0;
 
     // Initialize callbacks.
     curl_easy_setopt(eh, CURLOPT_HEADERFUNCTION, _header_callback);
@@ -252,28 +282,19 @@ Error HTTPClientCurl::request(Method p_method, const String &p_url, const Vector
     curl_easy_setopt(eh, CURLOPT_WRITEFUNCTION, _write_callback);
     curl_easy_setopt(eh, CURLOPT_WRITEDATA, ctx);
     
-    // Headers
-    for (int i = 0; i < p_headers.size(); i++) {
-        ctx->header_list = curl_slist_append(ctx->header_list, p_headers[i].ascii().get_data());
-    }
-    if (ctx->header_list) {
-        rc = curl_easy_setopt(eh, CURLOPT_HTTPHEADER, ctx->header_list);
-        if (rc != CURLE_OK) {
-            ERR_PRINT("failed to set request headers: " + String::num_uint64(rc));
-            return FAILED;
-        }
+    err = _init_request_headers(eh, p_headers, ctx);
+    if (err != OK) {
+        return err;
     }
 
     // Set the request context. CURLOPT_PRIVATE is just arbitrary data
-    // that can be associated with request handlers.
+    // that can be associated with request handlers. It's used here to
+    // keep track of certain data that needs to be manipulated throughout
+    // the pipeline.
     // @see https://curl.se/libcurl/c/CURLOPT_PRIVATE.html
     curl_easy_setopt(eh, CURLOPT_PRIVATE, ctx);
 
-    CURLMcode mrc = curl_multi_add_handle(curl, eh); 
-    if (mrc != CURLM_OK) {
-        ERR_PRINT("failed to add easy handle: " + String::num_int64(rc));
-        return FAILED;
-    }
+    curl_multi_add_handle(curl, eh); 
 
     in_flight = true;
     status = STATUS_REQUESTING;

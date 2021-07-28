@@ -84,7 +84,11 @@ class HTTPClientCurl : public HTTPClient {
     curl_slist *_ip_addr_to_slist(const IPAddress &p_addr);
     String _hostname_from_url(const String &p_url);
     Error _poll_curl();
-    
+    RingBuffer<uint8_t>* _init_upload(CURL *p_chandle, Method p_method, uint8_t *p_body, int p_body_size);
+    RequestContext* _create_request_context();
+    Error _init_dns(CURL *p_chandler);
+    Error _init_request_headers(CURL *p_chandler, Vector<String> p_headers, RequestContext *p_ctx);
+
 protected:
     virtual IPAddress _resolve_dns(const String &p_hostname);
     

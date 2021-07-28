@@ -98,8 +98,8 @@ public:
 
     virtual Error connect_to_host(const String &p_host, int p_port = -1, bool p_ssl = false, bool p_verify_host = true) override;
     virtual void close() override;
-    virtual void set_connection(const Ref<StreamPeer> &p_connection) override {}
-    virtual Ref<StreamPeer> get_connection() const override { return nullptr; }
+    virtual void set_connection(const Ref<StreamPeer> &p_connection) override { /* No real way to implement this currently */ }
+    virtual Ref<StreamPeer> get_connection() const override { return nullptr; /* No real way to implement this currently*/ }
     
     Status get_status() const override { return status; }
     virtual bool has_response() const override { return response_available; }
@@ -108,9 +108,9 @@ public:
     virtual Error get_response_headers(List<String> *r_response) override;
     virtual int get_response_body_length() const override { return is_response_chunked() ? -1 : body_size; }
     virtual PackedByteArray read_response_body_chunk() override;
-    virtual void set_blocking_mode(bool p_enabled) override { blocking_mode = p_enabled; }
+    virtual void set_blocking_mode(bool p_enabled) override { /* blocking mode is not yet implemented */ }
     virtual bool is_blocking_mode_enabled() const override { return blocking_mode; }
-    virtual void set_read_chunk_size(int p_size) override { read_chunk_size = CLAMP(p_size, 1024, 524288); }
+    virtual void set_read_chunk_size(int p_size) override { read_chunk_size = CLAMP(p_size, 1024, CURL_MAX_READ_SIZE); }
     virtual int get_read_chunk_size() const override { return read_chunk_size; }
 
     virtual Error request(Method p_method, const String &p_url, const Vector<String> &p_headers, const uint8_t *p_body, int p_body_size) override;

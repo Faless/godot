@@ -35,9 +35,7 @@
 #include <stdio.h>
 #include <curl/curl.h>
 
-class RequestContext {
-public:
-
+struct RequestContext {
     RequestContext() {};
     ~RequestContext();
     

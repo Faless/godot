@@ -70,29 +70,23 @@ size_t HTTPClientCurl::_header_callback(char *buffer, size_t size, size_t nitems
 size_t HTTPClientCurl::_read_callback(char *buffer, size_t size, size_t nitems, void *userdata) {
     RingBuffer<uint8_t> *b = (RingBuffer<uint8_t>*)userdata;
     int n = b->copy((uint8_t*)buffer, 0, size*nitems);
-    print_line("read: " + n);
     return n;
 }
 
 size_t HTTPClientCurl::_write_callback(char *buffer, size_t size, size_t nitems, void *userdata) {
     
     RequestContext* ctx = (RequestContext*)userdata;
-    WARN_PRINT("write called");
-    WARN_PRINT("wrote buffer: " + String(buffer));
     PackedByteArray chunk;
     chunk.resize(size*nitems);
-    print_line("write_size: " + String::num_int64(size));
     memcpy(chunk.ptrw(), buffer, size*nitems);
     ctx->response_chunks->append(chunk);
     *(ctx->status) = STATUS_BODY;
 
-    print_line("wrote: " + String::num_int64(size*nitems));
     return size*nitems;
 }
 
 curl_slist *HTTPClientCurl::_ip_addr_to_slist(const IPAddress &p_addr) {
     const char * host = String(p_addr).ascii().get_data();
-    WARN_PRINT("addr: " + String(host));
     return curl_slist_append(nullptr, host);
 }
 
@@ -109,7 +103,6 @@ IPAddress HTTPClientCurl::_resolve_dns(const String &p_hostname) {
 Error HTTPClientCurl::_poll_curl() {
     CURLMcode rc = curl_multi_perform(curl, &still_running);
     if (still_running) {
-        print_line("still_running: " + String::num_int64(still_running));
         rc = curl_multi_wait(curl, nullptr, 0, 1000, nullptr);
     }
     
@@ -118,15 +111,11 @@ Error HTTPClientCurl::_poll_curl() {
         return FAILED;
     }
 
-    print_line("still_running: " + String::num_int64(still_running));
-
     if (still_running == 0) {
         int n = 0;
         CURLMsg* msg = curl_multi_info_read(curl, &n);
         if (msg && msg->msg == CURLMSG_DONE) {
             if (msg->data.result != CURLE_OK) {
-                print_line("done result: " + String::num_int64(msg->data.result));
-                print_line("done message: " + msg->data.result);
                 status = STATUS_DISCONNECTED;
                 return FAILED;
             }
@@ -137,17 +126,10 @@ Error HTTPClientCurl::_poll_curl() {
                 ERR_PRINT("couldnt get status code ! " + String::num_int64(rc));
                 return FAILED;
             }
-            print_line("status code: " + String::num_int64(response_code));
             curl_easy_getinfo(msg->easy_handle, CURLINFO_PRIVATE, &ctx);
-            WARN_PRINT("DONE!");
-            if (chunked) {
-                print_line("chunked");
-            }
-            print_line("body_size: " + String::num_int64(get_response_body_length()));
 
             memfree(ctx);
 
-            print_line("left: " + String::num_int64(response_chunks.size()));
             curl_multi_remove_handle(curl, msg->easy_handle);
             curl_easy_cleanup(msg->easy_handle);
             in_flight = false;
@@ -197,10 +179,8 @@ Error HTTPClientCurl::request(Method p_method, const String &p_url, const Vector
     }
 
     CURL* eh = curl_easy_init();
-    print_line("url: " + host + p_url);
     curl_easy_setopt(eh, CURLOPT_URL, (host+p_url).ascii().get_data());
     curl_easy_setopt(eh, CURLOPT_CUSTOMREQUEST, methods[(int)p_method]);
-    WARN_PRINT("host: " + host);
     // TODO: Is there a way to make this not block?
     // IPAddress addr = _resolve_dns(host);
     // curl_slist *host = _ip_addr_to_slist(addr);
@@ -259,16 +239,13 @@ Error HTTPClientCurl::request(Method p_method, const String &p_url, const Vector
     curl_easy_setopt(eh, CURLOPT_WRITEDATA, ctx);
     
     // Headers
-    print_line("begin headers");
     for (int i = 0; i < p_headers.size(); i++) {
-        print_line(p_headers[i].ascii().get_data());
         ctx->header_list = curl_slist_append(ctx->header_list, p_headers[i].ascii().get_data());
     }
-    print_line("end headers");
     if (ctx->header_list) {
         CURLcode rc = curl_easy_setopt(eh, CURLOPT_HTTPHEADER, ctx->header_list);
         if (rc != CURLE_OK) {
-            print_line("failed to set request headers: " + String::num_uint64(rc));
+            ERR_PRINT("failed to set request headers: " + String::num_uint64(rc));
             return FAILED;
         }
     }
@@ -281,7 +258,6 @@ Error HTTPClientCurl::request(Method p_method, const String &p_url, const Vector
 
     CURLMcode rc = curl_multi_add_handle(curl, eh); 
     if (rc != CURLM_OK) {
-        print_line("failed to add easy handle: " + String::num_int64(rc));
         ERR_PRINT("failed to add easy handle: " + String::num_int64(rc));
         return FAILED;
     }

@@ -83,10 +83,11 @@ class HTTPClientCurl : public HTTPClient {
 
     curl_slist *_ip_addr_to_slist(const IPAddress &p_addr);
     String _hostname_from_url(const String &p_url);
-
+    Error _poll_curl();
+    
 protected:
     virtual IPAddress _resolve_dns(const String &p_hostname);
-    virtual Error _poll_curl();
+    
 
 public:
 	static HTTPClient *_create_func();

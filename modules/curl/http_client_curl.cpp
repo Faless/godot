@@ -100,7 +100,7 @@ String HTTPClientCurl::_hostname_from_url(const String &p_url) {
 }
 
 IPAddress HTTPClientCurl::_resolve_dns(const String &p_hostname) {
-    print_line("hostname: " + p_hostname);
+    // TODO: Support IPv6.
     return IP::get_singleton()->resolve_hostname(p_hostname, IP::Type::TYPE_IPV4);
 }
 
@@ -155,7 +155,7 @@ Error HTTPClientCurl::connect_to_host(const String &p_host, int p_port, bool p_s
     
     response_code = 0;
     body_size = -1;
-    // response_headers.clear();
+    response_headers.clear();
     response_available = false;
     response_code = 0;
     response_chunks.clear();
@@ -216,7 +216,6 @@ Error HTTPClientCurl::request(Method p_method, const String &p_url, const Vector
         {
         case METHOD_POST:
             curl_easy_setopt(eh, CURLOPT_POST, 1L);
-            // curl_easy_setopt(eh, CURLOPT_POSTFIELDS, p_body);
             curl_easy_setopt(eh, CURLOPT_POSTFIELDSIZE_LARGE, (curl_off_t)p_body_size);
             break;
         case METHOD_PUT:
@@ -283,20 +282,10 @@ Error HTTPClientCurl::request(Method p_method, const String &p_url, const Vector
 }
 
 Error HTTPClientCurl::poll() {
-    if (status != STATUS_BODY) {
-        return _poll_curl();
-    }
-
-    return OK;
+    return _poll_curl();
 }
 
 PackedByteArray HTTPClientCurl::read_response_body_chunk() {
-    if (status == STATUS_BODY) {
-        Error err = _poll_curl();
-        if (err != OK) {
-            return PackedByteArray();
-        }
-    }
     if (response_chunks.is_empty()) {
         status = keep_alive ? STATUS_CONNECTED : STATUS_DISCONNECTED;
         return PackedByteArray();

@@ -251,6 +251,7 @@ Error HTTPClientCurl::request(Method p_method, const String &p_url, const Vector
     CURL* eh = curl_easy_init();
     curl_easy_setopt(eh, CURLOPT_URL, (host+p_url).ascii().get_data());
     curl_easy_setopt(eh, CURLOPT_CUSTOMREQUEST, methods[(int)p_method]);
+    curl_easy_setopt(eh, CURLOPT_BUFFERSIZE, read_chunk_size);
     
     Error err = _init_dns(eh);
     if (err != OK) {

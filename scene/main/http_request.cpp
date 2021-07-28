@@ -215,6 +215,7 @@ bool HTTPRequest::_handle_response(bool *ret_value) {
 	}
 
 	got_response = true;
+	print_line("response_code");
 	response_code = client->get_response_code();
 	List<String> rheaders;
 	client->get_response_headers(&rheaders);
@@ -273,6 +274,7 @@ bool HTTPRequest::_handle_response(bool *ret_value) {
 bool HTTPRequest::_update_connection() {
 	switch (client->get_status()) {
 		case HTTPClient::STATUS_DISCONNECTED: {
+			print_line("DISCONNECTED");
 			call_deferred(SNAME("_request_done"), RESULT_CANT_CONNECT, 0, PackedStringArray(), PackedByteArray());
 			return true; // End it, since it's doing something
 		} break;
@@ -297,6 +299,11 @@ bool HTTPRequest::_update_connection() {
 
 		} break;
 		case HTTPClient::STATUS_CONNECTED: {
+			print_line("CONNECTED");
+			print_line("request_sent: " + String::num_int64(request_sent));
+			print_line("got_response: " + String::num_int64(got_response));
+			print_line("body_len:" + String::num_int64(body_len));
+			response_code = client->get_response_code();
 			if (request_sent) {
 				if (!got_response) {
 					// No body
@@ -306,7 +313,6 @@ bool HTTPRequest::_update_connection() {
 					if (_handle_response(&ret_value)) {
 						return ret_value;
 					}
-
 					call_deferred(SNAME("_request_done"), RESULT_SUCCESS, response_code, response_headers, PackedByteArray());
 					return true;
 				}
@@ -334,12 +340,15 @@ bool HTTPRequest::_update_connection() {
 			}
 		} break; // Connected: break requests only accepted here
 		case HTTPClient::STATUS_REQUESTING: {
+			print_line("REQUESTING");
 			// Must wait, still requesting
 			client->poll();
 			return false;
 
 		} break; // Request in progress
 		case HTTPClient::STATUS_BODY: {
+			print_line("BODY");
+			response_code = client->get_response_code();
 			if (!got_response) {
 				bool ret_value;
 

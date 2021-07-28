@@ -59,8 +59,7 @@ class HTTPClientCurl : public HTTPClient {
     static size_t _header_callback(char *buffer, size_t size, size_t nitems, void *userdata);
     static size_t _read_callback(char *buffer, size_t size, size_t nitems, void *userdata);
     static size_t _write_callback(char *buffer, size_t size, size_t nitems, void *userdata);
-    static curl_slist *_ip_addr_to_slist(const IPAddress &p_addr);
-    static String _hostname_from_url(const String &p_url);
+    
 
     CURLM* curl = nullptr;
     int still_running = 0;
@@ -71,6 +70,7 @@ class HTTPClientCurl : public HTTPClient {
     bool in_flight = false;
 
     String host;
+    int port;
     
     Status status = STATUS_DISCONNECTED;
     bool response_available = false;
@@ -80,6 +80,9 @@ class HTTPClientCurl : public HTTPClient {
     bool chunked = false;
     bool keep_alive = true;
     List<String> response_headers;
+
+    curl_slist *_ip_addr_to_slist(const IPAddress &p_addr);
+    String _hostname_from_url(const String &p_url);
 
 protected:
     virtual IPAddress _resolve_dns(const String &p_hostname);

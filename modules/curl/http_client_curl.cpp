@@ -86,8 +86,11 @@ size_t HTTPClientCurl::_write_callback(char *buffer, size_t size, size_t nitems,
 }
 
 curl_slist *HTTPClientCurl::_ip_addr_to_slist(const IPAddress &p_addr) {
-    const char * host = String(p_addr).ascii().get_data();
-    return curl_slist_append(nullptr, host);
+    String addr = String(p_addr);
+    addr = addr.substr(0, addr.rfind(":"));
+    String h = host + ":" + String::num_int64(port) + ":" + addr;
+    print_line("resolve host: " + h);
+    return curl_slist_append(nullptr, h.ascii().get_data());
 }
 
 String HTTPClientCurl::_hostname_from_url(const String &p_url) {
@@ -97,7 +100,8 @@ String HTTPClientCurl::_hostname_from_url(const String &p_url) {
 }
 
 IPAddress HTTPClientCurl::_resolve_dns(const String &p_hostname) {
-    return IP::get_singleton()->resolve_hostname(p_hostname);
+    print_line("hostname: " + p_hostname);
+    return IP::get_singleton()->resolve_hostname(p_hostname, IP::Type::TYPE_IPV4);
 }
 
 Error HTTPClientCurl::_poll_curl() {
@@ -116,6 +120,7 @@ Error HTTPClientCurl::_poll_curl() {
         CURLMsg* msg = curl_multi_info_read(curl, &n);
         if (msg && msg->msg == CURLMSG_DONE) {
             if (msg->data.result != CURLE_OK) {
+                ERR_PRINT("Curl result failed: " + String::num_int64(msg->data.result));
                 status = STATUS_DISCONNECTED;
                 return FAILED;
             }
@@ -158,6 +163,7 @@ Error HTTPClientCurl::connect_to_host(const String &p_host, int p_port, bool p_s
     status = STATUS_CONNECTED;
     
     host = p_host.trim_prefix("http://").trim_prefix("https://");
+    port = p_port;
     ssl = p_ssl;
     verify_host = p_verify_host;
     
@@ -182,9 +188,14 @@ Error HTTPClientCurl::request(Method p_method, const String &p_url, const Vector
     curl_easy_setopt(eh, CURLOPT_URL, (host+p_url).ascii().get_data());
     curl_easy_setopt(eh, CURLOPT_CUSTOMREQUEST, methods[(int)p_method]);
     // TODO: Is there a way to make this not block?
-    // IPAddress addr = _resolve_dns(host);
-    // curl_slist *host = _ip_addr_to_slist(addr);
-    // curl_easy_setopt(eh, CURLOPT_RESOLVE, host);
+    // TODO: Support resolving multiple addresses.
+    IPAddress addr = _resolve_dns(host);
+    curl_slist *h = _ip_addr_to_slist(addr);
+    CURLcode rc = curl_easy_setopt(eh, CURLOPT_RESOLVE, h);
+    if (rc != CURLE_OK) {
+        ERR_PRINT("failed to initialize dns resolver: " + String::num_int64(rc));
+        return FAILED;
+    }
     
     RequestContext* ctx = memnew(RequestContext);
     ctx->response_headers = &response_headers;
@@ -247,21 +258,20 @@ Error HTTPClientCurl::request(Method p_method, const String &p_url, const Vector
         ctx->header_list = curl_slist_append(ctx->header_list, p_headers[i].ascii().get_data());
     }
     if (ctx->header_list) {
-        CURLcode rc = curl_easy_setopt(eh, CURLOPT_HTTPHEADER, ctx->header_list);
+        rc = curl_easy_setopt(eh, CURLOPT_HTTPHEADER, ctx->header_list);
         if (rc != CURLE_OK) {
             ERR_PRINT("failed to set request headers: " + String::num_uint64(rc));
             return FAILED;
         }
     }
-    
 
     // Set the request context. CURLOPT_PRIVATE is just arbitrary data
     // that can be associated with request handlers.
     // @see https://curl.se/libcurl/c/CURLOPT_PRIVATE.html
     curl_easy_setopt(eh, CURLOPT_PRIVATE, ctx);
 
-    CURLMcode rc = curl_multi_add_handle(curl, eh); 
-    if (rc != CURLM_OK) {
+    CURLMcode mrc = curl_multi_add_handle(curl, eh); 
+    if (mrc != CURLM_OK) {
         ERR_PRINT("failed to add easy handle: " + String::num_int64(rc));
         return FAILED;
     }

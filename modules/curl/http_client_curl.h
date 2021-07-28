@@ -110,7 +110,7 @@ public:
     virtual PackedByteArray read_response_body_chunk() override;
     virtual void set_blocking_mode(bool p_enabled) override { blocking_mode = p_enabled; }
     virtual bool is_blocking_mode_enabled() const override { return blocking_mode; }
-    virtual void set_read_chunk_size(int p_size) override { read_chunk_size = p_size; }
+    virtual void set_read_chunk_size(int p_size) override { read_chunk_size = CLAMP(p_size, 1024, 524288); }
     virtual int get_read_chunk_size() const override { return read_chunk_size; }
 
     virtual Error request(Method p_method, const String &p_url, const Vector<String> &p_headers, const uint8_t *p_body, int p_body_size) override;

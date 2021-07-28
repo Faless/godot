@@ -195,28 +195,32 @@ Error HTTPClientCurl::request(Method p_method, const String &p_url, const Vector
     ctx->chunked = &chunked;
     ctx->keep_alive = &keep_alive;
     
-    // if (p_body) {
-    //     Buffer* b = memnew(Buffer);
-    //     b->set_data((uint8_t*)p_body, p_body_size);
+    if (p_body_size > 0) {
+        RingBuffer<uint8_t>* b = memnew(RingBuffer<uint8_t>);
+        b->resize(p_body_size);
+        b->write(p_body, p_body_size);
 
-    //     // I'm not really sure what the difference is, but according to curl docs,
-    //     // CURLOPT_POSTFIELDSIZE_LARGE should be used for date over 2GiB.
-    //     // Either way, we need to set one of these feilds in order to be able to send binary data
-    //     // otherwise libcurl will attempt to use strlen to determine size (which obv won't work for
-    //     // binary data since it isn't a string).
-    //     if (body_size <= 2.147e9) {
-    //         curl_easy_setopt(eh, CURLOPT_POSTFIELDSIZE, (curl_off_t)p_body_size);
-    //     } else {
-    //         curl_easy_setopt(eh, CURLOPT_POSTFIELDSIZE_LARGE, (curl_off_t)p_body_size);
-    //     }
-        
-    //     // Somewhat counter intuitively, the read function is actually used by libcurl to send data,
-    //     // while the write function (see below) is used by libcurl to write response data to storage
-    //     // (or in our case, memory).
-    //     curl_easy_setopt(eh, CURLOPT_READFUNCTION, _read_callback);
-    //     curl_easy_setopt(eh, CURLOPT_READDATA, b);
-    //     ctx->read_buffer = b;
-    // }
+        // Special cases for POST and PUT to configure uploads.
+        switch (p_method)
+        {
+        case METHOD_POST:
+            curl_easy_setopt(eh, CURLOPT_POST, 1L);
+            // curl_easy_setopt(eh, CURLOPT_POSTFIELDS, p_body);
+            curl_easy_setopt(eh, CURLOPT_POSTFIELDSIZE_LARGE, (curl_off_t)p_body_size);
+            break;
+        case METHOD_PUT:
+            curl_easy_setopt(eh, CURLOPT_UPLOAD, 1L);
+            curl_easy_setopt(eh, CURLOPT_INFILESIZE_LARGE, (curl_off_t)p_body_size);
+            break;
+        }
+
+        // Somewhat counter intuitively, the read function is actually used by libcurl to send data,
+        // while the write function (see below) is used by libcurl to write response data to storage
+        // (or in our case, memory).
+        curl_easy_setopt(eh, CURLOPT_READFUNCTION, _read_callback);
+        curl_easy_setopt(eh, CURLOPT_READDATA, b);
+        ctx->read_buffer = b;
+    }
     if (ssl) {
         curl_easy_setopt(eh, CURLOPT_USE_SSL, CURLUSESSL_ALL);
     }

@@ -96,8 +96,8 @@ public:
 
     virtual Error connect_to_host(const String &p_host, int p_port = -1, bool p_ssl = false, bool p_verify_host = true) override;
     virtual void close() override;
-    virtual void set_connection(const Ref<StreamPeer> &p_connection) override { /* No real way to implement this currently */ }
-    virtual Ref<StreamPeer> get_connection() const override { return nullptr; /* No real way to implement this currently*/ }
+    virtual void set_connection(const Ref<StreamPeer> &p_connection) override { ERR_FAIL_MSG("Accessing an HTTPClientCurl's StreamPeer is not supported."); }
+    virtual Ref<StreamPeer> get_connection() const override { ERR_FAIL_V_MSG(REF(), "Accessing an HTTPClientCurl's StreemPeer is not supported."); }
     
     Status get_status() const override { return status; }
     virtual bool has_response() const override { return response_available; }

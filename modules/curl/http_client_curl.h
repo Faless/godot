@@ -38,7 +38,7 @@
 struct RequestContext {
     RequestContext() {};
     ~RequestContext();
-    
+
     List<String> *response_headers = nullptr;
     int *response_code = nullptr;
     RingBuffer<uint8_t> *read_buffer = nullptr;
@@ -78,17 +78,25 @@ class HTTPClientCurl : public HTTPClient {
     bool chunked = false;
     bool keep_alive = true;
     List<String> response_headers;
+    IP::ResolverID resolver_id = 0;
+
+    HTTPClient::Method method = HTTPClient::METHOD_GET;
+    String url;
+    Vector<String> request_headers;
+    const uint8_t *request_body = nullptr;
+    int request_body_size = 0;
 
     curl_slist *_ip_addr_to_slist(const IPAddress &p_addr);
     String _hostname_from_url(const String &p_url);
     Error _poll_curl();
     RingBuffer<uint8_t>* _init_upload(CURL *p_chandle, Method p_method, uint8_t *p_body, int p_body_size);
     RequestContext* _create_request_context();
-    Error _init_dns(CURL *p_chandler);
+    Error _init_dns(CURL *p_handle, IPAddress p_addr);
     Error _init_request_headers(CURL *p_chandler, Vector<String> p_headers, RequestContext *p_ctx);
 
 protected:
-    virtual IPAddress _resolve_dns(const String &p_hostname);
+    virtual Error _resolve_dns();
+    virtual Error _request(IPAddress p_addr);
     
 
 public:

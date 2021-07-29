@@ -98,9 +98,36 @@ String HTTPClientCurl::_hostname_from_url(const String &p_url) {
     return hostname.split("/")[0];
 }
 
-IPAddress HTTPClientCurl::_resolve_dns(const String &p_hostname) {
-    // TODO: Support IPv6.
-    return IP::get_singleton()->resolve_hostname(p_hostname, IP::Type::TYPE_IPV4);
+Error HTTPClientCurl::_resolve_dns() {
+    IP::ResolverStatus rstatus = IP::get_singleton()->get_resolve_item_status(resolver_id);
+    switch (rstatus) {
+        case IP::RESOLVER_STATUS_WAITING:
+            return OK;
+        case IP::RESOLVER_STATUS_DONE: {
+            IPAddress addr = IP::get_singleton()->get_resolve_item_address(resolver_id);
+            
+            Error err = _request(addr);
+            
+            IP::get_singleton()->erase_resolve_item(resolver_id);
+            resolver_id = IP::RESOLVER_INVALID_ID;
+
+            if (err != OK) {
+                status = STATUS_CANT_CONNECT;
+                return err;
+            }
+            return OK;
+        } break;
+        case IP::RESOLVER_STATUS_NONE:
+        case IP::RESOLVER_STATUS_ERROR: {
+            IP::get_singleton()->erase_resolve_item(resolver_id);
+            resolver_id = IP::RESOLVER_INVALID_ID;
+            close();
+            status = STATUS_CANT_RESOLVE;
+            return ERR_CANT_RESOLVE;
+        } break;
+    }
+
+    return OK;
 }
 
 Error HTTPClientCurl::_poll_curl() {
@@ -180,11 +207,9 @@ RequestContext *HTTPClientCurl::_create_request_context() {
     return ctx;
 }
 
-Error HTTPClientCurl::_init_dns(CURL *p_chandle) {
-    // TODO: Is there a way to make this not block?
+Error HTTPClientCurl::_init_dns(CURL *p_chandle, IPAddress p_addr) {
     // TODO: Support resolving multiple addresses.
-    IPAddress addr = _resolve_dns(host);
-    curl_slist *h = _ip_addr_to_slist(addr);
+    curl_slist *h = _ip_addr_to_slist(p_addr);
     CURLcode rc = curl_easy_setopt(p_chandle, CURLOPT_RESOLVE, h);
     if (rc != CURLE_OK) {
         ERR_PRINT("failed to initialize dns resolver: " + String::num_int64(rc));
@@ -204,6 +229,62 @@ Error HTTPClientCurl::_init_request_headers(CURL *p_chandler, Vector<String> p_h
             return FAILED;
         }
     }
+    return OK;
+}
+
+Error HTTPClientCurl::_request(IPAddress p_addr) {
+    CURL* eh = curl_easy_init();
+    curl_easy_setopt(eh, CURLOPT_URL, (host+url).ascii().get_data());
+    curl_easy_setopt(eh, CURLOPT_CUSTOMREQUEST, methods[(int)method]);
+    curl_easy_setopt(eh, CURLOPT_BUFFERSIZE, read_chunk_size);
+    
+    Error err = _init_dns(eh, p_addr);
+    if (err != OK) {
+        return err;
+    }
+    
+    RequestContext *ctx = _create_request_context();
+    
+    if (request_body_size > 0) {
+        ctx->read_buffer = _init_upload(eh, method, (uint8_t*)request_body, request_body_size);
+    }
+
+    if (ssl) {
+        curl_easy_setopt(eh, CURLOPT_USE_SSL, CURLUSESSL_ALL);
+    }
+
+    if (verify_host) {
+        // When CURLOPT_SSL_VERIFYHOST is 2, that certificate must indicate 
+        // that the server is the server to which you meant to connect, or 
+        // the connection fails. Simply put, it means it has to have the same 
+        // name in the certificate as is in the URL you operate against.
+        // @see https://curl.se/libcurl/c/CURLOPT_SSL_VERIFYHOST.html
+        curl_easy_setopt(eh, CURLOPT_SSL_VERIFYHOST, 2L);
+    }
+
+    // Initialize callbacks.
+    curl_easy_setopt(eh, CURLOPT_HEADERFUNCTION, _header_callback);
+    curl_easy_setopt(eh, CURLOPT_HEADERDATA, ctx);
+    curl_easy_setopt(eh, CURLOPT_WRITEFUNCTION, _write_callback);
+    curl_easy_setopt(eh, CURLOPT_WRITEDATA, ctx);
+    
+    err = _init_request_headers(eh, request_headers, ctx);
+    if (err != OK) {
+        return err;
+    }
+
+    // Set the request context. CURLOPT_PRIVATE is just arbitrary data
+    // that can be associated with request handlers. It's used here to
+    // keep track of certain data that needs to be manipulated throughout
+    // the pipeline.
+    // @see https://curl.se/libcurl/c/CURLOPT_PRIVATE.html
+    curl_easy_setopt(eh, CURLOPT_PRIVATE, ctx);
+
+    curl_multi_add_handle(curl, eh); 
+
+    in_flight = true;
+    status = STATUS_REQUESTING;
+    still_running = 0;
     return OK;
 }
 
@@ -248,62 +329,25 @@ Error HTTPClientCurl::request(Method p_method, const String &p_url, const Vector
         return ERR_ALREADY_IN_USE;
     }
 
-    CURL* eh = curl_easy_init();
-    curl_easy_setopt(eh, CURLOPT_URL, (host+p_url).ascii().get_data());
-    curl_easy_setopt(eh, CURLOPT_CUSTOMREQUEST, methods[(int)p_method]);
-    curl_easy_setopt(eh, CURLOPT_BUFFERSIZE, read_chunk_size);
-    
-    Error err = _init_dns(eh);
-    if (err != OK) {
-        return err;
-    }
-    
-    RequestContext *ctx = _create_request_context();
-    
-    if (p_body_size > 0) {
-        ctx->read_buffer = _init_upload(eh, p_method, (uint8_t*)p_body, p_body_size);
-    }
+    method = p_method;
+    url = p_url;
+    request_headers = p_headers;
+    request_body = p_body;
+    request_body_size = p_body_size;
 
-    if (ssl) {
-        curl_easy_setopt(eh, CURLOPT_USE_SSL, CURLUSESSL_ALL);
-    }
+    resolver_id = IP::get_singleton()->resolve_hostname_queue_item(host, IP::Type::TYPE_IPV4);
+    status = STATUS_RESOLVING;
 
-    if (verify_host) {
-        // When CURLOPT_SSL_VERIFYHOST is 2, that certificate must indicate 
-        // that the server is the server to which you meant to connect, or 
-        // the connection fails. Simply put, it means it has to have the same 
-        // name in the certificate as is in the URL you operate against.
-        // @see https://curl.se/libcurl/c/CURLOPT_SSL_VERIFYHOST.html
-        curl_easy_setopt(eh, CURLOPT_SSL_VERIFYHOST, 2L);
-    }
-
-    // Initialize callbacks.
-    curl_easy_setopt(eh, CURLOPT_HEADERFUNCTION, _header_callback);
-    curl_easy_setopt(eh, CURLOPT_HEADERDATA, ctx);
-    curl_easy_setopt(eh, CURLOPT_WRITEFUNCTION, _write_callback);
-    curl_easy_setopt(eh, CURLOPT_WRITEDATA, ctx);
-    
-    err = _init_request_headers(eh, p_headers, ctx);
-    if (err != OK) {
-        return err;
-    }
-
-    // Set the request context. CURLOPT_PRIVATE is just arbitrary data
-    // that can be associated with request handlers. It's used here to
-    // keep track of certain data that needs to be manipulated throughout
-    // the pipeline.
-    // @see https://curl.se/libcurl/c/CURLOPT_PRIVATE.html
-    curl_easy_setopt(eh, CURLOPT_PRIVATE, ctx);
-
-    curl_multi_add_handle(curl, eh); 
-
-    in_flight = true;
-    status = STATUS_REQUESTING;
-    still_running = 0;
     return OK;
 }
 
 Error HTTPClientCurl::poll() {
+
+    if (status == STATUS_RESOLVING) {
+        ERR_FAIL_COND_V(resolver_id == IP::RESOLVER_INVALID_ID, ERR_BUG);
+        return _resolve_dns();
+    }
+    
     // Important! Since polling libcurl will greedily read response data from the 
     // network we don't want to poll when we are in STATUS_BODY state. The reason 
     // for this is that the HTTPClient API is expected to only read from the network 

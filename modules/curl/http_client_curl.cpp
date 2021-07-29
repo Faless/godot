@@ -110,7 +110,7 @@ Error HTTPClientCurl::_poll_curl() {
     }
     
     if (rc != CURLM_OK) {
-        ERR_PRINT("MULTI ERROR: " + String::num_int64(rc));
+        ERR_PRINT_ONCE("Curl multi error while performing. RC: " + String::num_int64(rc));
         return FAILED;
     }
 
@@ -119,7 +119,7 @@ Error HTTPClientCurl::_poll_curl() {
         CURLMsg* msg = curl_multi_info_read(curl, &n);
         if (msg && msg->msg == CURLMSG_DONE) {
             if (msg->data.result != CURLE_OK) {
-                ERR_PRINT("Curl result failed: " + String::num_int64(msg->data.result));
+                ERR_PRINT_ONCE("Curl result failed. RC: " + String::num_int64(msg->data.result));
                 status = STATUS_DISCONNECTED;
                 return FAILED;
             }
@@ -127,7 +127,7 @@ Error HTTPClientCurl::_poll_curl() {
             RequestContext* ctx;
             CURLcode rc = curl_easy_getinfo(msg->easy_handle, CURLINFO_RESPONSE_CODE, &response_code);
             if (rc != CURLE_OK) {
-                ERR_PRINT("couldnt get status code ! " + String::num_int64(rc));
+                ERR_PRINT_ONCE("Couldnt get curl status code. RC:" + String::num_int64(rc));
                 return FAILED;
             }
             curl_easy_getinfo(msg->easy_handle, CURLINFO_PRIVATE, &ctx);

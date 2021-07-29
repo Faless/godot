@@ -304,10 +304,26 @@ Error HTTPClientCurl::request(Method p_method, const String &p_url, const Vector
 }
 
 Error HTTPClientCurl::poll() {
-    return _poll_curl();
+    // Important! Since polling libcurl will greedily read response data from the 
+    // network we don't want to poll when we are in STATUS_BODY state. The reason 
+    // for this is that the HTTPClient API is expected to only read from the network 
+    // when read_response_body_chunk is called. This means that here, in poll, we only
+    // poll libcurl when we are not in the STATUS_BODY state and we poll libcurl in 
+    // read_response_body_chunk instead, when we are in STATUS_BODY state.
+    if (status != STATUS_BODY) {
+        return _poll_curl();
+    }
+    return OK;
 }
 
 PackedByteArray HTTPClientCurl::read_response_body_chunk() {
+    if (status == STATUS_BODY) {
+        Error err = _poll_curl();
+        if (err != OK) {
+            ERR_PRINT_ONCE("Failed when polling curl in STATUS_BODY. RC: " + String::num_int64(err));
+            return PackedByteArray();
+        }
+    }
     if (response_chunks.is_empty()) {
         status = keep_alive ? STATUS_CONNECTED : STATUS_DISCONNECTED;
         return PackedByteArray();

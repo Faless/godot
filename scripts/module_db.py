@@ -205,6 +205,7 @@ def __parse_module_config(config_path: str, env: Environment) -> Module:
 
 
     if 'can_build' in config:
+        print('xxx', config_path)
         can_build = config['can_build'](env)
         module.build &= can_build
         if not can_build:

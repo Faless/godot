@@ -7,13 +7,13 @@ DEPENDENCIES += [DEP_MBEDTLS, DEP_ZLIB, DEP_ZSTD, DEP_MINIZIP]
 # random misc sources, we are going to build these as a small static lib
 _core_misc_srcs = files([
     # c sources
-    '../thirdparty/misc/fastlz.c',
-    '../thirdparty/misc/r128.c',
-    '../thirdparty/misc/smaz.c',
+#    '../thirdparty/misc/fastlz.c',
+#    '../thirdparty/misc/r128.c',
+#    '../thirdparty/misc/smaz.c',
     # cpp sources
-    '../thirdparty/misc/pcg.cpp',
-    '../thirdparty/misc/triangulator.cpp',
-    '../thirdparty/misc/clipper.cpp',
+#    '../thirdparty/misc/pcg.cpp',
+#    '../thirdparty/misc/triangulator.cpp',
+#    '../thirdparty/misc/clipper.cpp',
 ])
 
 _core_misc_c_args = []

@@ -1,6 +1,9 @@
-def can_build(env, platform):
+def get_name() -> str:
+    return 'bullet'
+
+def can_build(env):
     # API Changed and bullet is disabled at the moment
-    return False
+    return True
     # Later change to return not env["disable_3d"]
 
 

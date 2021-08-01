@@ -22,7 +22,10 @@ if PLATFORM == 'javascript'
     # library_godot_webrtc.js
 endif
 
-lib_module_webrtc = library('module_webrtc', _module_webrtc_srcs, dependencies: _module_webrtc_deps, cpp_args: _module_webrtc_compile_args)
+lib_module_webrtc = library('module_webrtc',
+    _module_webrtc_srcs,
+    dependencies: _module_webrtc_deps,
+    cpp_args: _module_webrtc_compile_args)
 
 DEP_MODULE_WEBRTC = declare_dependency(link_with: lib_module_webrtc)
 

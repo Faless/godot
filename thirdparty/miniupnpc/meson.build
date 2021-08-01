@@ -24,7 +24,9 @@ if get_option('builtin_miniupnpc')
         _builtin_miniupnpc_c_args += '-std=gnu99'
     endif
 
-    lib_builtin_miniupnpc = static_library('builtin_miniupnpc', _builtin_miniupnpc_srcs,
+    lib_builtin_miniupnpc = static_library('builtin_miniupnpc',
+        _builtin_miniupnpc_srcs,
+#        _version_target,
         c_args: [_builtin_miniupnpc_c_args, _builtin_miniupnpc_dep_compile_args],
         include_directories: '../..',
         build_by_default: false

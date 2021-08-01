@@ -1,3 +1,7 @@
+#!/usr/bin/env python3
+
+import sys
+
 proto = """
 #define GDVIRTUAL$VER($RET m_name $ARG) \\
 StringName _gdvirtual_##m_name##_sn = #m_name;\\
@@ -130,8 +134,8 @@ def generate_version(argcount, const=False, returns=False):
     return s
 
 
-def run(target, source, env):
-
+#def run(target, source, env):
+def run(ofilename):
     max_versions = 12
 
     txt = """
@@ -151,11 +155,11 @@ def run(target, source, env):
 
     txt += "#endif"
 
-    with open(target[0], "w") as f:
+    with open(ofilename, "w") as f:
         f.write(txt)
 
 
 if __name__ == "__main__":
-    from platform_methods import subprocess_main
-
-    subprocess_main(globals())
+    #from platform_methods import subprocess_main
+    #subprocess_main(globals())
+    run(sys.argv[1])

@@ -33,8 +33,6 @@ if meson.get_compiler('cpp').get_id() == 'msvc'
 endif
 
 _lib_core_misc = static_library('builtin_core_misc', _core_misc_srcs, c_args: _core_misc_c_args, cpp_args: _core_misc_cpp_args, include_directories: INCDIRS)
-DEP_CORE_MISC = declare_dependency(link_with: _lib_core_misc)
-DEPENDENCIES += [DEP_CORE_MISC]
 
 ################################################################################
 # MISC LIB FOR CORE - END
@@ -110,3 +108,9 @@ subdir('os')
 subdir('string')
 subdir('templates')
 subdir('variant')
+
+cdata = configuration_data()
+configure_file(output: 'disabled_classes.gen.h',
+    configuration: cdata)
+    DEP_CORE_MISC = declare_dependency(link_with: _lib_core_misc, sources: gdivirtuals_gen)
+    DEPENDENCIES += [DEP_CORE_MISC]

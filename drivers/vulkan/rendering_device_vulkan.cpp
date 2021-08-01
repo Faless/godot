@@ -39,7 +39,7 @@
 #include "drivers/vulkan/vulkan_context.h"
 
 #include "thirdparty/misc/smolv.h"
-#include "thirdparty/spirv-reflect/spirv_reflect.h"
+#include "thirdparty/spirv-reflect/include/spirv/spirv_reflect.h"
 
 //#define FORCE_FULL_BARRIER
 

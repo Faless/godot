@@ -1,8 +1,8 @@
 def get_name() -> str:
-    return 'text_server_adv'
+    return 'module_text_server_fb_enabled'
 
 def can_build(env):
-    return True
+    return False
 
 
 def configure(env):

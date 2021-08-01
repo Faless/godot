@@ -1,9 +1,11 @@
-kdef can_build(env, platform):
-    return not env["disable_3d"]
+def get_name() -> str:
+    return 'csg'
+
+def can_build(env):
+    return True
 
 def configure(env):
     pass
-
 
 def get_doc_classes():
     return [

@@ -1,6 +1,9 @@
 _module_enet_srcs = files([
-    'networked_multiplayer_enet.cpp',
-    'register_types.cpp',
+'enet_connection.cpp',
+'enet_multiplayer_peer.cpp',
+'enet_packet_peer.cpp',
+'register_types.cpp',
+
 ])
 
 _lib_module_enet = library('module_enet', _module_enet_srcs,

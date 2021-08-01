@@ -1,4 +1,4 @@
-SOURCES += files([
+SOURCES += files(
 'cluster_builder_rd.cpp',
 'effects_rd.cpp',
 'pipeline_cache_rd.cpp',
@@ -11,7 +11,8 @@ SOURCES += files([
 'renderer_storage_rd.cpp',
 'shader_compiler_rd.cpp',
 'shader_rd.cpp',
+)
 
-])
-
+subdir('forward_clustered')
+subdir('forward_mobile')
 subdir('shaders')

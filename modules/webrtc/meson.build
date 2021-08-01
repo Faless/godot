@@ -1,12 +1,13 @@
 _module_webrtc_srcs = files([
-    'register_types.cpp',
-    'webrtc_data_channel.cpp',
-    'webrtc_data_channel_gdnative.cpp',
-    'webrtc_data_channel_js.cpp',
-    'webrtc_multiplayer.cpp',
-    'webrtc_peer_connection.cpp',
-    'webrtc_peer_connection_gdnative.cpp',
-    'webrtc_peer_connection_js.cpp',
+'register_types.cpp',
+'webrtc_data_channel.cpp',
+'webrtc_data_channel_gdnative.cpp',
+'webrtc_data_channel_js.cpp',
+'webrtc_multiplayer_peer.cpp',
+'webrtc_peer_connection.cpp',
+'webrtc_peer_connection_gdnative.cpp',
+'webrtc_peer_connection_js.cpp',
+
 ])
 
 _module_webrtc_compile_args = []

@@ -6,7 +6,7 @@
 # Commands to always run
 ################################################################################
 _target_osx_logo = custom_target(
-    'osx_logo',
+                     'osx_logo',
     output: ['logo.gen.h'],
     input: ['logo.png'],
     command: [SCRIPT_PLATFORM_LOGO, '@INPUT@', '@OUTPUT@', 'osx'],
@@ -19,5 +19,27 @@ SOURCES += [_target_osx_logo]
 # Host Machine Specifics
 ################################################################################
 if PLATFORM == 'osx'
-    error('osx not implemented yet')
+    MAIN_SOURCES += files('godot_main_osx.mm')
+
+    _osx_srcs = files('joypad_osx.cpp',
+                      #'context_gl_osx.mm',
+                      'crash_handler_osx.mm',
+                      'dir_access_osx.mm',
+                      'display_server_osx.mm',
+                      'godot_main_osx.mm',
+                      'os_osx.mm',
+                      'vulkan_context_osx.mm',
+                      )
+    CPP_ARGS += ['-DUNIX_ENABLED']
+    OBJCPP_ARGS += ['-DUNIX_ENABLED']
+    SOURCES += _osx_srcs
+    DEPENDENCIES += dependency('appleframeworks', modules: ['AppKit',
+                                                            'IOKit',
+                                                            'CoreAudio',
+                                                            'CoreServices',
+                                                            'Carbon',
+                                                            'GameController',
+                                                            'CoreHaptics',
+                                                            'ForceFeedback',
+                                                            'foundation'])
 endif

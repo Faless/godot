@@ -13,6 +13,9 @@ project(
     ]
 )
 
+if host_machine.system() == 'darwin'
+    add_languages('objc', 'objcpp')
+endif
 
 # The list of modules that will not be included in the build
 
@@ -152,6 +155,7 @@ _cpp_compiler_id = meson.get_compiler('cpp').get_id()
 _cpp_argsyntax = meson.get_compiler('cpp').get_argument_syntax()
 
 CPP_ARGS = []
+OBJCPP_ARGS = []
 LINK_ARGS = []
 
 # do we want to show our #warnings ?
@@ -292,7 +296,9 @@ _godot_all = library('godot_all',
     SOURCES + HEADERS,
     include_directories: INCDIRS,
     dependencies: DEPENDENCIES,
-    cpp_args: CPP_ARGS, link_args: LINK_ARGS)
+    cpp_args: CPP_ARGS,
+    objcpp_args: OBJCPP_ARGS,
+    link_args: LINK_ARGS)
 
 DEP_GODOT_ALL = declare_dependency(link_with: _godot_all, include_directories: INCDIRS, compile_args: CPP_ARGS, link_args: LINK_ARGS)
 

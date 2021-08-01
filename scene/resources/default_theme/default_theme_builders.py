@@ -9,8 +9,6 @@ import os.path
 import sys
 
 def make_fonts_header(dst, source):
-    print(source)
-    print(dst)
     g = open(dst, "w", encoding="utf-8")
 
     g.write("/* THIS FILE IS GENERATED DO NOT EDIT */\n")

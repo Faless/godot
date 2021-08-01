@@ -7,13 +7,14 @@ DEPENDENCIES += [DEP_MBEDTLS, DEP_ZLIB, DEP_ZSTD, DEP_MINIZIP, DEP_MISC]
 # random misc sources, we are going to build these as a small static lib
 _core_misc_srcs = files([
     # c sources
-#    '../thirdparty/misc/fastlz.c',
-#    '../thirdparty/misc/r128.c',
-#    '../thirdparty/misc/smaz.c',
+    '../thirdparty/misc/fastlz.c',
+    '../thirdparty/misc/r128.c',
+    '../thirdparty/misc/smaz.c',
     # cpp sources
-#    '../thirdparty/misc/pcg.cpp',
-#    '../thirdparty/misc/triangulator.cpp',
-#    '../thirdparty/misc/clipper.cpp',
+    '../thirdparty/misc/pcg.cpp',
+    '../thirdparty/misc/polypartition.cpp',
+    '../thirdparty/misc/clipper.cpp',
+    '../thirdparty/misc/smolv.cpp',
 ])
 
 _core_misc_c_args = []
@@ -47,14 +48,24 @@ SOURCES += files([
 ])
 
 # generated version file
-_version_target = custom_target(
-    'version',
-    output: ['version_generated.gen.h', 'version_hash.gen.h'],
-    input: ['../version.json'],
-    command: [SCRIPT_VERSION, '@INPUT@', '@OUTPUT@', MODULES_ENABLED],
-    build_by_default: true
-)
-SOURCES += [_version_target]
+version_arr = meson.project_version().split('.')
+version_cdata = configuration_data()
+version_cdata.set_quoted('VERSION_SHORT_NAME', 'Godot')
+version_cdata.set_quoted('VERSION_NAME', 'Godot Engine')
+version_cdata.set('VERSION_MAJOR', version_arr[0])
+version_cdata.set('VERSION_MINOR', version_arr[1])
+version_cdata.set('VERSION_PATCH', version_arr[2])
+version_cdata.set_quoted('VERSION_STATUS', 'dev')
+version_cdata.set_quoted('VERSION_BUILD', 'custom_build')
+version_cdata.set_quoted('VERSION_MODULE_CONFIG', '')
+version_cdata.set('VERSION_YEAR', 2020)
+version_cdata.set_quoted('VERSION_WEBSITE', 'https://godotengine.org')
+configure_file(output: 'version_generated.gen.h',
+    configuration: version_cdata)
+version_hash_data = configuration_data()
+version_hash_data.set_quoted('VERSION_HASH', '')
+configure_file(output: 'version_hash.gen.h',
+    configuration: version_hash_data)
 
 # generated input mappings
 _encryption_key_target = custom_target(

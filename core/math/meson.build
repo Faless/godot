@@ -1,4 +1,4 @@
-SOURCES += files([
+SOURCES += files(
 'aabb.cpp',
 'a_star.cpp',
 'basis.cpp',
@@ -25,4 +25,4 @@ SOURCES += files([
 'vector2.cpp',
 'vector3.cpp',
 'vector3i.cpp',
-])
+)

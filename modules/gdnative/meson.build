@@ -42,6 +42,8 @@ lib_module_gdnative = library('module_gdnative', module_gdnative_srcs,
     dependencies: [DEP_GODOT_ALL]
 )
 
-DEP_MODULE_GDNATIVE = declare_dependency(link_with: lib_module_gdnative, include_directories: _module_gdnative_incdirs)
+DEP_MODULE_GDNATIVE = declare_dependency(link_with: lib_module_gdnative,
+                                         sources: _gdnative_api_structs_header_target,
+                                         include_directories: _module_gdnative_incdirs)
 
 MODULE_DEPENDENCIES += DEP_MODULE_GDNATIVE

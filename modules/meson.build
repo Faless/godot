@@ -1,5 +1,4 @@
-
- _modules_enabled_target = custom_target(
+_modules_enabled_target = custom_target(
     'modules_enabled',
     output: ['modules_enabled.gen.h'],
     input: [MODULES_DB_FILE],

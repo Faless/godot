@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """Functions used to generate source files during build time
 
 All such functions are invoked in a subprocess on Windows to prevent build flakiness.
@@ -5,12 +6,11 @@ All such functions are invoked in a subprocess on Windows to prevent build flaki
 """
 import os
 import os.path
-from platform_methods import subprocess_main
+import sys
 
-
-def make_fonts_header(target, source, env):
-    dst = target[0]
-
+def make_fonts_header(dst, source):
+    print(source)
+    print(dst)
     g = open(dst, "w", encoding="utf-8")
 
     g.write("/* THIS FILE IS GENERATED DO NOT EDIT */\n")
@@ -37,4 +37,4 @@ def make_fonts_header(target, source, env):
 
 
 if __name__ == "__main__":
-    subprocess_main(globals())
+    make_fonts_header(sys.argv[1], sys.argv[2:])

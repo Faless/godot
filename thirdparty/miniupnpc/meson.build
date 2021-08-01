@@ -1,5 +1,6 @@
 if get_option('builtin_miniupnpc')
-    _builtin_miniupnpc_srcs = files([
+    _builtin_miniupnpc_srcs = files(
+        'miniupnpc/addr_is_reserved.c',
         'miniupnpc/miniupnpc.c',
         'miniupnpc/upnpcommands.c',
         'miniupnpc/miniwget.c',
@@ -12,7 +13,7 @@ if get_option('builtin_miniupnpc')
         'miniupnpc/receivedata.c',
         'miniupnpc/portlistingparse.c',
         'miniupnpc/upnpreplyparse.c',
-    ])
+    )
 
     _builtin_miniupnpc_c_args = ['-DMINIUPNPC_SET_SOCKET_TIMEOUT']
     _builtin_miniupnpc_dep_compile_args = ['-DMINIUPNP_STATICLIB']
@@ -25,6 +26,7 @@ if get_option('builtin_miniupnpc')
 
     lib_builtin_miniupnpc = static_library('builtin_miniupnpc', _builtin_miniupnpc_srcs,
         c_args: [_builtin_miniupnpc_c_args, _builtin_miniupnpc_dep_compile_args],
+        include_directories: '../..',
         build_by_default: false
     )
 

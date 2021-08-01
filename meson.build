@@ -291,7 +291,11 @@ subdir('splash')
 # generate the module include files
 subdir('modules')
 
-_godot_all = library('godot_all', SOURCES + HEADERS, include_directories: INCDIRS, dependencies: DEPENDENCIES, cpp_args: CPP_ARGS, link_args: LINK_ARGS)
+_godot_all = library('godot_all',
+    SOURCES + HEADERS,
+    include_directories: INCDIRS,
+    dependencies: DEPENDENCIES,
+    cpp_args: CPP_ARGS, link_args: LINK_ARGS)
 
 DEP_GODOT_ALL = declare_dependency(link_with: _godot_all, include_directories: INCDIRS, compile_args: CPP_ARGS, link_args: LINK_ARGS)
 

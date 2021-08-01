@@ -27,7 +27,10 @@ _module_fbx_srcs = files([
 # add our current directory into the include path
 _module_fbx_incdirs = include_directories('.')
 
-lib_module_fbx = library('module_fbx', _module_fbx_srcs, include_directories: _module_fbx_incdirs, dependencies: [DEP_GODOT_ALL])
+lib_module_fbx = library('module_fbx',
+                         _module_fbx_srcs,
+                         include_directories: _module_fbx_incdirs,
+                         dependencies: [DEP_GODOT_ALL, DEP_ZLIB])
 
 DEP_MODULE_FBX = declare_dependency(link_with: lib_module_fbx)
 

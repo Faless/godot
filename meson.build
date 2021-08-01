@@ -8,10 +8,7 @@ project(
         'c_std=c11',
         'cpp_std=c++17',
         'warning_level=0',
-        'werror=false',
         'default_library=static',
-        'debug=true',
-        'optimization=0',
         'b_vscrt=md'
     ]
 )

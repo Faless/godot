@@ -1,4 +1,4 @@
-SOURCES += files([
+SOURCES += files(
 'abstract_polygon_2d_editor.cpp',
 'animation_blend_space_1d_editor.cpp',
 'animation_blend_space_2d_editor.cpp',
@@ -67,5 +67,6 @@ SOURCES += files([
 'version_control_editor_plugin.cpp',
 'visual_shader_editor_plugin.cpp',
 'voxel_gi_editor_plugin.cpp',
+)
 
-])
+subdir('tiles')

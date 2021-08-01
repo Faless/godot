@@ -1,4 +1,4 @@
-DEPENDENCIES += [DEP_MBEDTLS, DEP_ZLIB, DEP_ZSTD, DEP_MINIZIP]
+DEPENDENCIES += [DEP_MBEDTLS, DEP_ZLIB, DEP_ZSTD, DEP_MINIZIP, DEP_MISC]
 
 ################################################################################
 # MISC LIB FOR CORE - BEGIN
@@ -100,6 +100,7 @@ subdir('config')
 subdir('crypto')
 subdir('debugger')
 subdir('error')
+subdir('extension')
 subdir('input')
 subdir('io')
 subdir('math')

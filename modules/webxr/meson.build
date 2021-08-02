@@ -5,9 +5,9 @@ _module_webxr_srcs = files([
 ])
 
 if PLATFORM == 'javascript'
-    error('js not setup yet')
-    # env.AddJSLibraries(["native/library_godot_webxr.js"])
-    # env.AddJSExterns(["native/webxr.externs.js"])
+    dir_base = meson.current_source_dir()
+    DEPENDENCIES += declare_dependency(link_args: ['--js-library', join_paths(dir_base, 'native/library_godot_webxr.js')])
+    # env.AddJSExterns(["native/webxr.externs.js"]) TODO externs, env variable, meson devs...
 endif
 
 lib_module_webxr = library('module_webxr', _module_webxr_srcs, dependencies: [DEP_GODOT_ALL])

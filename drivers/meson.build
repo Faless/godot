@@ -25,8 +25,6 @@ subdir('winmidi') # NOE: should this be PLATFORM guarded?
 # Graphics Drivers
 if PLATFORM != 'server' and PLATFORM != 'javascript'
     subdir('vulkan')
-else
-    subdir('dummy')
 endif
 
 # Core dependencies

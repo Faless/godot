@@ -1,4 +1,4 @@
-SOURCES += files([
+SOURCES += files(
     'editor_debugger_inspector.cpp',
     'editor_debugger_node.cpp',
     'editor_debugger_server.cpp',
@@ -8,4 +8,6 @@ SOURCES += files([
     'editor_profiler.cpp',
     'editor_visual_profiler.cpp',
     'script_editor_debugger.cpp',
-])
+)
+
+subdir('debug_adapter')

@@ -94,6 +94,8 @@ if get_option('builtin_harfbuzz')
         _builtin_harfbuzz_compile_flags += '/wd4172'
     elif meson.get_compiler('cpp').get_id() == 'gcc'
         _builtin_harfbuzz_compile_flags += ['-DHB_NO_PRAGMA_GCC_DIAGNOSTIC_WARNING', '-Wno-deprecated-declarations']
+    elif meson.get_compiler('cpp').get_id() == 'emscripten'
+         _builtin_harfbuzz_compile_flags += ['-w']
     endif
 
     lib_builtin_harfbuzz = static_library('builtin_harfbuzz', _builtin_harfbuzz_srcs,

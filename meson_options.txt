@@ -66,6 +66,6 @@ option('use_lsan', type: 'boolean', value: false, description: 'Use Emscripten l
 option('use_safe_heap', type: 'boolean', value: false, description: 'Use Emscripten SAFE_HEAP sanitizer')
 # eval() can be a security concern, so it can be disabled.
 option('javascript_eval', type: 'boolean', value: true, description: 'Enable JavaScript eval interface')
-option('threads_enabled', type: 'boolean', value: false, description: 'Enable WebAssembly Threads support (limited browser support)')
+option('threads_enabled', type: 'boolean', value: true, description: 'Enable WebAssembly Threads support (limited browser support)')
 option('gdnative_enabled', type: 'boolean', value: false, description: 'Enable WebAssembly GDNative support (produces bigger binaries)')
 option('use_closure_compiler', type: 'boolean', value: false, description: 'Use closure compiler to minimize JavaScript code')

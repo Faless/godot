@@ -22,6 +22,8 @@ if get_option('builtin_miniupnpc')
         _builtin_miniupnpc_c_args += '/wd4133'
     elif meson.get_compiler('c').get_id() == 'gcc'
         _builtin_miniupnpc_c_args += '-std=gnu99'
+    elif meson.get_compiler('c').get_id() == 'emscripten'
+        _builtin_miniupnpc_c_args += '-std=gnu99'
     endif
 
     lib_builtin_miniupnpc = static_library('builtin_miniupnpc',

@@ -1,5 +1,5 @@
 if get_option('builtin_harfbuzz')
-    _builtin_harfbuzz_srcs = files([
+    _builtin_harfbuzz_srcs = files(
     'src/hb-aat-layout.cc',
     'src/hb-aat-map.cc',
     'src/hb-blob.cc',
@@ -63,7 +63,7 @@ if get_option('builtin_harfbuzz')
     'src/hb-ucd.cc',
     'src/hb-unicode.cc',
     #'src/hb-uniscribe.cc',',
-    ])
+    )
 
     _builtin_harfbuzz_incdirs = include_directories('src')
 

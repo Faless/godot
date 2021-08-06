@@ -1,17 +1,17 @@
-_module_webxr_srcs = files([
+_module_webxr_srcs = files(
     'register_types.cpp',
     'webxr_interface_js.cpp',
     'webxr_interface.cpp'
-])
+)
 
+DEP_MODULE_WEBXR = []
 if PLATFORM == 'javascript'
-    error('js not setup yet')
-    # env.AddJSLibraries(["native/library_godot_webxr.js"])
-    # env.AddJSExterns(["native/webxr.externs.js"])
+    DEP_MODULE_WEBXR += cpp.find_library('library_godot_webxr.js', dirs: [meson.current_source_dir() / 'native'])
+
 endif
 
 lib_module_webxr = library('module_webxr', _module_webxr_srcs, dependencies: [DEP_GODOT_ALL])
 
-DEP_MODULE_WEBXR = declare_dependency(link_with: lib_module_webxr)
+DEP_MODULE_WEBXR += declare_dependency(link_with: lib_module_webxr)
 
 MODULE_DEPENDENCIES += DEP_MODULE_WEBXR

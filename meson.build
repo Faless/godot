@@ -13,6 +13,9 @@ project(
     ]
 )
 
+cc = meson.get_compiler('c')
+cpp = meson.get_compiler('cpp')
+
 if host_machine.system() == 'darwin'
     add_languages('objc', 'objcpp')
 endif

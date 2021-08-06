@@ -1,4 +1,4 @@
-_module_websocket_srcs = files([
+_module_websocket_srcs = files(
     'editor_debugger_server_websocket.cpp',
     'emws_client.cpp',
     'emws_peer.cpp',
@@ -12,13 +12,14 @@ _module_websocket_srcs = files([
     'wsl_client.cpp',
     'wsl_peer.cpp',
     'wsl_server.cpp',
-])
+)
 
 _module_websocket_deps = [DEP_GODOT_ALL]
 
+DEP_MODULE_WEBSOCKET = []
+
 if PLATFORM == 'javascript'
-    error('javascript not setup for websocket')
-    # library_godot_websocket.js
+    DEP_MODULE_WEBSOCKET += cpp.find_library('library_godot_websocket.js', dirs: [meson.current_source_dir()])
 else
     _module_websocket_deps += DEP_WSLAY
 endif
@@ -28,6 +29,6 @@ lib_module_websocket = library('module_websocket',
                                gdivirtuals_gen,
                                dependencies: _module_websocket_deps)
 
-DEP_MODULE_WEBSOCKET = declare_dependency(link_with: lib_module_websocket)
+DEP_MODULE_WEBSOCKET += declare_dependency(link_with: lib_module_websocket)
 
 MODULE_DEPENDENCIES += DEP_MODULE_WEBSOCKET

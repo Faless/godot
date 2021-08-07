@@ -34,7 +34,8 @@ if PLATFORM == 'none'
     if host_machine.system() == 'windows'
         PLATFORM = 'windows'
     elif host_machine.system() == 'darwin'
-        PLATFORM = 'osx'
+        # Not strictly speaking true, but will work for now.
+        PLATFORM = meson.is_cross_build() ? 'iphone' : 'osx'
     endif
 endif
 

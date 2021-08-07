@@ -4,7 +4,8 @@ if PLATFORM == 'android'
 
 elif PLATFORM == 'iphone'
     # TODO
-    error('iphone Vulkan library not implemented')
+#    error('iphone Vulkan library not implemented')
+     DEP_VULKAN = []
 
 elif get_option('builtin_vulkan')
     _vulkan_lib_incdirs = include_directories('.', 'include', 'loader')

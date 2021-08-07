@@ -7,7 +7,9 @@ _module_mbedtls_srcs = files([
     'stream_peer_mbedtls.cpp',
 ])
 
-lib_module_mbedtls = library('module_mbedtls', _module_mbedtls_srcs, 
+lib_module_mbedtls = library('module_mbedtls',
+    _module_mbedtls_srcs,
+    _certs_target,
     dependencies: [DEP_GODOT_ALL, DEP_MBEDTLS]
 )
 

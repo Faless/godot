@@ -19,5 +19,33 @@ SOURCES += [_target_iphone_logo]
 # Host Machine Specifics
 ################################################################################
 if PLATFORM == 'iphone'
-    error('iphone not implemented yet')
+    # This probably needs more things, but the code does not compile yet
+    # due to Vulkan missing. Copy from the macos dir as needed.
+    ios_deps = dependency('AppleFrameworks', modules: ['UIKit',
+                                                       #
+                                                       ])
+    # All Vulkan files commented out.
+    iphone_sources = files(
+        'godot_iphone.mm',
+        'os_iphone.mm',
+        #'main.m',
+        'app_delegate.mm',
+        'view_controller.mm',
+        'ios.mm',
+        #'vulkan_context_iphone.mm',
+        #'display_server_iphone.mm',
+        'joypad_iphone.mm',
+        'godot_view.mm',
+        'display_layer.mm',
+        'godot_app_delegate.m',
+        'godot_view_renderer.mm',
+        'godot_view_gesture_recognizer.mm',
+        'device_metrics.m',
+        'keyboard_input_view.mm',
+    )
+
+    SOURCES += iphone_sources
+    CPP_ARGS += ['-DIPHONE_ENABLED', '-DUNIX_ENABLED', '-DCOREAUDIO_ENABLED']
+    OBJCPP_ARGS += ['-DIPHONE_ENABLED', '-DUNIX_ENABLED', '-DCOREAUDIO_ENABLED']
+    DEPENDENCIES += ios_deps
 endif

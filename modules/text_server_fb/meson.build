@@ -5,7 +5,9 @@ _module_tsf_srcs = files([
     'text_server_fb.cpp',
 ])
 
-lib_module_tsf = library('module_text_server_fb', _module_tsf_srcs,
+lib_module_tsf = library('module_text_server_fb',
+    _module_tsf_srcs,
+    cpp_args: ['-DMODULE_FREETYPE_ENABLED'],
     dependencies: [DEP_GODOT_ALL, DEP_FREETYPE]
 )
 

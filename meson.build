@@ -56,6 +56,9 @@ if PLATFORM == 'windows'
         language: ['c', 'cpp']
     )
 endif
+if cc.get_id() == 'msvc'
+    add_project_arguments('/utf-8', language: ['c', 'cpp'])
+endif
 
 if get_option('tools') and not IS_DEBUG_BUILD # get_option('debug') - TODO change when ZI issue fixed
     error('tools can only be built with debug symbols')
@@ -316,10 +319,20 @@ endforeach
 subdir('main')
 
 # assemble our exe
-EXEC_GODOT = executable('godot', MAIN_SOURCES,
-    dependencies: [DEP_GODOT_ALL, MODULE_DEPENDENCIES, DEPENDENCIES],
-    win_subsystem: get_option('windows_subsystem')
-)
+if PLATFORM == 'android'
+    EXEC_GODOT = shared_library('godot', MAIN_SOURCES,
+        dependencies: [DEP_GODOT_ALL, MODULE_DEPENDENCIES, DEPENDENCIES]
+    )
+elif PLATFORM == 'iphone' or PLATFORM == 'tvos'
+    EXEC_GODOT = static_library('godot', MAIN_SOURCES,
+        dependencies: [DEP_GODOT_ALL, MODULE_DEPENDENCIES, DEPENDENCIES]
+    )
+else
+    EXEC_GODOT = executable('godot', MAIN_SOURCES,
+        dependencies: [DEP_GODOT_ALL, MODULE_DEPENDENCIES, DEPENDENCIES],
+        win_subsystem: get_option('windows_subsystem')
+    )
+endif
 
 # Output some final messages to the users
 message('Modules Enabled: ' + ', '.join(MODULES_ENABLED))

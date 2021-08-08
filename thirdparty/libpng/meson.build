@@ -19,8 +19,12 @@ if get_option('builtin_libpng')
         'pngwutil.c',
     ])
 
-    if PLATFORM == 'android'
-        error('libpng: Need to add in the arm and NEON specific libraries.')
+    if host_machine.cpu_family() == 'aarch64' or host_machine.cpu_family() == 'arm'
+        _libpng_sources += files(
+            'arm/arm_init.c',
+            'arm/filter_neon_intrinsics.c',
+            'arm/palette_neon_intrinsics.c',
+        )
     endif
 
     _lib_libpng = static_library('libpng', _libpng_sources, include_directories: _libpng_incdirs, dependencies: [DEP_ZLIB], build_by_default: false)

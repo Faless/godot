@@ -18,9 +18,11 @@
 
 #if defined(_WIN32)
   #define WIN32_LEAN_AND_MEAN
+// -- GODOT start --
   #ifndef NOMINMAX
     #define NOMINMAX
   #endif
+// -- GODOT end --
   #include <windows.h>
 #elif defined(__APPLE__)
   #include <sys/sysctl.h>

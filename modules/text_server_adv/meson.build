@@ -8,7 +8,7 @@ module_tsa_srcs = files([
 
 subdir('icu_data')
 
-_module_tsa_compile_args = []
+_module_tsa_compile_args = ['-DMODULE_FREETYPE_ENABLED']
 if get_option('tools')
     _module_tsa_compile_args += '-DICU_STATIC_DATA'
 endif

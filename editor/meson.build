@@ -91,7 +91,7 @@ if get_option('tools')
 
 
     # Add our sources
-    SOURCES += files([
+    SOURCES += files(
     'action_map_editor.cpp',
     'animation_bezier_editor.cpp',
     'animation_track_editor.cpp',
@@ -169,8 +169,8 @@ if get_option('tools')
     'script_create_dialog.cpp',
     'settings_config_dialog.cpp',
     'shader_globals_editor.cpp',
-
-    ])
+    'shader_create_dialog.cpp'
+    )
 
     subdir('debugger')
     subdir('fileserver')

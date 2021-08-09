@@ -30,16 +30,22 @@ if PLATFORM == 'osx'
                       'os_osx.mm',
                       'vulkan_context_osx.mm',
                       )
-    CPP_ARGS += ['-DUNIX_ENABLED']
-    OBJCPP_ARGS += ['-DUNIX_ENABLED']
+    CPP_ARGS += ['-DUNIX_ENABLED', '-DVULKAN_ENABLED', '-DOSX_ENABLED', '-DAPPLE_STYLE_KEYS', '-DCOREAUDIO_ENABLED', '-DCOREMIDI_ENABLED']
+    OBJCPP_ARGS += ['-DUNIX_ENABLED', '-DVULKAN_ENABLED', '-DOSX_ENABLED', '-DAPPLE_STYLE_KEYS', '-DCOREAUDIO_ENABLED', '-DCOREMIDI_ENABLED']
     SOURCES += _osx_srcs
     DEPENDENCIES += dependency('appleframeworks', modules: ['AppKit',
                                                             'IOKit',
                                                             'CoreAudio',
+                                                            'CoreMidi',
+                                                            'CoreVideo',
+                                                            'CoreMedia',
+                                                            'QuartzCore',
                                                             'CoreServices',
                                                             'Carbon',
                                                             'GameController',
                                                             'CoreHaptics',
                                                             'ForceFeedback',
+                                                            'AVFoundation',
+                                                            'AudioToolbox',
                                                             'foundation'])
 endif

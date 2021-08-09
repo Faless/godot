@@ -255,13 +255,12 @@ if _cpp_argsyntax == 'msvc'
     # TODO: this was only added on release, adding it here everywhere because
     # this should not change based off of buildtype.
     # However, the question is whether or not we should have this at all.
-    LINK_ARGS += '/ENTRY:mainCRTStartup' 
+    LINK_ARGS += '/ENTRY:mainCRTStartup'
 
     # Following flags always added
     CPP_ARGS += [
         # '/Gd', # TODO: Gd and Gr are incompatible, no idea why both are passed. Seems like the warning was being hidden.
-        '/Gr',
-        '/nologo',
+        #'/Gr',  # Not needed /Gr is the default.
         # '/TP', # not needed since all thirdparties handle their c sources propery now
     ]
 endif

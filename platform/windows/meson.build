@@ -37,6 +37,8 @@ if PLATFORM == 'windows'
     _cpp = meson.get_compiler('cpp')
 
     # common deps between msvc and mingw
+    # Only need to define those that are not part of Meson's defaultlibs,
+    # which has things like kernel32 et al.
     _windows_deps = [
         _cpp.find_library('avrt'),
         _cpp.find_library('bcrypt'),
@@ -44,19 +46,14 @@ if PLATFORM == 'windows'
         _cpp.find_library('dsound'),
         _cpp.find_library('dwmapi'),
         _cpp.find_library('dxguid'),
-        _cpp.find_library('gdi32'),
         _cpp.find_library('imm32'),
         _cpp.find_library('iphlpapi'),
-        _cpp.find_library('kernel32'),
-        _cpp.find_library('ole32'),
-        _cpp.find_library('oleaut32'),
         _cpp.find_library('shlwapi'),
         _cpp.find_library('winmm'),
         _cpp.find_library('ws2_32'),
         _cpp.find_library('wsock32'),
         _cpp.find_library('opengl32'),
         _cpp.find_library('ksuser'),
-        _cpp.find_library('uuid'),
     ]
 
     CPP_ARGS += [
@@ -79,11 +76,6 @@ if PLATFORM == 'windows'
 
     # Native windows compile
     if _cpp.get_id() == 'msvc'
-        _windows_deps += [
-            _cpp.find_library('advapi32'),
-            _cpp.find_library('shell32'),
-            _cpp.find_library('user32'),
-        ]
 
         CPP_ARGS += [
             '-DMSVC',

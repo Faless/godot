@@ -19,8 +19,7 @@ SOURCES += [_target_iphone_logo]
 # Host Machine Specifics
 ################################################################################
 if PLATFORM == 'iphone'
-    # This probably needs more things, but the code does not compile yet
-    # due to Vulkan missing. Copy from the macos dir as needed.
+    MAIN_SOURCES += files('godot_iphone.mm')
     ios_deps = dependency('AppleFrameworks', modules: ['UIKit',
                                                        #
                                                        ])
@@ -28,13 +27,13 @@ if PLATFORM == 'iphone'
     iphone_sources = files(
         'godot_iphone.mm',
         'os_iphone.mm',
-        #'main.m',
+        'main.m',
         'app_delegate.mm',
         'view_controller.mm',
         'ios.mm',
-        #'vulkan_context_iphone.mm',
-        #'display_server_iphone.mm',
-        'joypad_iphone.mm',
+        'vulkan_context_iphone.mm',
+        'display_server_iphone.mm',
+        #'joypad_iphone.mm',
         'godot_view.mm',
         'display_layer.mm',
         'godot_app_delegate.m',
@@ -45,7 +44,7 @@ if PLATFORM == 'iphone'
     )
 
     SOURCES += iphone_sources
-    CPP_ARGS += ['-DIPHONE_ENABLED', '-DUNIX_ENABLED', '-DCOREAUDIO_ENABLED']
-    OBJCPP_ARGS += ['-DIPHONE_ENABLED', '-DUNIX_ENABLED', '-DCOREAUDIO_ENABLED']
+    CPP_ARGS += ['-DIPHONE_ENABLED', '-DUNIX_ENABLED', '-DCOREAUDIO_ENABLED', '-DVULKAN_ENABLED']
+    OBJCPP_ARGS += ['-fobjc-arc', '-DIPHONE_ENABLED', '-DUNIX_ENABLED', '-DCOREAUDIO_ENABLED', '-DVULKAN_ENABLED']
     DEPENDENCIES += ios_deps
 endif

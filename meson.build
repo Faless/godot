@@ -36,6 +36,8 @@ if PLATFORM == 'none'
     elif host_machine.system() == 'darwin'
         # Not strictly speaking true, but will work for now.
         PLATFORM = meson.is_cross_build() ? 'iphone' : 'osx'
+    elif host_machine.system() == 'android'
+        PLATFORM = 'android'
     endif
 endif
 
@@ -103,7 +105,7 @@ MODULES_DB_FILE = meson.project_build_root() / 'modules_db.json'
 
 # Create the modules_db file
 _module_script_args = [
-    'create_db', MODULES_DB_FILE, 
+    'create_db', MODULES_DB_FILE,
     '--platform', PLATFORM,
     '--cpu_family', host_machine.cpu_family()
 ]
@@ -158,8 +160,8 @@ MODULE_BUILD_PATHS = _module_get_build_paths.stdout().strip().split(',')
 
 
 # MSVC specific compiler settings
-_cpp_compiler_id = meson.get_compiler('cpp').get_id()
-_cpp_argsyntax = meson.get_compiler('cpp').get_argument_syntax()
+_cpp_compiler_id = cpp.get_id()
+_cpp_argsyntax = cpp.get_argument_syntax()
 
 CPP_ARGS = []
 OBJCPP_ARGS = []
@@ -320,7 +322,10 @@ subdir('main')
 # assemble our exe
 if PLATFORM == 'android'
     EXEC_GODOT = shared_library('godot', MAIN_SOURCES,
-        dependencies: [DEP_GODOT_ALL, MODULE_DEPENDENCIES, DEPENDENCIES]
+        dependencies: [DEP_GODOT_ALL,
+                       MODULE_DEPENDENCIES,
+                       DEPENDENCIES,
+                       ANDROID_NDK_DEPS]
     )
 elif PLATFORM == 'iphone' or PLATFORM == 'tvos'
     EXEC_GODOT = static_library('godot', MAIN_SOURCES,

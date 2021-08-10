@@ -194,11 +194,11 @@ if get_option('builtin_opus')
 
     # platform flags
     if PLATFORM == 'android'
-        error('need to add in compile tests for armv7 vs arm64v8')
-        # if is armv7
-        # -DOPUS_ARM_OPT
-        # else if is arm64v8
-        # -DOPUS_ARM64_OPT
+        if host_machine.cpu_family() == 'arm'
+             _builtin_opus_compile_args += '-DOPUS_ARM_OPT'
+        elif host_machine.cpu_family() == 'aarch64'
+            _builtin_opus_compile_args += '-DOPUS_ARM64_OPT'
+        endif
     elif PLATFORM == 'iphone'
         if host_machine.cpu_family() == 'aarch64'
             _builtin_opus_compile_args += '-DOPUS_ARM_OPT'

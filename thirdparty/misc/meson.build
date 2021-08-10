@@ -14,6 +14,10 @@ _misc_srcs = files(
 'stb_vorbis.c',
 )
 
+if PLATFORM == 'android'
+    _misc_srcs += files('ifaddrs-android.cc')
+endif
+
 _lib_misc = static_library('misc', _misc_srcs,
     include_directories: [_misc_incdirs, '../../', '../../platform/linuxbsd'],
     dependencies: [DEP_ZLIB],

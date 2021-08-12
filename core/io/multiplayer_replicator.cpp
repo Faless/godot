@@ -38,8 +38,30 @@
 	if (packet_cache.size() < m_amount) \
 		packet_cache.resize(m_amount);
 
-Error MultiplayerReplicator::_send_default_spawn_despawn(int p_peer_id, const ResourceUID::ID &p_scene_id, const PackedByteArray &p_data, const NodePath &p_path, bool p_spawn) {
+Error MultiplayerReplicator::_send_default_spawn_despawn(int p_peer_id, const ResourceUID::ID &p_scene_id, Object *p_obj, const NodePath &p_path, bool p_spawn) {
+	ERR_FAIL_COND_V(p_spawn && !p_obj, ERR_INVALID_PARAMETER);
 	ERR_FAIL_COND_V(!replications.has(p_scene_id), ERR_INVALID_PARAMETER);
+	Error err;
+	// Prepare state
+	List<Variant> state_variants;
+	int state_len = 0;
+	const SceneConfig &cfg = replications[p_scene_id];
+	if (p_spawn) {
+		if ((err = _get_state(cfg.properties, p_obj, state_variants)) != OK) {
+			return err;
+		}
+	}
+
+	bool is_raw = false;
+	if (state_variants.size() == 1 && state_variants[0].get_type() == Variant::PACKED_BYTE_ARRAY) {
+		is_raw = true;
+	} else if (state_variants.size()) {
+		err = _encode_state(state_variants, nullptr, state_len);
+		ERR_FAIL_COND_V(err, err);
+	} else {
+		is_raw = true;
+	}
+
 	int ofs = 0;
 
 	// Prepare simplified path
@@ -58,24 +80,28 @@ Error MultiplayerReplicator::_send_default_spawn_despawn(int p_peer_id, const Re
 	// Encode name and parent ID.
 	CharString cname = String(names[names.size() - 1]).utf8();
 	int nlen = encode_cstring(cname.get_data(), nullptr);
-	MAKE_ROOM(SPAWN_CMD_OFFSET + 4 + 4 + nlen + p_data.size());
+	MAKE_ROOM(SPAWN_CMD_OFFSET + 4 + 4 + nlen + state_len);
 	uint8_t *ptr = packet_cache.ptrw();
-	ptr[0] = (p_spawn ? MultiplayerAPI::NETWORK_COMMAND_SPAWN : MultiplayerAPI::NETWORK_COMMAND_DESPAWN);
+	ptr[0] = (p_spawn ? MultiplayerAPI::NETWORK_COMMAND_SPAWN : MultiplayerAPI::NETWORK_COMMAND_DESPAWN) + ((is_raw ? 1 : 0) << MultiplayerAPI::BYTE_ONLY_OR_NO_ARGS_SHIFT);
 	ofs = 1;
 	ofs += encode_uint64(p_scene_id, &ptr[ofs]);
 	ofs += encode_uint32(path_id, &ptr[ofs]);
 	ofs += encode_uint32(nlen, &ptr[ofs]);
 	ofs += encode_cstring(cname.get_data(), &ptr[ofs]);
 
-	if (p_data.size()) {
-		memcpy(&ptr[ofs], p_data.ptr(), p_data.size());
+	// Encode state.
+	if (!is_raw) {
+		_encode_state(state_variants, &ptr[ofs], state_len);
+	} else if (state_len) {
+		PackedByteArray pba = state_variants[0];
+		memcpy(&ptr[ofs], pba.ptr(), state_len);
 	}
 
 	Ref<MultiplayerPeer> network_peer = multiplayer->get_network_peer();
 	network_peer->set_target_peer(p_peer_id);
 	network_peer->set_transfer_channel(0);
 	network_peer->set_transfer_mode(MultiplayerPeer::TRANSFER_MODE_RELIABLE);
-	return network_peer->put_packet(ptr, ofs + p_data.size());
+	return network_peer->put_packet(ptr, ofs + state_len);
 }
 
 void MultiplayerReplicator::_process_default_spawn_despawn(int p_from, const ResourceUID::ID &p_scene_id, const uint8_t *p_packet, int p_packet_len, bool p_spawn) {
@@ -100,6 +126,8 @@ void MultiplayerReplicator::_process_default_spawn_despawn(int p_from, const Res
 	if (cfg.mode == REPLICATION_MODE_SERVER && p_from == 1) {
 		String scene_path = ResourceUID::get_singleton()->get_id_path(p_scene_id);
 		if (p_spawn) {
+			const bool is_raw = ((p_packet[0] & 64) >> MultiplayerAPI::BYTE_ONLY_OR_NO_ARGS_SHIFT) == 1;
+
 			ERR_FAIL_COND_MSG(parent->has_node(name), vformat("Unable to spawn node. Node already exists: %s/%s", parent->get_path(), name));
 			RES res = ResourceLoader::load(scene_path);
 			ERR_FAIL_COND_MSG(!res.is_valid(), "Unable to load scene to spawn at path: " + scene_path);
@@ -108,6 +136,8 @@ void MultiplayerReplicator::_process_default_spawn_despawn(int p_from, const Res
 			Node *node = scene->instantiate();
 			ERR_FAIL_COND(!node);
 			replicated_nodes[node->get_instance_id()] = p_scene_id;
+			int size;
+			_decode_state(cfg.properties, node, &p_packet[ofs], p_packet_len - ofs, size, is_raw);
 			parent->_add_child_nocheck(node, name);
 			emit_signal(SNAME("spawned"), p_scene_id, node);
 		} else {
@@ -167,7 +197,83 @@ void MultiplayerReplicator::process_spawn_despawn(int p_from, const uint8_t *p_p
 	}
 }
 
-Error MultiplayerReplicator::spawn_config(const ResourceUID::ID &p_id, ReplicationMode p_mode, const Callable &p_on_send, const Callable &p_on_recv) {
+Error MultiplayerReplicator::_get_state(const List<StringName> &p_properties, const Object *p_obj, List<Variant> &r_variant) {
+	ERR_FAIL_COND_V_MSG(!p_obj, ERR_INVALID_PARAMETER, "Cannot encode null object");
+	for (const StringName &prop : p_properties) {
+		bool valid = false;
+		const Variant v = p_obj->get(prop, &valid);
+		ERR_FAIL_COND_V_MSG(!valid, ERR_INVALID_DATA, vformat("Property '%s' not found.", prop));
+		r_variant.push_back(v);
+	}
+	return OK;
+}
+
+Error MultiplayerReplicator::_encode_state(const List<Variant> &p_variants, uint8_t *p_buffer, int &r_len, bool *r_raw) {
+	r_len = 0;
+	int size = 0;
+
+	// Try raw encoding optimization.
+	if (r_raw && p_variants.size() == 1) {
+		*r_raw = false;
+		const Variant v = p_variants[0];
+		if (v.get_type() == Variant::PACKED_BYTE_ARRAY) {
+			*r_raw = true;
+			const PackedByteArray pba = v;
+			if (p_buffer) {
+				memcpy(p_buffer, pba.ptr(), pba.size());
+			}
+			r_len += pba.size();
+		} else {
+			multiplayer->encode_and_compress_variant(v, p_buffer, size);
+			r_len += size;
+		}
+		return OK;
+	}
+
+	// Regular encoding.
+	for (const Variant &v : p_variants) {
+		multiplayer->encode_and_compress_variant(v, p_buffer ? p_buffer + r_len : nullptr, size);
+		r_len += size;
+	}
+	return OK;
+}
+
+Error MultiplayerReplicator::_decode_state(const List<StringName> &p_properties, Object *p_obj, const uint8_t *p_buffer, int p_len, int &r_len, bool p_raw) {
+	r_len = 0;
+	int argc = p_properties.size();
+	ERR_FAIL_COND_V(p_raw && argc != 1, ERR_INVALID_DATA);
+	if (p_raw) {
+		r_len = p_len;
+		PackedByteArray pba;
+		pba.resize(p_len);
+		memcpy(pba.ptrw(), p_buffer, p_len);
+		p_obj->set(p_properties[0], pba);
+		return OK;
+	}
+
+	Vector<Variant> args;
+	Vector<const Variant *> argp;
+	args.resize(argc);
+
+	for (int i = 0; i < argc; i++) {
+		ERR_FAIL_COND_V_MSG(r_len >= p_len, ERR_INVALID_DATA, "Invalid packet received. Size too small.");
+
+		int vlen;
+		Error err = multiplayer->decode_and_decompress_variant(args.write[i], &p_buffer[r_len], p_len - r_len, &vlen);
+		ERR_FAIL_COND_V_MSG(err != OK, err, "Invalid packet received. Unable to decode state variable.");
+		r_len += vlen;
+	}
+	ERR_FAIL_COND_V_MSG(p_len - r_len != 0, ERR_INVALID_DATA, "Buffer has trailing bytes.");
+
+	int i = 0;
+	for (const StringName &prop : p_properties) {
+		p_obj->set(prop, args[i]);
+		i += 1;
+	}
+	return OK;
+}
+
+Error MultiplayerReplicator::spawn_config(const ResourceUID::ID &p_id, ReplicationMode p_mode, const TypedArray<StringName> &p_props, const Callable &p_on_send, const Callable &p_on_recv) {
 	ERR_FAIL_COND_V(p_mode < REPLICATION_MODE_NONE || p_mode > REPLICATION_MODE_CUSTOM, ERR_INVALID_PARAMETER);
 	ERR_FAIL_COND_V(!ResourceUID::get_singleton()->has_id(p_id), ERR_INVALID_PARAMETER);
 	ERR_FAIL_COND_V_MSG(p_on_send.is_valid() != p_on_recv.is_valid(), ERR_INVALID_PARAMETER, "Send and receive custom callables must be both valid or both empty");
@@ -186,6 +292,9 @@ Error MultiplayerReplicator::spawn_config(const ResourceUID::ID &p_id, Replicati
 	} else {
 		SceneConfig cfg;
 		cfg.mode = p_mode;
+		for (int i = 0; i < p_props.size(); i++) {
+			cfg.properties.push_back(StringName(p_props[i]));
+		}
 		cfg.on_spawn_despawn_send = p_on_send;
 		cfg.on_spawn_despawn_receive = p_on_recv;
 		replications[p_id] = cfg;
@@ -230,8 +339,16 @@ Error MultiplayerReplicator::send_despawn(int p_peer_id, const ResourceUID::ID &
 		return _send_spawn_despawn(p_peer_id, p_scene_id, p_data, true);
 	} else {
 		ERR_FAIL_COND_V_MSG(cfg.mode == REPLICATION_MODE_SERVER && multiplayer->is_network_server(), ERR_UNAVAILABLE, "Manual despawn is restricted in default server mode implementation. Use custom mode if you desire control over server spawn requests.");
-		ERR_FAIL_COND_V_MSG(p_path.is_empty(), ERR_INVALID_PARAMETER, "Despawn default implementation requires a despawn path.");
-		return _send_default_spawn_despawn(p_peer_id, p_scene_id, p_data, p_path, false);
+		NodePath path = p_path;
+		Object *obj = p_data.get_type() == Variant::OBJECT ? p_data.get_validated_object() : nullptr;
+		if (path.is_empty() && obj) {
+			Node *node = Object::cast_to<Node>(obj);
+			if (node && node->is_inside_tree()) {
+				path = node->get_path();
+			}
+		}
+		ERR_FAIL_COND_V_MSG(path.is_empty(), ERR_INVALID_PARAMETER, "Despawn default implementation requires a despawn path, or the data to be a node inside the SceneTree");
+		return _send_default_spawn_despawn(p_peer_id, p_scene_id, obj, path, false);
 	}
 }
 
@@ -242,8 +359,17 @@ Error MultiplayerReplicator::send_spawn(int p_peer_id, const ResourceUID::ID &p_
 		return _send_spawn_despawn(p_peer_id, p_scene_id, p_data, false);
 	} else {
 		ERR_FAIL_COND_V_MSG(cfg.mode == REPLICATION_MODE_SERVER && multiplayer->is_network_server(), ERR_UNAVAILABLE, "Manual spawn is restricted in default server mode implementation. Use custom mode if you desire control over server spawn requests.");
-		ERR_FAIL_COND_V_MSG(p_path.is_empty(), ERR_INVALID_PARAMETER, "Spawn default implementation requires a spawn path.");
-		return _send_default_spawn_despawn(p_peer_id, p_scene_id, p_data, p_path, true);
+		NodePath path = p_path;
+		Object *obj = p_data.get_type() == Variant::OBJECT ? p_data.get_validated_object() : nullptr;
+		ERR_FAIL_COND_V_MSG(!obj, ERR_INVALID_PARAMETER, "Spawn default implementation requires the data to be an object.");
+		if (path.is_empty()) {
+			Node *node = Object::cast_to<Node>(obj);
+			if (node && node->is_inside_tree()) {
+				path = node->get_path();
+			}
+		}
+		ERR_FAIL_COND_V_MSG(path.is_empty(), ERR_INVALID_PARAMETER, "Spawn default implementation requires a spawn path, or the data to be a node inside the SceneTree");
+		return _send_default_spawn_despawn(p_peer_id, p_scene_id, obj, path, true);
 	}
 }
 
@@ -266,7 +392,7 @@ Error MultiplayerReplicator::_spawn_despawn(ResourceUID::ID p_scene_id, Object *
 	} else {
 		Node *node = Object::cast_to<Node>(p_obj);
 		ERR_FAIL_COND_V_MSG(!p_obj, ERR_INVALID_PARAMETER, "Only nodes can be replicated by the default implementation");
-		return _send_default_spawn_despawn(p_peer, p_scene_id, PackedByteArray(), node->get_path(), p_spawn);
+		return _send_default_spawn_despawn(p_peer, p_scene_id, node, node->get_path(), p_spawn);
 	}
 }
 
@@ -276,6 +402,28 @@ Error MultiplayerReplicator::spawn(ResourceUID::ID p_scene_id, Object *p_obj, in
 
 Error MultiplayerReplicator::despawn(ResourceUID::ID p_scene_id, Object *p_obj, int p_peer) {
 	return _spawn_despawn(p_scene_id, p_obj, p_peer, false);
+}
+
+PackedByteArray MultiplayerReplicator::encode_state(const ResourceUID::ID &p_scene_id, const Object *p_obj) {
+	PackedByteArray state;
+	ERR_FAIL_COND_V_MSG(!replications.has(p_scene_id), state, vformat("Spawnable not found: %d", p_scene_id));
+	const SceneConfig &cfg = replications[p_scene_id];
+	int len = 0;
+	List<Variant> state_vars;
+	Error err = _get_state(cfg.properties, p_obj, state_vars);
+	ERR_FAIL_COND_V_MSG(err != OK, state, "Unable to retrieve object state.");
+	err = _encode_state(state_vars, nullptr, len);
+	ERR_FAIL_COND_V_MSG(err != OK, state, "Unable to encode object state.");
+	state.resize(len);
+	_encode_state(state_vars, state.ptrw(), len);
+	return state;
+}
+
+Error MultiplayerReplicator::decode_state(const ResourceUID::ID &p_scene_id, Object *p_obj, const PackedByteArray p_data) {
+	ERR_FAIL_COND_V_MSG(!replications.has(p_scene_id), ERR_INVALID_PARAMETER, vformat("Spawnable not found: %d", p_scene_id));
+	const SceneConfig &cfg = replications[p_scene_id];
+	int size;
+	return _decode_state(cfg.properties, p_obj, p_data.ptr(), p_data.size(), size);
 }
 
 void MultiplayerReplicator::scene_enter_exit_notify(const String &p_scene, Node *p_node, bool p_enter) {
@@ -324,11 +472,13 @@ void MultiplayerReplicator::clear() {
 }
 
 void MultiplayerReplicator::_bind_methods() {
-	ClassDB::bind_method(D_METHOD("spawn_config", "scene_id", "spawn_mode", "custom_send", "custom_receive"), &MultiplayerReplicator::spawn_config, DEFVAL(Callable()), DEFVAL(Callable()));
+	ClassDB::bind_method(D_METHOD("spawn_config", "scene_id", "spawn_mode", "properties", "custom_send", "custom_receive"), &MultiplayerReplicator::spawn_config, DEFVAL(TypedArray<StringName>()), DEFVAL(Callable()), DEFVAL(Callable()));
 	ClassDB::bind_method(D_METHOD("despawn", "scene_id", "object", "peer_id"), &MultiplayerReplicator::despawn, DEFVAL(0));
 	ClassDB::bind_method(D_METHOD("spawn", "scene_id", "object", "peer_id"), &MultiplayerReplicator::spawn, DEFVAL(0));
 	ClassDB::bind_method(D_METHOD("send_despawn", "peer_id", "scene_id", "data", "path"), &MultiplayerReplicator::send_despawn, DEFVAL(Variant()), DEFVAL(NodePath()));
 	ClassDB::bind_method(D_METHOD("send_spawn", "peer_id", "scene_id", "data", "path"), &MultiplayerReplicator::send_spawn, DEFVAL(Variant()), DEFVAL(NodePath()));
+	ClassDB::bind_method(D_METHOD("encode_state", "scene_id", "object"), &MultiplayerReplicator::encode_state);
+	ClassDB::bind_method(D_METHOD("decode_state", "scene_id", "object", "data"), &MultiplayerReplicator::decode_state);
 
 	ADD_SIGNAL(MethodInfo("despawned", PropertyInfo(Variant::INT, "scene_id"), PropertyInfo(Variant::OBJECT, "node", PROPERTY_HINT_RESOURCE_TYPE, "Node")));
 	ADD_SIGNAL(MethodInfo("spawned", PropertyInfo(Variant::INT, "scene_id"), PropertyInfo(Variant::OBJECT, "node", PROPERTY_HINT_RESOURCE_TYPE, "Node")));

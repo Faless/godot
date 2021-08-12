@@ -54,6 +54,16 @@
 				Sends a spawn request for the scene identified by [code]scene_id[/code] to the given [code]peer_id[/code] (see [method MultiplayerPeer.set_target_peer]). If the scene is configured as [constant REPLICATION_MODE_SERVER] (see [method spawn_config]) and the request is sent by the server (see [method MultiplayerAPI.is_network_server]), the receiving peer(s) will automatically instantiate that scene, add it to the [SceneTree] at the given [code]path[/code] and emit the signal [signal spawned]. In all other cases no instantiation happens, and the signal [signal spawn_requested] is emitted instead.
 			</description>
 		</method>
+		<method name="send_sync">
+			<return type="int" enum="Error" />
+			<argument index="0" name="peer_id" type="int" />
+			<argument index="1" name="scene_id" type="int" />
+			<argument index="2" name="data" type="PackedByteArray" />
+			<argument index="3" name="transfer_mode" type="int" enum="MultiplayerPeer.TransferMode" default="2" />
+			<argument index="4" name="channel" type="int" default="0" />
+			<description>
+			</description>
+		</method>
 		<method name="spawn">
 			<return type="int" enum="Error" />
 			<argument index="0" name="scene_id" type="int" />
@@ -72,6 +82,37 @@
 			<description>
 				Configures the MultiplayerAPI to track instances of the [PackedScene] identified by [code]scene_id[/code] (see [method ResourceLoader.get_resource_uid]) for the purpose of network replication. When [code]mode[/code] is [constant REPLICATION_MODE_SERVER], the specified [code]properties[/code] will also be replicated to clients during the initial spawn.
 				Tip: You can use a custom property in the scene main script to return a customly optimized state representation.
+			</description>
+		</method>
+		<method name="sync_all">
+			<return type="int" enum="Error" />
+			<argument index="0" name="p_scene_id" type="int" />
+			<argument index="1" name="peer_id" type="int" default="0" />
+			<description>
+			</description>
+		</method>
+		<method name="sync_config">
+			<return type="int" enum="Error" />
+			<argument index="0" name="scene_id" type="int" />
+			<argument index="1" name="interval" type="int" />
+			<argument index="2" name="properties" type="StringName[]" default="[]" />
+			<argument index="3" name="custom_send" type="Callable" />
+			<argument index="4" name="custom_receive" type="Callable" />
+			<description>
+			</description>
+		</method>
+		<method name="track">
+			<return type="void" />
+			<argument index="0" name="p_scene_id" type="int" />
+			<argument index="1" name="p_obj" type="Object" />
+			<description>
+			</description>
+		</method>
+		<method name="untrack">
+			<return type="void" />
+			<argument index="0" name="p_scene_id" type="int" />
+			<argument index="1" name="p_obj" type="Object" />
+			<description>
 			</description>
 		</method>
 	</methods>

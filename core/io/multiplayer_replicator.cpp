@@ -38,6 +38,73 @@
 	if (packet_cache.size() < m_amount) \
 		packet_cache.resize(m_amount);
 
+Error MultiplayerReplicator::_sync_all_default(const ResourceUID::ID &p_scene_id) {
+	ERR_FAIL_COND_V(!replications.has(p_scene_id), ERR_INVALID_PARAMETER);
+	const SceneConfig &cfg = replications[p_scene_id];
+	int full_size = 0;
+	bool same_size = true;
+	bool last_size = 0;
+	// TODO we can do better, and use raw encoding.
+	Map<ObjectID, Pair<int, List<Variant>>> state;
+	if (tracked_objects.has(p_scene_id)) {
+		for (const ObjectID &obj_id : tracked_objects[p_scene_id]) {
+			Object *obj = ObjectDB::get_instance(obj_id);
+			if (obj) {
+				List<Variant> state_variants;
+				Error err = _get_state(cfg.properties, obj, state_variants);
+				ERR_CONTINUE(err);
+				int size = 0;
+				err = _encode_state(state_variants, nullptr, size);
+				ERR_CONTINUE(err);
+				state[obj_id] = Pair(size, state_variants);
+				full_size += size;
+				if (last_size && size != last_size) {
+					same_size = false;
+				}
+				last_size = size;
+			}
+		}
+	}
+	// Default implementation do not send empty updates.
+	if (!full_size) {
+		return OK;
+	}
+	// TODO warn if too big.
+	WARN_PRINT("Updating properties: " + itos(full_size));
+	if (same_size) {
+		// This is fast and small. Should we allow more than 256 objects per type?
+		// This costs us 1 byte.
+		MAKE_ROOM(SYNC_CMD_OFFSET + 2 + 2 + full_size);
+	} else {
+		// TODO We should probably warn that this uses much more bandwidth.
+		MAKE_ROOM(SYNC_CMD_OFFSET + 2 + state.size() * 2 + full_size);
+	}
+	int ofs = SYNC_CMD_OFFSET;
+	uint8_t *ptr = packet_cache.ptrw();
+	ofs += encode_uint16(last_size, &ptr[ofs]);
+	if (same_size) {
+		ofs += encode_uint16(state.size(), &ptr[ofs]);
+	}
+	for (const ObjectID &obj_id : tracked_objects[p_scene_id]) {
+		if (state.has(obj_id)) {
+			continue;
+		}
+		const Pair<int, List<Variant>> &obj_state = state[obj_id];
+		Object *obj = ObjectDB::get_instance(obj_id);
+		ERR_CONTINUE(!obj);
+		int size = 0;
+		if (!same_size) {
+			// We need to encode the size of every object.
+			ofs += encode_uint16(obj_state.first, &ptr[ofs]);
+		}
+		Error err = _encode_state(obj_state.second, &ptr[ofs], size);
+		ERR_CONTINUE(err);
+		ofs += size;
+	}
+	// and send.
+	return OK;
+}
+
 Error MultiplayerReplicator::_send_default_spawn_despawn(int p_peer_id, const ResourceUID::ID &p_scene_id, Object *p_obj, const NodePath &p_path, bool p_spawn) {
 	ERR_FAIL_COND_V(p_spawn && !p_obj, ERR_INVALID_PARAMETER);
 	ERR_FAIL_COND_V(!replications.has(p_scene_id), ERR_INVALID_PARAMETER);
@@ -136,6 +203,7 @@ void MultiplayerReplicator::_process_default_spawn_despawn(int p_from, const Res
 			Node *node = scene->instantiate();
 			ERR_FAIL_COND(!node);
 			replicated_nodes[node->get_instance_id()] = p_scene_id;
+			track(p_scene_id, node);
 			int size;
 			_decode_state(cfg.properties, node, &p_packet[ofs], p_packet_len - ofs, size, is_raw);
 			parent->_add_child_nocheck(node, name);
@@ -145,6 +213,7 @@ void MultiplayerReplicator::_process_default_spawn_despawn(int p_from, const Res
 			Node *node = parent->get_node(name);
 			ERR_FAIL_COND_MSG(!replicated_nodes.has(node->get_instance_id()), vformat("Trying to despawn a Node that was not replicated: %s/%s", parent->get_path(), name));
 			emit_signal(SNAME("despawned"), p_scene_id, node);
+			untrack(p_scene_id, node);
 			replicated_nodes.erase(node->get_instance_id());
 			node->queue_delete();
 		}
@@ -306,6 +375,21 @@ Error MultiplayerReplicator::spawn_config(const ResourceUID::ID &p_id, Replicati
 	return OK;
 }
 
+Error MultiplayerReplicator::sync_config(const ResourceUID::ID &p_id, uint64_t p_interval, const TypedArray<StringName> &p_props, const Callable &p_on_send, const Callable &p_on_recv) {
+	ERR_FAIL_COND_V(!ResourceUID::get_singleton()->has_id(p_id), ERR_INVALID_PARAMETER);
+	ERR_FAIL_COND_V_MSG(p_on_send.is_valid() != p_on_recv.is_valid(), ERR_INVALID_PARAMETER, "Send and receive custom callables must be both valid or both empty");
+	ERR_FAIL_COND_V(!replications.has(p_id), ERR_UNCONFIGURED);
+	SceneConfig &cfg = replications[p_id];
+	;
+	for (int i = 0; i < p_props.size(); i++) {
+		cfg.sync_properties.push_back(p_props[i]);
+	}
+	cfg.on_sync_send = p_on_send;
+	cfg.on_sync_receive = p_on_recv;
+	cfg.sync_interval = p_interval * 1000;
+	return OK;
+}
+
 Error MultiplayerReplicator::_send_spawn_despawn(int p_peer_id, const ResourceUID::ID &p_scene_id, const Variant &p_data, bool p_spawn) {
 	int data_size = 0;
 	int is_raw = false;
@@ -448,12 +532,14 @@ void MultiplayerReplicator::scene_enter_exit_notify(const String &p_scene, Node 
 	if (p_enter) {
 		if (cfg.mode == REPLICATION_MODE_SERVER && multiplayer->is_network_server()) {
 			replicated_nodes[p_node->get_instance_id()] = id;
+			track(id, p_node);
 			spawn(id, p_node, 0);
 		}
 		emit_signal(SNAME("replicated_instance_added"), id, p_node);
 	} else {
 		if (cfg.mode == REPLICATION_MODE_SERVER && multiplayer->is_network_server() && replicated_nodes.has(p_node->get_instance_id())) {
 			replicated_nodes.erase(p_node->get_instance_id());
+			untrack(id, p_node);
 			despawn(id, p_node, 0);
 		}
 		emit_signal(SNAME("replicated_instance_removed"), id, p_node);
@@ -471,12 +557,73 @@ void MultiplayerReplicator::spawn_all(int p_peer) {
 	}
 }
 
+void MultiplayerReplicator::poll() {
+	for (KeyValue<ResourceUID::ID, SceneConfig> &E : replications) {
+		if (!E.value.sync_interval) {
+			continue;
+		}
+		uint64_t time = OS::get_singleton()->get_ticks_usec();
+		if (E.value.sync_last + E.value.sync_interval <= time) {
+			sync_all(E.key);
+			E.value.sync_last = time;
+		}
+		// Handle wrapping.
+		if (E.value.sync_last > time) {
+			E.value.sync_last = time;
+		}
+	}
+}
+
+void MultiplayerReplicator::track(const ResourceUID::ID &p_scene_id, Object *p_obj) {
+	ERR_FAIL_COND(!p_obj);
+	ERR_FAIL_COND(!replications.has(p_scene_id));
+	if (!tracked_objects.has(p_scene_id)) {
+		tracked_objects[p_scene_id] = List<ObjectID>();
+	}
+	tracked_objects[p_scene_id].push_back(p_obj->get_instance_id());
+}
+
+void MultiplayerReplicator::untrack(const ResourceUID::ID &p_scene_id, Object *p_obj) {
+	ERR_FAIL_COND(!p_obj);
+	ERR_FAIL_COND(!replications.has(p_scene_id));
+	if (tracked_objects.has(p_scene_id)) {
+		tracked_objects[p_scene_id].erase(p_obj->get_instance_id());
+	}
+}
+
+Error MultiplayerReplicator::sync_all(const ResourceUID::ID &p_scene_id) {
+	ERR_FAIL_COND_V(!replications.has(p_scene_id), ERR_INVALID_PARAMETER);
+	if (!tracked_objects.has(p_scene_id)) {
+		return OK;
+	}
+	const SceneConfig &cfg = replications[p_scene_id];
+	if (cfg.on_sync_send.is_valid()) {
+		Array objs;
+		if (tracked_objects.has(p_scene_id)) {
+			for (const ObjectID &obj_id : tracked_objects[p_scene_id]) {
+				objs.push_back(ObjectDB::get_instance(obj_id));
+			}
+		}
+		Variant args[2] = { p_scene_id, objs };
+		Variant *argp[2] = { args, &args[1] };
+		Callable::CallError ce;
+		Variant ret;
+		cfg.on_sync_send.call((const Variant **)argp, 2, ret, ce);
+		ERR_FAIL_COND_V_MSG(ce.error != Callable::CallError::CALL_OK, FAILED, "Custom sync function failed");
+		return OK;
+	} else if (cfg.sync_properties.size()) {
+		return _sync_all_default(p_scene_id);
+	}
+	return OK;
+}
+
 void MultiplayerReplicator::clear() {
 	replicated_nodes.clear();
 }
 
 void MultiplayerReplicator::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("spawn_config", "scene_id", "spawn_mode", "properties", "custom_send", "custom_receive"), &MultiplayerReplicator::spawn_config, DEFVAL(TypedArray<StringName>()), DEFVAL(Callable()), DEFVAL(Callable()));
+	ClassDB::bind_method(D_METHOD("sync_config", "scene_id", "interval", "properties", "custom_send", "custom_receive"), &MultiplayerReplicator::sync_config, DEFVAL(TypedArray<StringName>()), DEFVAL(Callable()), DEFVAL(Callable()));
 	ClassDB::bind_method(D_METHOD("despawn", "scene_id", "object", "peer_id"), &MultiplayerReplicator::despawn, DEFVAL(0));
 	ClassDB::bind_method(D_METHOD("spawn", "scene_id", "object", "peer_id"), &MultiplayerReplicator::spawn, DEFVAL(0));
 	ClassDB::bind_method(D_METHOD("send_despawn", "peer_id", "scene_id", "data", "path"), &MultiplayerReplicator::send_despawn, DEFVAL(Variant()), DEFVAL(NodePath()));

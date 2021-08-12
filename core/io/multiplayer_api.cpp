@@ -140,6 +140,9 @@ void MultiplayerAPI::poll() {
 			break; // It's also possible that a packet or RPC caused a disconnection, so also check here.
 		}
 	}
+	if (network_peer.is_valid() && network_peer->get_connection_status() == MultiplayerPeer::CONNECTION_CONNECTED) {
+		replicator->poll();
+	}
 }
 
 void MultiplayerAPI::clear() {

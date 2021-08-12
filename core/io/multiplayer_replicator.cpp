@@ -38,7 +38,7 @@
 	if (packet_cache.size() < m_amount) \
 		packet_cache.resize(m_amount);
 
-Error MultiplayerReplicator::_sync_all_default(const ResourceUID::ID &p_scene_id) {
+Error MultiplayerReplicator::_sync_all_default(const ResourceUID::ID &p_scene_id, int p_peer) {
 	ERR_FAIL_COND_V(!replications.has(p_scene_id), ERR_INVALID_PARAMETER);
 	const SceneConfig &cfg = replications[p_scene_id];
 	int full_size = 0;
@@ -51,7 +51,7 @@ Error MultiplayerReplicator::_sync_all_default(const ResourceUID::ID &p_scene_id
 			Object *obj = ObjectDB::get_instance(obj_id);
 			if (obj) {
 				List<Variant> state_variants;
-				Error err = _get_state(cfg.properties, obj, state_variants);
+				Error err = _get_state(cfg.sync_properties, obj, state_variants);
 				ERR_CONTINUE(err);
 				int size = 0;
 				err = _encode_state(state_variants, nullptr, size);
@@ -79,8 +79,11 @@ Error MultiplayerReplicator::_sync_all_default(const ResourceUID::ID &p_scene_id
 		// TODO We should probably warn that this uses much more bandwidth.
 		MAKE_ROOM(SYNC_CMD_OFFSET + 2 + state.size() * 2 + full_size);
 	}
-	int ofs = SYNC_CMD_OFFSET;
+	int ofs = 0;
 	uint8_t *ptr = packet_cache.ptrw();
+	ptr[0] = MultiplayerAPI::NETWORK_COMMAND_SYNC + ((same_size ? 1 : 0) << MultiplayerAPI::BYTE_ONLY_OR_NO_ARGS_SHIFT);
+	ofs = 1;
+	ofs += encode_uint64(p_scene_id, &ptr[ofs]);
 	ofs += encode_uint16(last_size, &ptr[ofs]);
 	if (same_size) {
 		ofs += encode_uint16(state.size(), &ptr[ofs]);
@@ -101,8 +104,12 @@ Error MultiplayerReplicator::_sync_all_default(const ResourceUID::ID &p_scene_id
 		ERR_CONTINUE(err);
 		ofs += size;
 	}
-	// and send.
-	return OK;
+	Ref<MultiplayerPeer> network_peer = multiplayer->get_network_peer();
+	network_peer->set_target_peer(p_peer);
+	network_peer->set_transfer_channel(0);
+	// TODO realible... really? We should do our own "ordered".
+	network_peer->set_transfer_mode(MultiplayerPeer::TRANSFER_MODE_RELIABLE);
+	return network_peer->put_packet(ptr, ofs);
 }
 
 Error MultiplayerReplicator::_send_default_spawn_despawn(int p_peer_id, const ResourceUID::ID &p_scene_id, Object *p_obj, const NodePath &p_path, bool p_spawn) {
@@ -266,6 +273,10 @@ void MultiplayerReplicator::process_spawn_despawn(int p_from, const uint8_t *p_p
 	}
 }
 
+void MultiplayerReplicator::process_sync(int p_from, const uint8_t *p_packet, int p_packet_len) {
+	WARN_PRINT("GOT A SYNC!");
+}
+
 Error MultiplayerReplicator::_get_state(const List<StringName> &p_properties, const Object *p_obj, List<Variant> &r_variant) {
 	ERR_FAIL_COND_V_MSG(!p_obj, ERR_INVALID_PARAMETER, "Cannot encode null object");
 	for (const StringName &prop : p_properties) {
@@ -380,7 +391,7 @@ Error MultiplayerReplicator::sync_config(const ResourceUID::ID &p_id, uint64_t p
 	ERR_FAIL_COND_V_MSG(p_on_send.is_valid() != p_on_recv.is_valid(), ERR_INVALID_PARAMETER, "Send and receive custom callables must be both valid or both empty");
 	ERR_FAIL_COND_V(!replications.has(p_id), ERR_UNCONFIGURED);
 	SceneConfig &cfg = replications[p_id];
-	;
+	ERR_FAIL_COND_V_MSG(p_interval && cfg.mode != REPLICATION_MODE_SERVER && !p_on_send.is_valid(), ERR_INVALID_PARAMETER, "Timed updates in custom mode are only allowed if custom callbacks are also specified");
 	for (int i = 0; i < p_props.size(); i++) {
 		cfg.sync_properties.push_back(p_props[i]);
 	}
@@ -562,9 +573,12 @@ void MultiplayerReplicator::poll() {
 		if (!E.value.sync_interval) {
 			continue;
 		}
+		if (E.value.mode == REPLICATION_MODE_SERVER && !multiplayer->is_network_server()) {
+			continue;
+		}
 		uint64_t time = OS::get_singleton()->get_ticks_usec();
 		if (E.value.sync_last + E.value.sync_interval <= time) {
-			sync_all(E.key);
+			sync_all(E.key, 0);
 			E.value.sync_last = time;
 		}
 		// Handle wrapping.
@@ -591,7 +605,7 @@ void MultiplayerReplicator::untrack(const ResourceUID::ID &p_scene_id, Object *p
 	}
 }
 
-Error MultiplayerReplicator::sync_all(const ResourceUID::ID &p_scene_id) {
+Error MultiplayerReplicator::sync_all(const ResourceUID::ID &p_scene_id, int p_peer) {
 	ERR_FAIL_COND_V(!replications.has(p_scene_id), ERR_INVALID_PARAMETER);
 	if (!tracked_objects.has(p_scene_id)) {
 		return OK;
@@ -604,15 +618,15 @@ Error MultiplayerReplicator::sync_all(const ResourceUID::ID &p_scene_id) {
 				objs.push_back(ObjectDB::get_instance(obj_id));
 			}
 		}
-		Variant args[2] = { p_scene_id, objs };
-		Variant *argp[2] = { args, &args[1] };
+		Variant args[3] = { p_scene_id, objs, p_peer };
+		Variant *argp[3] = { args, &args[1], &args[2] };
 		Callable::CallError ce;
 		Variant ret;
-		cfg.on_sync_send.call((const Variant **)argp, 2, ret, ce);
+		cfg.on_sync_send.call((const Variant **)argp, 3, ret, ce);
 		ERR_FAIL_COND_V_MSG(ce.error != Callable::CallError::CALL_OK, FAILED, "Custom sync function failed");
 		return OK;
 	} else if (cfg.sync_properties.size()) {
-		return _sync_all_default(p_scene_id);
+		return _sync_all_default(p_scene_id, p_peer);
 	}
 	return OK;
 }

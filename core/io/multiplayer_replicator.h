@@ -78,7 +78,7 @@ private:
 	Error _send_spawn_despawn(int p_peer_id, const ResourceUID::ID &p_scene_id, const Variant &p_data, bool p_spawn);
 	void _process_default_spawn_despawn(int p_from, const ResourceUID::ID &p_scene_id, const uint8_t *p_packet, int p_packet_len, bool p_spawn);
 	Error _send_default_spawn_despawn(int p_peer_id, const ResourceUID::ID &p_scene_id, Object *p_obj, const NodePath &p_path, bool p_spawn);
-	Error _sync_all_default(const ResourceUID::ID &p_scene_id);
+	Error _sync_all_default(const ResourceUID::ID &p_scene_id, int p_peer);
 
 public:
 	void clear();
@@ -93,13 +93,14 @@ public:
 	PackedByteArray encode_state(const ResourceUID::ID &p_scene_id, const Object *p_node);
 	Error decode_state(const ResourceUID::ID &p_scene_id, Object *p_node, PackedByteArray p_data);
 
-	Error sync_all(const ResourceUID::ID &p_scene_id);
+	Error sync_all(const ResourceUID::ID &p_scene_id, int p_peer);
 	void track(const ResourceUID::ID &p_scene_id, Object *p_object);
 	void untrack(const ResourceUID::ID &p_scene_id, Object *p_object);
 
 	// Used by MultiplayerAPI
 	void spawn_all(int p_peer);
 	void process_spawn_despawn(int p_from, const uint8_t *p_packet, int p_packet_len, bool p_spawn);
+	void process_sync(int p_from, const uint8_t *p_packet, int p_packet_len);
 	void scene_enter_exit_notify(const String &p_scene, Node *p_node, bool p_enter);
 	void poll();
 

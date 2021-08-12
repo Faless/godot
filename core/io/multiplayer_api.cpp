@@ -329,6 +329,9 @@ void MultiplayerAPI::_process_packet(int p_from, const uint8_t *p_packet, int p_
 		case NETWORK_COMMAND_DESPAWN: {
 			replicator->process_spawn_despawn(p_from, p_packet, p_packet_len, false);
 		} break;
+		case NETWORK_COMMAND_SYNC: {
+			replicator->process_sync(p_from, p_packet, p_packet_len);
+		} break;
 	}
 }
 

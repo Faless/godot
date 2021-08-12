@@ -136,17 +136,48 @@ void MultiplayerReplicator::process_spawn_despawn(int p_from, const uint8_t *p_p
 	ERR_FAIL_COND_MSG(p_packet_len < SPAWN_CMD_OFFSET, "Invalid spawn packet received");
 	ResourceUID::ID id = decode_uint64(&p_packet[1]);
 	ERR_FAIL_COND_MSG(!replications.has(id), "Invalid spawn ID received " + itos(id));
-	_process_default_spawn_despawn(p_from, id, p_packet, p_packet_len, p_spawn);
+
+	const SceneConfig &cfg = replications[id];
+	if (cfg.on_spawn_despawn_receive.is_valid()) {
+		int ofs = SPAWN_CMD_OFFSET;
+		bool is_raw = ((p_packet[0] & 64) >> MultiplayerAPI::BYTE_ONLY_OR_NO_ARGS_SHIFT) == 1;
+		Variant data;
+		int left = p_packet_len - ofs;
+		if (is_raw && left) {
+			PackedByteArray pba;
+			pba.resize(left);
+			memcpy(pba.ptrw(), &p_packet[ofs], pba.size());
+			data = pba;
+		} else if (left) {
+			ERR_FAIL_COND(decode_variant(data, &p_packet[ofs], left) != OK);
+		}
+
+		Variant args[4];
+		args[0] = p_from;
+		args[1] = id;
+		args[2] = data;
+		args[3] = p_spawn;
+		const Variant *argp[] = { &args[0], &args[1], &args[2], &args[3] };
+		Callable::CallError ce;
+		Variant ret;
+		cfg.on_spawn_despawn_receive.call(argp, 4, ret, ce);
+		ERR_FAIL_COND_MSG(ce.error != Callable::CallError::CALL_OK, "Custom receive function failed");
+	} else {
+		_process_default_spawn_despawn(p_from, id, p_packet, p_packet_len, p_spawn);
+	}
 }
 
-Error MultiplayerReplicator::spawn_config(const ResourceUID::ID &p_id, ReplicationMode p_mode) {
+Error MultiplayerReplicator::spawn_config(const ResourceUID::ID &p_id, ReplicationMode p_mode, const Callable &p_on_send, const Callable &p_on_recv) {
 	ERR_FAIL_COND_V(p_mode < REPLICATION_MODE_NONE || p_mode > REPLICATION_MODE_CUSTOM, ERR_INVALID_PARAMETER);
 	ERR_FAIL_COND_V(!ResourceUID::get_singleton()->has_id(p_id), ERR_INVALID_PARAMETER);
+	ERR_FAIL_COND_V_MSG(p_on_send.is_valid() != p_on_recv.is_valid(), ERR_INVALID_PARAMETER, "Send and receive custom callables must be both valid or both empty");
 #ifdef TOOLS_ENABLED
-	// We allow non scene spawning with custom callables.
-	String path = ResourceUID::get_singleton()->get_id_path(p_id);
-	RES res = ResourceLoader::load(path);
-	ERR_FAIL_COND_V(!res->is_class("PackedScene"), ERR_INVALID_PARAMETER);
+	if (!p_on_send.is_valid()) {
+		// We allow non scene spawning with custom callables.
+		String path = ResourceUID::get_singleton()->get_id_path(p_id);
+		RES res = ResourceLoader::load(path);
+		ERR_FAIL_COND_V(!res->is_class("PackedScene"), ERR_INVALID_PARAMETER);
+	}
 #endif
 	if (p_mode == REPLICATION_MODE_NONE) {
 		if (replications.has(p_id)) {
@@ -155,6 +186,8 @@ Error MultiplayerReplicator::spawn_config(const ResourceUID::ID &p_id, Replicati
 	} else {
 		SceneConfig cfg;
 		cfg.mode = p_mode;
+		cfg.on_spawn_despawn_send = p_on_send;
+		cfg.on_spawn_despawn_receive = p_on_recv;
 		replications[p_id] = cfg;
 	}
 	return OK;
@@ -193,25 +226,48 @@ Error MultiplayerReplicator::_send_spawn_despawn(int p_peer_id, const ResourceUI
 Error MultiplayerReplicator::send_despawn(int p_peer_id, const ResourceUID::ID &p_scene_id, const Variant &p_data, const NodePath &p_path) {
 	ERR_FAIL_COND_V_MSG(!replications.has(p_scene_id), ERR_INVALID_PARAMETER, vformat("Spawnable not found: %d", p_scene_id));
 	const SceneConfig &cfg = replications[p_scene_id];
-	ERR_FAIL_COND_V_MSG(cfg.mode == REPLICATION_MODE_SERVER && multiplayer->is_network_server(), ERR_UNAVAILABLE, "Manual despawn is restricted in default server mode implementation. Use custom mode if you desire control over server spawn requests.");
-	ERR_FAIL_COND_V_MSG(p_path.is_empty(), ERR_INVALID_PARAMETER, "Despawn default implementation requires a despawn path.");
-	return _send_default_spawn_despawn(p_peer_id, p_scene_id, p_data, p_path, false);
+	if (cfg.on_spawn_despawn_send.is_valid()) {
+		return _send_spawn_despawn(p_peer_id, p_scene_id, p_data, true);
+	} else {
+		ERR_FAIL_COND_V_MSG(cfg.mode == REPLICATION_MODE_SERVER && multiplayer->is_network_server(), ERR_UNAVAILABLE, "Manual despawn is restricted in default server mode implementation. Use custom mode if you desire control over server spawn requests.");
+		ERR_FAIL_COND_V_MSG(p_path.is_empty(), ERR_INVALID_PARAMETER, "Despawn default implementation requires a despawn path.");
+		return _send_default_spawn_despawn(p_peer_id, p_scene_id, p_data, p_path, false);
+	}
 }
 
 Error MultiplayerReplicator::send_spawn(int p_peer_id, const ResourceUID::ID &p_scene_id, const Variant &p_data, const NodePath &p_path) {
 	ERR_FAIL_COND_V_MSG(!replications.has(p_scene_id), ERR_INVALID_PARAMETER, vformat("Spawnable not found: %d", p_scene_id));
 	const SceneConfig &cfg = replications[p_scene_id];
-	ERR_FAIL_COND_V_MSG(cfg.mode == REPLICATION_MODE_SERVER && multiplayer->is_network_server(), ERR_UNAVAILABLE, "Manual spawn is restricted in default server mode implementation. Use custom mode if you desire control over server spawn requests.");
-	ERR_FAIL_COND_V_MSG(p_path.is_empty(), ERR_INVALID_PARAMETER, "Spawn default implementation requires a spawn path.");
-	return _send_default_spawn_despawn(p_peer_id, p_scene_id, p_data, p_path, true);
+	if (cfg.on_spawn_despawn_send.is_valid()) {
+		return _send_spawn_despawn(p_peer_id, p_scene_id, p_data, false);
+	} else {
+		ERR_FAIL_COND_V_MSG(cfg.mode == REPLICATION_MODE_SERVER && multiplayer->is_network_server(), ERR_UNAVAILABLE, "Manual spawn is restricted in default server mode implementation. Use custom mode if you desire control over server spawn requests.");
+		ERR_FAIL_COND_V_MSG(p_path.is_empty(), ERR_INVALID_PARAMETER, "Spawn default implementation requires a spawn path.");
+		return _send_default_spawn_despawn(p_peer_id, p_scene_id, p_data, p_path, true);
+	}
 }
 
 Error MultiplayerReplicator::_spawn_despawn(ResourceUID::ID p_scene_id, Object *p_obj, int p_peer, bool p_spawn) {
 	ERR_FAIL_COND_V_MSG(!replications.has(p_scene_id), ERR_INVALID_PARAMETER, vformat("Spawnable not found: %d", p_scene_id));
 
-	Node *node = Object::cast_to<Node>(p_obj);
-	ERR_FAIL_COND_V_MSG(!p_obj, ERR_INVALID_PARAMETER, "Only nodes can be replicated by the default implementation");
-	return _send_default_spawn_despawn(p_peer, p_scene_id, PackedByteArray(), node->get_path(), p_spawn);
+	const SceneConfig &cfg = replications[p_scene_id];
+	if (cfg.on_spawn_despawn_send.is_valid()) {
+		Variant args[4];
+		args[0] = p_peer;
+		args[1] = p_scene_id;
+		args[2] = p_obj;
+		args[3] = true;
+		const Variant *argp[] = { &args[0], &args[1], &args[2], &args[3] };
+		Callable::CallError ce;
+		Variant ret;
+		cfg.on_spawn_despawn_send.call(argp, 4, ret, ce);
+		ERR_FAIL_COND_V_MSG(ce.error != Callable::CallError::CALL_OK, FAILED, "Custom send function failed");
+		return OK;
+	} else {
+		Node *node = Object::cast_to<Node>(p_obj);
+		ERR_FAIL_COND_V_MSG(!p_obj, ERR_INVALID_PARAMETER, "Only nodes can be replicated by the default implementation");
+		return _send_default_spawn_despawn(p_peer, p_scene_id, PackedByteArray(), node->get_path(), p_spawn);
+	}
 }
 
 Error MultiplayerReplicator::spawn(ResourceUID::ID p_scene_id, Object *p_obj, int p_peer) {
@@ -268,7 +324,7 @@ void MultiplayerReplicator::clear() {
 }
 
 void MultiplayerReplicator::_bind_methods() {
-	ClassDB::bind_method(D_METHOD("spawn_config", "scene_id", "spawn_mode"), &MultiplayerReplicator::spawn_config);
+	ClassDB::bind_method(D_METHOD("spawn_config", "scene_id", "spawn_mode", "custom_send", "custom_receive"), &MultiplayerReplicator::spawn_config, DEFVAL(Callable()), DEFVAL(Callable()));
 	ClassDB::bind_method(D_METHOD("despawn", "scene_id", "object", "peer_id"), &MultiplayerReplicator::despawn, DEFVAL(0));
 	ClassDB::bind_method(D_METHOD("spawn", "scene_id", "object", "peer_id"), &MultiplayerReplicator::spawn, DEFVAL(0));
 	ClassDB::bind_method(D_METHOD("send_despawn", "peer_id", "scene_id", "data", "path"), &MultiplayerReplicator::send_despawn, DEFVAL(Variant()), DEFVAL(NodePath()));

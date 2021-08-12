@@ -50,6 +50,8 @@ public:
 	struct SceneConfig {
 		ReplicationMode mode;
 		List<StringName> properties;
+		Callable on_spawn_despawn_send;
+		Callable on_spawn_despawn_receive;
 	};
 
 protected:
@@ -69,7 +71,7 @@ private:
 public:
 	void clear();
 
-	Error spawn_config(const ResourceUID::ID &p_id, ReplicationMode p_mode);
+	Error spawn_config(const ResourceUID::ID &p_id, ReplicationMode p_mode, const Callable &p_on_send = Callable(), const Callable &p_on_recv = Callable());
 	Error spawn(ResourceUID::ID p_scene_id, Object *p_obj, int p_peer = 0);
 	Error despawn(ResourceUID::ID p_scene_id, Object *p_obj, int p_peer = 0);
 

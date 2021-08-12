@@ -1044,8 +1044,6 @@ Node *MultiplayerAPI::get_cached_node(int p_from, uint32_t p_node_id) {
 	ERR_FAIL_COND_V_MSG(!F, nullptr, vformat("ID %d not found in cache of peer %d.", p_node_id, p_from));
 
 	PathGetCache::NodeInfo *ni = &F->get();
-	// Do proper caching later.
-
 	Node *node = root_node->get_node(ni->path);
 	if (!node) {
 		ERR_PRINT("Failed to get cached path: " + String(ni->path) + ".");

@@ -241,6 +241,10 @@ Error MultiplayerReplicator::_encode_state(const List<Variant> &p_variants, uint
 Error MultiplayerReplicator::_decode_state(const List<StringName> &p_properties, Object *p_obj, const uint8_t *p_buffer, int p_len, int &r_len, bool p_raw) {
 	r_len = 0;
 	int argc = p_properties.size();
+	if (argc == 0 && p_raw) {
+		ERR_FAIL_COND_V_MSG(p_len != 0, ERR_INVALID_DATA, "Buffer has trailing bytes.");
+		return OK;
+	}
 	ERR_FAIL_COND_V(p_raw && argc != 1, ERR_INVALID_DATA);
 	if (p_raw) {
 		r_len = p_len;

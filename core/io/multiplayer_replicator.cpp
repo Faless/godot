@@ -43,7 +43,7 @@ Error MultiplayerReplicator::_sync_all_default(const ResourceUID::ID &p_scene_id
 	const SceneConfig &cfg = replications[p_scene_id];
 	int full_size = 0;
 	bool same_size = true;
-	bool last_size = 0;
+	int last_size = 0;
 	// TODO we can do better, and use raw encoding.
 	Map<ObjectID, Pair<int, List<Variant>>> state;
 	if (tracked_objects.has(p_scene_id)) {
@@ -69,8 +69,11 @@ Error MultiplayerReplicator::_sync_all_default(const ResourceUID::ID &p_scene_id
 	if (!full_size) {
 		return OK;
 	}
-	// TODO warn if too big.
-	WARN_PRINT("Updating properties: " + itos(full_size));
+#ifdef DEBUG_ENABLED
+	if (full_size > 4096 && cfg.sync_interval) {
+		WARN_PRINT_ONCE(vformat("The timed state update for scene %d is big (%d bytes) consider optimizing it", p_scene_id));
+	}
+#endif
 	if (same_size) {
 		// This is fast and small. Should we allow more than 256 objects per type?
 		// This costs us 1 byte.
@@ -84,12 +87,12 @@ Error MultiplayerReplicator::_sync_all_default(const ResourceUID::ID &p_scene_id
 	ptr[0] = MultiplayerAPI::NETWORK_COMMAND_SYNC + ((same_size ? 1 : 0) << MultiplayerAPI::BYTE_ONLY_OR_NO_ARGS_SHIFT);
 	ofs = 1;
 	ofs += encode_uint64(p_scene_id, &ptr[ofs]);
-	ofs += encode_uint16(last_size, &ptr[ofs]);
+	ofs += encode_uint16(state.size(), &ptr[ofs]);
 	if (same_size) {
-		ofs += encode_uint16(state.size(), &ptr[ofs]);
+		ofs += encode_uint16(last_size, &ptr[ofs]);
 	}
 	for (const ObjectID &obj_id : tracked_objects[p_scene_id]) {
-		if (state.has(obj_id)) {
+		if (!state.has(obj_id)) {
 			continue;
 		}
 		const Pair<int, List<Variant>> &obj_state = state[obj_id];
@@ -110,6 +113,46 @@ Error MultiplayerReplicator::_sync_all_default(const ResourceUID::ID &p_scene_id
 	// TODO realible... really? We should do our own "ordered".
 	network_peer->set_transfer_mode(MultiplayerPeer::TRANSFER_MODE_RELIABLE);
 	return network_peer->put_packet(ptr, ofs);
+}
+
+void MultiplayerReplicator::_process_default_sync(const ResourceUID::ID &p_id, const uint8_t *p_packet, int p_packet_len) {
+	ERR_FAIL_COND_MSG(p_packet_len < SYNC_CMD_OFFSET + 4, "Invalid spawn packet received");
+	ERR_FAIL_COND_MSG(!replications.has(p_id), "Invalid spawn ID received " + itos(p_id));
+	const SceneConfig &cfg = replications[p_id];
+	ERR_FAIL_COND_MSG(cfg.mode != REPLICATION_MODE_SERVER || multiplayer->is_network_server(), "The defualt implementation only allows sync packets from the server");
+	const bool same_size = ((p_packet[0] & 64) >> MultiplayerAPI::BYTE_ONLY_OR_NO_ARGS_SHIFT) == 1;
+	int ofs = SYNC_CMD_OFFSET;
+	int count = decode_uint16(&p_packet[ofs]);
+	ofs += 2;
+#ifdef DEBUG_ENABLED
+	ERR_FAIL_COND(!tracked_objects.has(p_id) || tracked_objects[p_id].size() != count);
+#else
+	if (!tracked_objects.has(p_id) || tracked_objects[p_id].size() != count) {
+		return;
+	}
+#endif
+	int data_size = 0;
+	if (same_size) {
+		// This is fast and optimized.
+		data_size = decode_uint16(&p_packet[ofs]);
+		ofs += 2;
+		ERR_FAIL_COND(p_packet_len - ofs < data_size * count);
+	}
+	for (const ObjectID &obj_id : tracked_objects[p_id]) {
+		Object *obj = ObjectDB::get_instance(obj_id);
+		ERR_CONTINUE(!obj);
+		if (!same_size) {
+			// This is slow and wasteful.
+			data_size = decode_uint16(&p_packet[ofs]);
+			ofs += 2;
+			ERR_FAIL_COND(p_packet_len - ofs < data_size);
+		}
+		int size = 0;
+		Error err = _decode_state(cfg.sync_properties, obj, &p_packet[ofs], data_size, size);
+		ofs += data_size;
+		ERR_CONTINUE(err);
+		ERR_CONTINUE(size != data_size);
+	}
 }
 
 Error MultiplayerReplicator::_send_default_spawn_despawn(int p_peer_id, const ResourceUID::ID &p_scene_id, Object *p_obj, const NodePath &p_path, bool p_spawn) {
@@ -274,7 +317,16 @@ void MultiplayerReplicator::process_spawn_despawn(int p_from, const uint8_t *p_p
 }
 
 void MultiplayerReplicator::process_sync(int p_from, const uint8_t *p_packet, int p_packet_len) {
-	WARN_PRINT("GOT A SYNC!");
+	ERR_FAIL_COND_MSG(p_packet_len < SPAWN_CMD_OFFSET, "Invalid spawn packet received");
+	ResourceUID::ID id = decode_uint64(&p_packet[1]);
+	ERR_FAIL_COND_MSG(!replications.has(id), "Invalid spawn ID received " + itos(id));
+	const SceneConfig &cfg = replications[id];
+	if (cfg.on_sync_receive.is_valid()) {
+		// TODO call custom function
+	} else {
+		ERR_FAIL_COND_MSG(p_from != 1, "Default sync implementation only allow syncing from server to client");
+		_process_default_sync(id, p_packet, p_packet_len);
+	}
 }
 
 Error MultiplayerReplicator::_get_state(const List<StringName> &p_properties, const Object *p_obj, List<Variant> &r_variant) {

@@ -78,6 +78,7 @@ private:
 	Error _send_spawn_despawn(int p_peer_id, const ResourceUID::ID &p_scene_id, const Variant &p_data, bool p_spawn);
 	void _process_default_spawn_despawn(int p_from, const ResourceUID::ID &p_scene_id, const uint8_t *p_packet, int p_packet_len, bool p_spawn);
 	Error _send_default_spawn_despawn(int p_peer_id, const ResourceUID::ID &p_scene_id, Object *p_obj, const NodePath &p_path, bool p_spawn);
+	void _process_default_sync(const ResourceUID::ID &p_id, const uint8_t *p_packet, int p_packet_len);
 	Error _sync_all_default(const ResourceUID::ID &p_scene_id, int p_peer);
 
 public:

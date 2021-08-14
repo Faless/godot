@@ -1,4 +1,4 @@
-SOURCES += files([
+SOURCES += files(
 'area_2d_sw.cpp',
 'area_pair_2d_sw.cpp',
 'body_2d_sw.cpp',
@@ -14,4 +14,4 @@ SOURCES += files([
 'shape_2d_sw.cpp',
 'space_2d_sw.cpp',
 'step_2d_sw.cpp',
-])
+)

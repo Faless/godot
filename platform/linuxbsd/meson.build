@@ -39,17 +39,17 @@ if PLATFORM == 'linuxbsd'
     _cpp = meson.get_compiler('cpp')
     _linuxbsd_deps = [
         _cpp.find_library('dl'),
-        dependency('threads', method: 'auto'),
+        dependency('threads'),
         
-        dependency('x11', method: 'pkg-config'),
-        dependency('xcursor', method: 'pkg-config'),
-        dependency('xinerama', method: 'pkg-config'),
-        dependency('xext', method: 'pkg-config'),
-        dependency('xrandr', method: 'pkg-config'),
-        dependency('xrender', method: 'pkg-config'),
-        dependency('xi', method: 'pkg-config'),
-        #_cpp.find_library('gl'),
-        #_cpp.find_library('X11')
+        dependency('x11'),
+        dependency('xcursor'),
+        dependency('xinerama'),
+        dependency('xext'),
+        dependency('xrandr'),
+        dependency('xrender'),
+        dependency('xi'),
+        #dependency('vulkan')
+        #_cpp.find_library('vulkan'),
     ]
 
     CPP_ARGS += [

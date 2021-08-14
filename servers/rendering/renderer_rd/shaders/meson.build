@@ -4,6 +4,7 @@ _rd_shaders = [
 'blur_raster.glsl',
 'blur_raster_inc.glsl',
 'bokeh_dof.glsl',
+'bokeh_dof_raster.glsl',
 'canvas.glsl',
 'canvas_occlusion.glsl',
 'canvas_sdf.glsl',

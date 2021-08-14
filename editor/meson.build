@@ -20,15 +20,25 @@ if get_option('tools')
     SOURCES += [_exporter_target]
 
     # need to built the sources
-    SOURCES += files([
+    SOURCES += files(
         '../platform/android/export/export.cpp',
+        '../platform/android/export/export_plugin.cpp',
+        '../platform/android/export/godot_plugin_config.cpp',
+        '../platform/android/export/gradle_export_util.cpp',
         '../platform/iphone/export/export.cpp',
+        '../platform/iphone/export/export_plugin.cpp',
+        '../platform/iphone/export/godot_plugin_config.cpp',
         '../platform/javascript/export/export.cpp',
+        '../platform/javascript/export/export_plugin.cpp',
         '../platform/linuxbsd/export/export.cpp',
         '../platform/osx/export/export.cpp',
+        '../platform/osx/export/export_plugin.cpp',
         '../platform/uwp/export/export.cpp',
+        '../platform/uwp/export/export_plugin.cpp',
+        '../platform/uwp/export/app_packager.cpp',
         '../platform/windows/export/export.cpp',
-    ])
+        '../platform/windows/export/export_plugin.cpp',
+    )
 
     ################################################################################
     # Doc generation
@@ -109,6 +119,7 @@ if get_option('tools')
     'editor_atlas_packer.cpp',
     'editor_audio_buses.cpp',
     'editor_autoload_settings.cpp',
+    'editor_command_palette.cpp',
     'editor_data.cpp',
     'editor_dir_dialog.cpp',
     'editor_export.cpp',

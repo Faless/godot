@@ -2,6 +2,26 @@
 # needed to build on the selected platform. Do not add debug/release/optional
 # compilation flags here.
 
+################################################################################
+# Commands to always run
+################################################################################
+_target_android_logo = custom_target(
+    'android_logo',
+    output: ['logo.gen.h'],
+    input: ['logo.png'],
+    command: [SCRIPT_PLATFORM_LOGO, '@INPUT@', '@OUTPUT@', 'android'],
+    build_by_default: true
+)
+SOURCES += [_target_android_logo]
+
+_target_android_run_icon = custom_target(
+    'android_run_icon',
+    output: ['run_icon.gen.h'],
+    input: ['run_icon.png'],
+    command: [SCRIPT_PLATFORM_LOGO, '@INPUT@', '@OUTPUT@', 'android'],
+    build_by_default: true
+)
+
 if PLATFORM != 'android'
     subdir_done()
 endif
@@ -46,26 +66,6 @@ endif
 #  'java/lib/src/org/godotengine/godot/xr/regular/RegularFallbackConfigChooser.java',
 #  'java/lib/src/org/godotengine/godot/xr/XRMode.java',
 #)
-
-################################################################################
-# Commands to always run
-################################################################################
-_target_android_logo = custom_target(
-    'android_logo',
-    output: ['logo.gen.h'],
-    input: ['logo.png'],
-    command: [SCRIPT_PLATFORM_LOGO, '@INPUT@', '@OUTPUT@', 'android'],
-    build_by_default: true
-)
-SOURCES += [_target_android_logo]
-
-_target_android_run_icon = custom_target(
-    'android_run_icon',
-    output: ['run_icon.gen.h'],
-    input: ['run_icon.png'],
-    command: [SCRIPT_PLATFORM_LOGO, '@INPUT@', '@OUTPUT@', 'android'],
-    build_by_default: true
-)
 
 ################################################################################
 # Host Machine Specifics

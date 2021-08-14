@@ -1,5 +1,5 @@
 if get_option('builtin_vulkan')
-    _vulkan_lib_incdirs = include_directories('.', 'include', 'loader')
+    _vulkan_lib_incdirs = include_directories('.', 'include')
 
     _vulkan_deps = []
     _vulkan_link_args = []
@@ -10,18 +10,6 @@ if get_option('builtin_vulkan')
 
     _vulkan_srcs = files(
         'vk_mem_alloc.cpp',
-        #'loader/asm_offset.c',
-        'loader/cJSON.c',
-        'loader/debug_utils.c',
-        'loader/dev_ext_trampoline.c',
-        'loader/extension_manual.c',
-        'loader/loader.c',
-        'loader/murmurhash.c',
-        'loader/phys_dev_ext.c',
-        'loader/trampoline.c',
-        'loader/unknown_ext_chain.c',
-        # 'loader/vk_loader_extensions.c', # do not include this file, its included in a header directly
-        'loader/wsi.c'
     )
 
     if PLATFORM == 'windows'
@@ -57,9 +45,9 @@ if get_option('builtin_vulkan')
     endif
 
 
-    if PLATFORM == 'windows'
-        _vulkan_srcs += files(['loader/dirent_on_windows.c'])
-    endif
+    #if PLATFORM == 'windows'
+    #    _vulkan_srcs += files('loader/dirent_on_windows.c')
+    #endif
 
     _vulkan_incdirs = include_directories('include', '.')
 

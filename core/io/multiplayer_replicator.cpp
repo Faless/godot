@@ -742,6 +742,7 @@ Error MultiplayerReplicator::send_sync(int p_peer_id, const ResourceUID::ID &p_s
 }
 
 void MultiplayerReplicator::clear() {
+	tracked_objects.clear();
 	replicated_nodes.clear();
 }
 

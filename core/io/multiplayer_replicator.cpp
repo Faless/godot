@@ -44,24 +44,29 @@ Error MultiplayerReplicator::_sync_all_default(const ResourceUID::ID &p_scene_id
 	int full_size = 0;
 	bool same_size = true;
 	int last_size = 0;
-	// TODO we can do better, and use raw encoding.
-	Map<ObjectID, Pair<int, List<Variant>>> state;
+	bool all_raw = true;
+	struct EncodeInfo {
+		int size = 0;
+		bool raw = false;
+		List<Variant> state;
+	};
+	Map<ObjectID, struct EncodeInfo> state;
 	if (tracked_objects.has(p_scene_id)) {
 		for (const ObjectID &obj_id : tracked_objects[p_scene_id]) {
 			Object *obj = ObjectDB::get_instance(obj_id);
 			if (obj) {
-				List<Variant> state_variants;
-				Error err = _get_state(cfg.sync_properties, obj, state_variants);
+				struct EncodeInfo info;
+				Error err = _get_state(cfg.sync_properties, obj, info.state);
 				ERR_CONTINUE(err);
-				int size = 0;
-				err = _encode_state(state_variants, nullptr, size);
+				err = _encode_state(info.state, nullptr, info.size, &info.raw);
 				ERR_CONTINUE(err);
-				state[obj_id] = Pair(size, state_variants);
-				full_size += size;
-				if (last_size && size != last_size) {
+				state[obj_id] = info;
+				full_size += info.size;
+				if (last_size && info.size != last_size) {
 					same_size = false;
 				}
-				last_size = size;
+				all_raw = all_raw && info.raw;
+				last_size = info.size;
 			}
 		}
 	}
@@ -89,21 +94,21 @@ Error MultiplayerReplicator::_sync_all_default(const ResourceUID::ID &p_scene_id
 	ofs += encode_uint64(p_scene_id, &ptr[ofs]);
 	ofs += encode_uint16(state.size(), &ptr[ofs]);
 	if (same_size) {
-		ofs += encode_uint16(last_size, &ptr[ofs]);
+		ofs += encode_uint16(last_size + (all_raw ? 1 << 15 : 0), &ptr[ofs]);
 	}
 	for (const ObjectID &obj_id : tracked_objects[p_scene_id]) {
 		if (!state.has(obj_id)) {
 			continue;
 		}
-		const Pair<int, List<Variant>> &obj_state = state[obj_id];
+		struct EncodeInfo &info = state[obj_id];
 		Object *obj = ObjectDB::get_instance(obj_id);
 		ERR_CONTINUE(!obj);
 		int size = 0;
 		if (!same_size) {
 			// We need to encode the size of every object.
-			ofs += encode_uint16(obj_state.first, &ptr[ofs]);
+			ofs += encode_uint16(info.size + (info.raw ? 1 << 15 : 0), &ptr[ofs]);
 		}
-		Error err = _encode_state(obj_state.second, &ptr[ofs], size);
+		Error err = _encode_state(info.state, &ptr[ofs], size, &info.raw);
 		ERR_CONTINUE(err);
 		ofs += size;
 	}
@@ -132,9 +137,12 @@ void MultiplayerReplicator::_process_default_sync(const ResourceUID::ID &p_id, c
 	}
 #endif
 	int data_size = 0;
+	bool raw = false;
 	if (same_size) {
 		// This is fast and optimized.
 		data_size = decode_uint16(&p_packet[ofs]);
+		raw = (data_size & (1 << 15)) != 0;
+		data_size = data_size & ~(1 << 15);
 		ofs += 2;
 		ERR_FAIL_COND(p_packet_len - ofs < data_size * count);
 	}
@@ -144,11 +152,13 @@ void MultiplayerReplicator::_process_default_sync(const ResourceUID::ID &p_id, c
 		if (!same_size) {
 			// This is slow and wasteful.
 			data_size = decode_uint16(&p_packet[ofs]);
+			raw = (data_size & (1 << 15)) != 0;
+			data_size = data_size & ~(1 << 15);
 			ofs += 2;
 			ERR_FAIL_COND(p_packet_len - ofs < data_size);
 		}
 		int size = 0;
-		Error err = _decode_state(cfg.sync_properties, obj, &p_packet[ofs], data_size, size);
+		Error err = _decode_state(cfg.sync_properties, obj, &p_packet[ofs], data_size, size, raw);
 		ofs += data_size;
 		ERR_CONTINUE(err);
 		ERR_CONTINUE(size != data_size);

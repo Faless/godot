@@ -80,6 +80,8 @@ private:
 	Error _send_default_spawn_despawn(int p_peer_id, const ResourceUID::ID &p_scene_id, Object *p_obj, const NodePath &p_path, bool p_spawn);
 	void _process_default_sync(const ResourceUID::ID &p_id, const uint8_t *p_packet, int p_packet_len);
 	Error _sync_all_default(const ResourceUID::ID &p_scene_id, int p_peer);
+	void _track(const ResourceUID::ID &p_scene_id, Object *p_object);
+	void _untrack(const ResourceUID::ID &p_scene_id, Object *p_object);
 
 public:
 	void clear();
@@ -91,6 +93,7 @@ public:
 
 	Error send_despawn(int p_peer_id, const ResourceUID::ID &p_scene_id, const Variant &p_data = Variant(), const NodePath &p_path = NodePath());
 	Error send_spawn(int p_peer_id, const ResourceUID::ID &p_scene_id, const Variant &p_data = Variant(), const NodePath &p_path = NodePath());
+	Error send_sync(int p_peer_id, const ResourceUID::ID &p_scene_id, PackedByteArray p_data, MultiplayerPeer::TransferMode p_mode, int p_channel);
 	PackedByteArray encode_state(const ResourceUID::ID &p_scene_id, const Object *p_node);
 	Error decode_state(const ResourceUID::ID &p_scene_id, Object *p_node, PackedByteArray p_data);
 

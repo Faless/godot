@@ -84,7 +84,6 @@ Error MultiplayerReplicator::_sync_all_default(const ResourceUID::ID &p_scene_id
 		// This costs us 1 byte.
 		MAKE_ROOM(SYNC_CMD_OFFSET + 2 + 2 + full_size);
 	} else {
-		// TODO We should probably warn that this uses much more bandwidth.
 		MAKE_ROOM(SYNC_CMD_OFFSET + 2 + state.size() * 2 + full_size);
 	}
 	int ofs = 0;

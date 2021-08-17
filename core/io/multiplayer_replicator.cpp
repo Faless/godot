@@ -40,7 +40,7 @@
 
 Error MultiplayerReplicator::_sync_all_default(const ResourceUID::ID &p_scene_id, int p_peer) {
 	ERR_FAIL_COND_V(!replications.has(p_scene_id), ERR_INVALID_PARAMETER);
-	const SceneConfig &cfg = replications[p_scene_id];
+	SceneConfig &cfg = replications[p_scene_id];
 	int full_size = 0;
 	bool same_size = true;
 	int last_size = 0;
@@ -82,15 +82,17 @@ Error MultiplayerReplicator::_sync_all_default(const ResourceUID::ID &p_scene_id
 	if (same_size) {
 		// This is fast and small. Should we allow more than 256 objects per type?
 		// This costs us 1 byte.
-		MAKE_ROOM(SYNC_CMD_OFFSET + 2 + 2 + full_size);
+		MAKE_ROOM(SYNC_CMD_OFFSET + 1 + 2 + 2 + full_size);
 	} else {
-		MAKE_ROOM(SYNC_CMD_OFFSET + 2 + state.size() * 2 + full_size);
+		MAKE_ROOM(SYNC_CMD_OFFSET + 1 + 2 + state.size() * 2 + full_size);
 	}
 	int ofs = 0;
 	uint8_t *ptr = packet_cache.ptrw();
 	ptr[0] = MultiplayerAPI::NETWORK_COMMAND_SYNC + ((same_size ? 1 : 0) << MultiplayerAPI::BYTE_ONLY_OR_NO_ARGS_SHIFT);
 	ofs = 1;
 	ofs += encode_uint64(p_scene_id, &ptr[ofs]);
+	ptr[ofs] = cfg.sync_recv++;
+	ofs += 1;
 	ofs += encode_uint16(state.size(), &ptr[ofs]);
 	if (same_size) {
 		ofs += encode_uint16(last_size + (all_raw ? 1 << 15 : 0), &ptr[ofs]);
@@ -114,18 +116,24 @@ Error MultiplayerReplicator::_sync_all_default(const ResourceUID::ID &p_scene_id
 	Ref<MultiplayerPeer> network_peer = multiplayer->get_network_peer();
 	network_peer->set_target_peer(p_peer);
 	network_peer->set_transfer_channel(0);
-	// TODO realible... really? We should do our own "ordered".
-	network_peer->set_transfer_mode(MultiplayerPeer::TRANSFER_MODE_RELIABLE);
+	network_peer->set_transfer_mode(MultiplayerPeer::TRANSFER_MODE_UNRELIABLE);
 	return network_peer->put_packet(ptr, ofs);
 }
 
 void MultiplayerReplicator::_process_default_sync(const ResourceUID::ID &p_id, const uint8_t *p_packet, int p_packet_len) {
-	ERR_FAIL_COND_MSG(p_packet_len < SYNC_CMD_OFFSET + 4, "Invalid spawn packet received");
+	ERR_FAIL_COND_MSG(p_packet_len < SYNC_CMD_OFFSET + 5, "Invalid spawn packet received");
 	ERR_FAIL_COND_MSG(!replications.has(p_id), "Invalid spawn ID received " + itos(p_id));
-	const SceneConfig &cfg = replications[p_id];
+	SceneConfig &cfg = replications[p_id];
 	ERR_FAIL_COND_MSG(cfg.mode != REPLICATION_MODE_SERVER || multiplayer->is_network_server(), "The defualt implementation only allows sync packets from the server");
 	const bool same_size = ((p_packet[0] & 64) >> MultiplayerAPI::BYTE_ONLY_OR_NO_ARGS_SHIFT) == 1;
 	int ofs = SYNC_CMD_OFFSET;
+	int time = p_packet[ofs];
+	// Skip old update.
+	if (time < cfg.sync_recv && cfg.sync_recv - time < 127) {
+		return;
+	}
+	cfg.sync_recv = time;
+	ofs += 1;
 	int count = decode_uint16(&p_packet[ofs]);
 	ofs += 2;
 #ifdef DEBUG_ENABLED

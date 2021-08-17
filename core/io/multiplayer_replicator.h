@@ -53,6 +53,7 @@ public:
 		ReplicationMode mode;
 		uint64_t sync_interval = 0;
 		uint64_t sync_last = 0;
+		uint8_t sync_recv = 0;
 		List<StringName> properties;
 		List<StringName> sync_properties;
 		Callable on_spawn_despawn_send;

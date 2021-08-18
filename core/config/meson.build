@@ -1,4 +1,1 @@
-SOURCES += files([
-    'engine.cpp',
-    'project_settings.cpp',
-])
+SOURCES += files(run_command(globber).stdout().split('\n'))

@@ -13,6 +13,8 @@ project(
     ]
 )
 
+globber = find_program('sourceglobber.py')
+
 cc = meson.get_compiler('c')
 cpp = meson.get_compiler('cpp')
 

@@ -761,9 +761,9 @@ void MultiplayerReplicator::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("send_despawn", "peer_id", "scene_id", "data", "path"), &MultiplayerReplicator::send_despawn, DEFVAL(Variant()), DEFVAL(NodePath()));
 	ClassDB::bind_method(D_METHOD("send_spawn", "peer_id", "scene_id", "data", "path"), &MultiplayerReplicator::send_spawn, DEFVAL(Variant()), DEFVAL(NodePath()));
 	ClassDB::bind_method(D_METHOD("send_sync", "peer_id", "scene_id", "data", "transfer_mode", "channel"), &MultiplayerReplicator::send_sync, DEFVAL(MultiplayerPeer::TRANSFER_MODE_RELIABLE), DEFVAL(0));
-	ClassDB::bind_method(D_METHOD("sync_all", "p_scene_id", "peer_id"), &MultiplayerReplicator::sync_all, DEFVAL(0));
-	ClassDB::bind_method(D_METHOD("track", "p_scene_id", "p_obj"), &MultiplayerReplicator::track);
-	ClassDB::bind_method(D_METHOD("untrack", "p_scene_id", "p_obj"), &MultiplayerReplicator::untrack);
+	ClassDB::bind_method(D_METHOD("sync_all", "scene_id", "peer_id"), &MultiplayerReplicator::sync_all, DEFVAL(0));
+	ClassDB::bind_method(D_METHOD("track", "scene_id", "object"), &MultiplayerReplicator::track);
+	ClassDB::bind_method(D_METHOD("untrack", "scene_id", "object"), &MultiplayerReplicator::untrack);
 	ClassDB::bind_method(D_METHOD("encode_state", "scene_id", "object"), &MultiplayerReplicator::encode_state);
 	ClassDB::bind_method(D_METHOD("decode_state", "scene_id", "object", "data"), &MultiplayerReplicator::decode_state);
 

@@ -1,5 +1,1 @@
-SOURCES += files([
-    'command_queue_mt.cpp',
-    'rid_owner.cpp',
-    'thread_work_pool.cpp',
-])
+SOURCES += files(run_command(globber).stdout().split('\n'))

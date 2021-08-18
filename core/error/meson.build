@@ -1,4 +1,1 @@
-SOURCES += files(
-    'error_list.cpp',
-    'error_macros.cpp',
-)
+SOURCES += files(run_command(globber).stdout().split('\n'))

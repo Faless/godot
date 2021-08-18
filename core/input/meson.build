@@ -9,8 +9,4 @@ _default_controller_mappings_target = custom_target(
 
 SOURCES += [_default_controller_mappings_target]
 
-SOURCES += files([
-    'input.cpp',
-    'input_event.cpp',
-    'input_map.cpp',
-])
+SOURCES += files(run_command(globber).stdout().split('\n'))

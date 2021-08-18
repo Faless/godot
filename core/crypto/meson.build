@@ -1,6 +1,1 @@
-SOURCES += files([
-    'aes_context.cpp',
-    'crypto.cpp',
-    'crypto_core.cpp',
-    'hashing_context.cpp',
-])
+SOURCES += files(run_command(globber).stdout().split('\n'))

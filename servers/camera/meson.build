@@ -1,3 +1,1 @@
-SOURCES += files([
-    'camera_feed.cpp'
-])
+SOURCES += files(run_command(globber, '*.cpp').stdout().split('\n'))

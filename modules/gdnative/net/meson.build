@@ -1,11 +1,5 @@
-module_gdnative_srcs += files([
-    'multiplayer_peer_gdnative.cpp',
-    'packet_peer_gdnative.cpp',
-    'register_types.cpp',
-    'stream_peer_gdnative.cpp',
-    'webrtc_gdnative.cpp',
-])
+module_gdnative_srcs += files(run_command(globber, '*.cpp').stdout().split('\n'))
 
-if 'webrtx' in MODULES_ENABLED
+if 'webrtc' in MODULES_ENABLED
     module_gdnative_cpp_args += ['-DWEBRTC_GDNATIVE_ENABLED']
 endif

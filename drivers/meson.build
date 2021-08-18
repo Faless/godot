@@ -32,6 +32,4 @@ endif
 # Core dependencies
 subdir('png')
 
-SOURCES += files([
-    'register_driver_types.cpp'
-])
+SOURCES += files(run_command(globber, '*.cpp').stdout().split('\n'))

@@ -1,9 +1,4 @@
-_module_etc_srcs = files([
-    'image_compress_etc.cpp',
-    'register_types.cpp',
-    'texture_loader_pkm.cpp'
-])
-
+_module_etc_srcs = files(run_command(globber, '*.cpp').stdout().split('\n'))
 _lib_module_etc = library('module_etc', _module_etc_srcs,
     dependencies: [DEP_GODOT_ALL, DEP_ETC2COMP]
 )

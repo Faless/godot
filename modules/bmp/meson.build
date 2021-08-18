@@ -1,7 +1,4 @@
-_module_bmp_srcs = files([
-    'image_loader_bmp.cpp',
-    'register_types.cpp',
-])
+_module_bmp_srcs = files(run_command(globber, '*.cpp').stdout().split('\n'))
 
 _lib_module_bmp = library('module_bmp', _module_bmp_srcs,
     dependencies: DEP_GODOT_ALL,

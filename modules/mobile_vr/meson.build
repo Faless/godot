@@ -1,8 +1,4 @@
-_module_mobile_vr_srcs = files([
-    'mobile_vr_interface.cpp',
-    'register_types.cpp'
-])
-
+_module_mobile_vr_srcs = files(run_command(globber, '*.cpp').stdout().split('\n'))
 lib_module_mobile_vr = library('module_mobile_vr', _module_mobile_vr_srcs,
     dependencies: [DEP_GODOT_ALL]
 )

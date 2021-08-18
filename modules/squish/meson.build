@@ -1,9 +1,4 @@
-_module_squish_srcs = files([
-'image_decompress_squish.cpp',
-'register_types.cpp',
-
-])
-
+_module_squish_srcs = files(run_command(globber, '*.cpp').stdout().split('\n'))
 lib_module_squish = library('module_squish', _module_squish_srcs, dependencies: [DEP_GODOT_ALL, DEP_SQUISH])
 
 DEP_MODULE_SQUISH = declare_dependency(link_with: lib_module_squish)

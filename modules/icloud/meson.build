@@ -1,7 +1,5 @@
-_module_icloud_srcs = files([
-    'icloud_module.cpp',
-    'in_app_store.mm',
-])
+_module_icloud_srcs = files(run_command(globber, '*.cpp').stdout().split('\n'))
+_module_icloud_srcs = files(run_command(globber, '*.mm').stdout().split('\n'))
 
 _module_icloud_cpp_args = ['-fmodules', '-fcxx-modules']
 

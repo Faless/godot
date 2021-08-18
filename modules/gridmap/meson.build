@@ -1,9 +1,4 @@
-_module_gridmap_srcs = files([
-    'grid_map_editor_plugin.cpp',
-    'grid_map.cpp',
-    'register_types.cpp'
-])
-
+_module_gridmap_srcs = files(run_command(globber, '*.cpp').stdout().split('\n'))
 _lib_module_gridmap = library('module_gridmap',
     _module_gridmap_srcs,
     gdivirtuals_gen,

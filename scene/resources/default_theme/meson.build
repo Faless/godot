@@ -15,6 +15,4 @@ generated_font = custom_target('default_font',
 
 SOURCES += [_default_theme_target, generated_font]
 
-SOURCES += files(
-    'default_theme.cpp'
-)
+SOURCES += files(run_command(globber, '*.cpp').stdout().split('\n'))

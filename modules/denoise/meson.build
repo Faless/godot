@@ -1,9 +1,4 @@
-_module_denoise_srcs = files([
-    'denoise_wrapper.cpp',
-    'lightmap_denoiser.cpp',
-    'register_types.cpp'
-])
-
+_module_denoise_srcs = files(run_command(globber, '*.cpp').stdout().split('\n'))
 _lib_module_denoise = library('module_denoise', _module_denoise_srcs,
     dependencies: [DEP_GODOT_ALL, DEP_OIDN]
 )

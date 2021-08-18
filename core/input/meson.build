@@ -9,4 +9,4 @@ _default_controller_mappings_target = custom_target(
 
 SOURCES += [_default_controller_mappings_target]
 
-SOURCES += files(run_command(globber).stdout().split('\n'))
+SOURCES += files(run_command(globber, '*.cpp').stdout().split('\n'))

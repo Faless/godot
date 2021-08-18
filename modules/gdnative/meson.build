@@ -1,10 +1,5 @@
 
-module_gdnative_srcs = files([
-    'gdnative_library_editor_plugin.cpp',
-    'gdnative_library_singleton_editor.cpp',
-    'gdnative.cpp',
-    'register_types.cpp'
-])
+module_gdnative_srcs = files(run_command(globber, '*.cpp').stdout().split('\n'))
 
 SCRIPT_GDNATIVE_API_GEN = find_program('scripts/gdnative_api_struct_gen.py')
 

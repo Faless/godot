@@ -1,7 +1,4 @@
-_module_jpg_srcs = files([
-    'image_loader_jpegd.cpp',
-    'register_types.cpp'
-])
+_module_jpg_srcs = files(run_command(globber, '*.cpp').stdout().split('\n'))
 
 _lib_module_jpg = library('module_jpg', _module_jpg_srcs,
     dependencies: [DEP_GODOT_ALL, DEP_JPEG_COMPRESSOR]

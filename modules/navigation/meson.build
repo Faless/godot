@@ -1,12 +1,4 @@
-_module_gdnaviation_srcs = files(
-    'godot_navigation_server.cpp',
-    'navigation_mesh_editor_plugin.cpp',
-    'navigation_mesh_generator.cpp',
-    'nav_map.cpp',
-    'nav_region.cpp',
-    'register_types.cpp',
-    'rvo_agent.cpp',
-)
+_module_gdnaviation_srcs = files(run_command(globber, '*.cpp').stdout().split('\n'))
 
 _lib_module_gdnavigation = library('module_gdnavigation',
                                    _module_gdnaviation_srcs,

@@ -1,9 +1,5 @@
+_module_lmrd_src = files(run_command(globber, '*.cpp').stdout().split('\n'))
 # NOTE: do not use files() here
-_module_lmrd_src = files([
-    'lightmapper_rd.cpp',
-    'register_types.cpp'
-])
-
 _module_lmrd_raw_shaders = [
     'lm_raster.glsl',
     'lm_compute.glsl',

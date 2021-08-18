@@ -1,8 +1,4 @@
-_module_basis_universal_srcs = files([
-    'register_types.cpp',
-    'texture_basisu.cpp'
-])
-
+_module_basis_universal_srcs = files(run_command(globber, '*.cpp').stdout().split('\n'))
 if not DEP_BASIS_UNIVERSAL.found()
     error('module basis_universal requires DEP_BASIS_UNIVERSAL')
 endif

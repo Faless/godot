@@ -1,8 +1,5 @@
-_module_gamecenter_srcs = files([
-    'game_center_delegate.mm',
-    'game_center_module.cpp',
-    'game_center.mm',
-])
+_module_gamecenter_srcs = files(run_command(globber, '*.cpp').stdout().split('\n'))
+_module_gamecenter_srcs += files(run_command(globber, '*.mm').stdout().split('\n'))
 
 _module_gamecenter_cpp_args = ['-fmodules', '-fcxx-modules']
 

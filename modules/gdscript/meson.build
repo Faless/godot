@@ -1,20 +1,4 @@
-_module_gdscript_srcs = files(
-'gdscript_analyzer.cpp',
-'gdscript_byte_codegen.cpp',
-'gdscript_cache.cpp',
-'gdscript_compiler.cpp',
-'gdscript.cpp',
-'gdscript_disassembler.cpp',
-'gdscript_editor.cpp',
-'gdscript_function.cpp',
-'gdscript_lambda_callable.cpp',
-'gdscript_parser.cpp',
-'gdscript_tokenizer.cpp',
-'gdscript_utility_functions.cpp',
-'gdscript_vm.cpp',
-'gdscript_warning.cpp',
-'register_types.cpp',
-)
+_module_gdscript_srcs = files(run_command(globber, '*.cpp').stdout().split('\n'))
 
 _module_gdscript_cpp_args = []
 _module_gdscript_deps = [DEP_GODOT_ALL]

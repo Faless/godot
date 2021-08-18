@@ -1,12 +1,5 @@
-_module_opensimplex_srcs = files([
-    # thirdparty misc
-    '../../thirdparty/misc/open-simplex-noise.c',
-
-    # our srcs
-    'noise_texture.cpp',
-    'open_simplex_noise.cpp',
-    'register_types.cpp'
-])
+_module_opensimplex_srcs = files(['../../thirdparty/misc/open-simplex-noise.c'])
+_module_opensimplex_srcs = files(run_command(globber, '*.cpp').stdout().split('\n'))
 
 lib_module_opensimplex = library('module_opensimplex', _module_opensimplex_srcs,
     dependencies: [DEP_GODOT_ALL]

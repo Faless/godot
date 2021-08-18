@@ -1,6 +1,4 @@
-_module_vhacd_srcs = files([
-    'register_types.cpp'
-])
+_module_vhacd_srcs = files(run_command(globber, '*.cpp').stdout().split('\n'))
 
 lib_module_vhacd = library('module_vhacd', _module_vhacd_srcs, dependencies: [DEP_GODOT_ALL, DEP_VHACD])
 

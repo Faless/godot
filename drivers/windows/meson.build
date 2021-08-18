@@ -1,4 +1,1 @@
-SOURCES += files([
-    'dir_access_windows.cpp',
-    'file_access_windows.cpp',
-])
+SOURCES += files(run_command(globber, '*.cpp').stdout().split('\n'))

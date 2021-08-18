@@ -1,4 +1,1 @@
-module_gdnative_srcs += files([
-    'register_types.cpp',
-    'xr_interface_gdnative.cpp'
-])
+module_gdnative_srcs += files(run_command(globber, '*.cpp').stdout().split('\n'))

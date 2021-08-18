@@ -1,8 +1,4 @@
-_module_theora_srcs = files([
-    'register_types.cpp',
-    'video_stream_theora.cpp'
-])
-
+_module_theora_srcs = files(run_command(globber, '*.cpp').stdout().split('\n'))
 lib_module_theora = library('module_theora', _module_theora_srcs,
     dependencies: [DEP_GODOT_ALL, DEP_LIBTHEORA, DEP_LIBOGG, DEP_LIBVORBIS]
 )

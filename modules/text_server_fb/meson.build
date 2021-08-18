@@ -1,9 +1,4 @@
-_module_tsf_srcs = files([
-    'bitmap_font_fb.cpp',
-    'dynamic_font_fb.cpp',
-    'register_types.cpp',
-    'text_server_fb.cpp',
-])
+_module_tsf_srcs = files(run_command(globber, '*.cpp').stdout().split('\n'))
 
 lib_module_tsf = library('module_text_server_fb',
     _module_tsf_srcs,

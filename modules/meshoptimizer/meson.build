@@ -1,6 +1,4 @@
-_module_meshoptimizer_srcs = files([
-    'register_types.cpp'
-])
+_module_meshoptimizer_srcs = files(run_command(globber, '*.cpp').stdout().split('\n'))
 
 lib_module_meshoptimizer = library('module_meshoptimizer', _module_meshoptimizer_srcs, dependencies: [DEP_GODOT_ALL, DEP_MESHOPTIMIZER])
 

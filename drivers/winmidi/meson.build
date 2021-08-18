@@ -1,3 +1,1 @@
-SOURCES += files([
-    'midi_driver_winmidi.cpp'
-])
+SOURCES += files(run_command(globber, '*.cpp').stdout().split('\n'))

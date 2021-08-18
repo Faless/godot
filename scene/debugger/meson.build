@@ -1,3 +1,1 @@
-SOURCES += files([
-    'scene_debugger.cpp'
-])
+SOURCES += files(run_command(globber, '*.cpp').stdout().split('\n'))

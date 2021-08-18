@@ -3,14 +3,11 @@
 import sys, os
 from glob import glob
 
-def glob_current_dir():
-    files = glob('*.cpp')
-    files += glob('*.cc')
-    files += glob('*.c')
-    return files
+def glob_pattern(what):
+    return glob(what)
 
-def glob_and_print():
-    files = glob_current_dir()
+def glob_and_print(what):
+    files = glob_pattern(what)
     if not files:
         return
     for f in files[:-1]:
@@ -18,4 +15,4 @@ def glob_and_print():
     print(files[-1], end='')
 
 if __name__ == '__main__':
-    glob_and_print()
+    glob_and_print(sys.argv[1])

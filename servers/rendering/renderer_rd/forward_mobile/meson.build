@@ -1,4 +1,1 @@
-SOURCES += files(
-'render_forward_mobile.cpp',
-'scene_shader_forward_mobile.cpp',
-)
+SOURCES += files(run_command(globber, '*.cpp').stdout().split('\n'))

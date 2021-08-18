@@ -1,12 +1,8 @@
 _module_stb_vorbis_srcs = files([
     # thirdparty single misc file
-    '../../thirdparty/misc/stb_vorbis.c',
-
-    # module files
-    'audio_stream_ogg_vorbis.cpp',
-    'register_types.cpp',
-    'resource_importer_ogg_vorbis.cpp'
+    '../../thirdparty/misc/stb_vorbis.c'
 ])
+_module_stb_vorbis_srcs += files(run_command(globber, '*.cpp').stdout().split('\n'))
 
 lib_module_stb_vorbis = library('module_stb_vorbis', _module_stb_vorbis_srcs,
     dependencies: [DEP_GODOT_ALL]

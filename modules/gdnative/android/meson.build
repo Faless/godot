@@ -1,3 +1,1 @@
-module_gdnative_srcs += files([
-    'android_gdn.cpp'
-])
+module_gdnative_srcs += files(run_command(globber, '*.cpp').stdout().split('\n'))

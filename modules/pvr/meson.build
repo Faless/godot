@@ -1,8 +1,4 @@
-_module_pvr_srcs = files([
-    'image_compress_pvrtc.cpp',
-    'register_types.cpp',
-    'texture_loader_pvr.cpp'
-])
+_module_pvr_srcs = files(run_command(globber, '*.cpp').stdout().split('\n'))
 
 lib_module_pvr = library('module_pvr', _module_pvr_srcs,
     dependencies: [DEP_GODOT_ALL, DEP_PVRTCCOMPRESSOR]

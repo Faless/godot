@@ -1,7 +1,2 @@
-SOURCES += files([
-    'image_loader_png.cpp',
-    'png_driver_common.cpp',
-    'resource_saver_png.cpp',
-])
-
+SOURCES += files(run_command(globber, '*.cpp').stdout().split('\n'))
 DEPENDENCIES += [DEP_LIBPNG]

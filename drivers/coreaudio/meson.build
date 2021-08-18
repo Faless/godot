@@ -1,3 +1,1 @@
-SOURCES += files([
-    'audio_driver_coreaudio.cpp'
-])
+SOURCES += files(run_command(globber, '*.cpp').stdout().split('\n'))

@@ -1,4 +1,1 @@
-SOURCES += files([
-    'xr_interface.cpp',
-    'xr_positional_tracker.cpp'
-])
+SOURCES += files(run_command(globber, '*.cpp').stdout().split('\n'))

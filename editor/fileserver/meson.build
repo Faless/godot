@@ -1,3 +1,1 @@
-SOURCES += files([
-    'editor_file_server.cpp'
-])
+SOURCES += files(run_command(globber, '*.cpp').stdout().split('\n'))

@@ -1,9 +1,4 @@
-module_gdnative_srcs += files([
-    'api_generator.cpp',
-    'godot_nativescript.cpp',
-    'nativescript.cpp',
-    'register_types.cpp'
-])
+module_gdnative_srcs += files(run_command(globber, '*.cpp').stdout().split('\n'))
 
 if PLATFORM == 'linuxbsd' or PLATFORM == 'iphone'
     module_gdnative_link_args += ['-rdynamic']

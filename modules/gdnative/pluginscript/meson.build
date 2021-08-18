@@ -1,7 +1,1 @@
-module_gdnative_srcs += files([
-    'pluginscript_instance.cpp',
-    'pluginscript_language.cpp',
-    'pluginscript_loader.cpp',
-    'pluginscript_script.cpp',
-    'register_types.cpp',
-])
+module_gdnative_srcs += files(run_command(globber, '*.cpp').stdout().split('\n'))

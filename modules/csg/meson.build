@@ -1,10 +1,4 @@
-_module_csg_srcs = files([
-    'csg_gizmos.cpp',
-    'csg_shape.cpp',
-    'csg.cpp',
-    'register_types.cpp'
-])
-
+_module_csg_srcs = files(run_command(globber, '*.cpp').stdout().split('\n'))
 _lib_module_csg = library('module_csg',
                 _module_csg_srcs,
                 gdivirtuals_gen,

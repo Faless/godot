@@ -1,10 +1,4 @@
-module_tsa_srcs = files([
-    'bitmap_font_adv.cpp',
-    'dynamic_font_adv.cpp',
-    'register_types.cpp',
-    'script_iterator.cpp',
-    'text_server_adv.cpp'
-])
+module_tsa_srcs = files(run_command(globber, '*.cpp').stdout().split('\n'))
 
 subdir('icu_data')
 

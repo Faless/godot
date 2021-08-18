@@ -1,5 +1,1 @@
-MAIN_SOURCES += files([
-    'main.cpp',
-    'main_timer_sync.cpp',
-    'performance.cpp',
-])
+MAIN_SOURCES += files(run_command(globber, '*.cpp').stdout().split('\n'))

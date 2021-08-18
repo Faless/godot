@@ -1,3 +1,1 @@
-SOURCES += files([
-    'audio_stream_player.cpp'
-])
+SOURCES += files(run_command(globber, '*.cpp').stdout().split('\n'))

@@ -1,8 +1,4 @@
-_module_webxr_srcs = files(
-    'register_types.cpp',
-    'webxr_interface_js.cpp',
-    'webxr_interface.cpp'
-)
+_module_webxr_srcs = files(run_command(globber, '*.cpp').stdout().split('\n'))
 
 DEP_MODULE_WEBXR = []
 if PLATFORM == 'javascript'

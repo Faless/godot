@@ -8,10 +8,7 @@ SOURCES += files([
     '../thirdparty/misc/easing_equations.cpp',
 ])
 
-SOURCES += files([
-    'register_scene_types.cpp',
-    'scene_string_names.cpp',
-])
+SOURCES += files(run_command(globber, '*.cpp').stdout().split('\n'))
 
 subdir('2d')
 subdir('3d')

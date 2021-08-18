@@ -590,13 +590,14 @@ Error MultiplayerReplicator::despawn(ResourceUID::ID p_scene_id, Object *p_obj, 
 	return _spawn_despawn(p_scene_id, p_obj, p_peer, false);
 }
 
-PackedByteArray MultiplayerReplicator::encode_state(const ResourceUID::ID &p_scene_id, const Object *p_obj) {
+PackedByteArray MultiplayerReplicator::encode_state(const ResourceUID::ID &p_scene_id, const Object *p_obj, bool p_initial) {
 	PackedByteArray state;
 	ERR_FAIL_COND_V_MSG(!replications.has(p_scene_id), state, vformat("Spawnable not found: %d", p_scene_id));
 	const SceneConfig &cfg = replications[p_scene_id];
 	int len = 0;
 	List<Variant> state_vars;
-	Error err = _get_state(cfg.properties, p_obj, state_vars);
+	const List<StringName> props = p_initial ? cfg.properties : cfg.sync_properties;
+	Error err = _get_state(props, p_obj, state_vars);
 	ERR_FAIL_COND_V_MSG(err != OK, state, "Unable to retrieve object state.");
 	err = _encode_state(state_vars, nullptr, len);
 	ERR_FAIL_COND_V_MSG(err != OK, state, "Unable to encode object state.");
@@ -605,11 +606,12 @@ PackedByteArray MultiplayerReplicator::encode_state(const ResourceUID::ID &p_sce
 	return state;
 }
 
-Error MultiplayerReplicator::decode_state(const ResourceUID::ID &p_scene_id, Object *p_obj, const PackedByteArray p_data) {
+Error MultiplayerReplicator::decode_state(const ResourceUID::ID &p_scene_id, Object *p_obj, const PackedByteArray p_data, bool p_initial) {
 	ERR_FAIL_COND_V_MSG(!replications.has(p_scene_id), ERR_INVALID_PARAMETER, vformat("Spawnable not found: %d", p_scene_id));
 	const SceneConfig &cfg = replications[p_scene_id];
+	const List<StringName> props = p_initial ? cfg.properties : cfg.sync_properties;
 	int size;
-	return _decode_state(cfg.properties, p_obj, p_data.ptr(), p_data.size(), size);
+	return _decode_state(props, p_obj, p_data.ptr(), p_data.size(), size);
 }
 
 void MultiplayerReplicator::scene_enter_exit_notify(const String &p_scene, Node *p_node, bool p_enter) {
@@ -764,8 +766,8 @@ void MultiplayerReplicator::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("sync_all", "scene_id", "peer_id"), &MultiplayerReplicator::sync_all, DEFVAL(0));
 	ClassDB::bind_method(D_METHOD("track", "scene_id", "object"), &MultiplayerReplicator::track);
 	ClassDB::bind_method(D_METHOD("untrack", "scene_id", "object"), &MultiplayerReplicator::untrack);
-	ClassDB::bind_method(D_METHOD("encode_state", "scene_id", "object"), &MultiplayerReplicator::encode_state);
-	ClassDB::bind_method(D_METHOD("decode_state", "scene_id", "object", "data"), &MultiplayerReplicator::decode_state);
+	ClassDB::bind_method(D_METHOD("encode_state", "scene_id", "object", "initial"), &MultiplayerReplicator::encode_state, DEFVAL(true));
+	ClassDB::bind_method(D_METHOD("decode_state", "scene_id", "object", "data", "initial"), &MultiplayerReplicator::decode_state, DEFVAL(true));
 
 	ADD_SIGNAL(MethodInfo("despawned", PropertyInfo(Variant::INT, "scene_id"), PropertyInfo(Variant::OBJECT, "node", PROPERTY_HINT_RESOURCE_TYPE, "Node")));
 	ADD_SIGNAL(MethodInfo("spawned", PropertyInfo(Variant::INT, "scene_id"), PropertyInfo(Variant::OBJECT, "node", PROPERTY_HINT_RESOURCE_TYPE, "Node")));

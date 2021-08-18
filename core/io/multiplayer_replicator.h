@@ -93,8 +93,8 @@ public:
 	void clear();
 
 	// Encoding
-	PackedByteArray encode_state(const ResourceUID::ID &p_scene_id, const Object *p_node);
-	Error decode_state(const ResourceUID::ID &p_scene_id, Object *p_node, PackedByteArray p_data);
+	PackedByteArray encode_state(const ResourceUID::ID &p_scene_id, const Object *p_node, bool p_initial);
+	Error decode_state(const ResourceUID::ID &p_scene_id, Object *p_node, PackedByteArray p_data, bool p_initial);
 
 	// Spawn
 	Error spawn_config(const ResourceUID::ID &p_id, ReplicationMode p_mode, const TypedArray<StringName> &p_props = TypedArray<StringName>(), const Callable &p_on_send = Callable(), const Callable &p_on_recv = Callable());

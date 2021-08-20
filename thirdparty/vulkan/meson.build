@@ -27,6 +27,13 @@ if get_option('builtin_vulkan')
             '-DFALLBACK_DATA_DIRS="/usr/local/share:/usr/share"',
             '-DFALLBACK_CONFIG_DIRS="/etc/xdg"'
         ]
+    elif PLATFORM == 'iphone'
+        _vulkan_cpp_dep_args += ['-DVK_USE_PLATFORM_IOS_MVK']
+        _vulkan_cpp_args += [
+            '-DSYSCONFDIR="/etc"',
+            '-DFALLBACK_DATA_DIRS="/usr/local/share:/usr/share"',
+            '-DFALLBACK_CONFIG_DIRS="/etc/xdg"'
+        ]
     elif PLATFORM == 'linuxbsd'
         _vulkan_cpp_dep_args += ['-DVK_USE_PLATFORM_XLIB_KHR']
         _vulkan_cpp_args += [

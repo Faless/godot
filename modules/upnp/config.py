@@ -1,6 +1,6 @@
 def get_name() -> str:
     return 'upnp'
-    
+
 def can_build(env: dict) -> bool:
     return True
 

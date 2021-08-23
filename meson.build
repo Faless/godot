@@ -184,7 +184,7 @@ if _cpp_compiler_id == 'msvc'
          '/wd4018',
          '/wd4800',
     ]
-     
+
      CPP_ARGS += msvc_nonessential_warnings
 
     # disable the Windows SDK #define expansion, caused in the newest SDK
@@ -212,7 +212,7 @@ if IS_DEBUG_BUILD # TODO # get_option(debug) # using IS_DEBUG_BUILD to create a 
     # DEBUG is only used by thirdparties, and most use it in conjuction with _DEBUG.
     # If it does need to be added, it has to be added as a project argument
     # CPP_ARGS += '-DDEBUG'
-    
+
 else
     # NDEBUG is only used by thirdparties. Im going to not add it in.
     # If it does need to be added, it has to be added as a project argument

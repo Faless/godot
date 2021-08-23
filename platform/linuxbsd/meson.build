@@ -40,7 +40,7 @@ if PLATFORM == 'linuxbsd'
     _linuxbsd_deps = [
         _cpp.find_library('dl'),
         dependency('threads'),
-        
+
         dependency('x11'),
         dependency('xcursor'),
         dependency('xinerama'),

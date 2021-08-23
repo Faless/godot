@@ -26,9 +26,6 @@ endif
 
 # do we have tests?
 if get_option('tests')
-    _module_gamecenter_srcs += files([
-        'tests/test_gdscript.cpp',
-    ])
     _module_gdscript_cpp_args += ['-DTESTS_ENABLED']
 endif
 

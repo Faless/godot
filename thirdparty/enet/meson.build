@@ -1,10 +1,9 @@
 if get_option('builtin_enet')
     # builtin enet uses files directly from godot source.... and platform folder....
-    _enet_incdirs = include_directories('.', '..' / '..', '..' / '..' / DIR_PLATFORM)
+    _enet_incdirs = include_directories('.', '../..', '../..' / DIR_PLATFORM)
     _enet_incdirs_pub = include_directories('.')
 
-    _enet_srcs = files([
-        'godot.cpp',
+    _enet_srcs = files(
         'callbacks.c',
         'compress.c',
         'host.c',
@@ -12,7 +11,7 @@ if get_option('builtin_enet')
         'packet.c',
         'peer.c',
         'protocol.c',
-    ])
+    )
 
     _enet_compile_dep_defines = ['-DGODOT_ENET']
 
@@ -29,7 +28,10 @@ if get_option('builtin_enet')
         build_by_default: false
     )
 
-    DEP_ENET = declare_dependency(link_with: _lib_enet, compile_args: _enet_compile_dep_defines, include_directories: _enet_incdirs_pub)
+    DEP_ENET = declare_dependency(link_with: _lib_enet,
+        sources: files('godot.cpp'),
+        compile_args: _enet_compile_dep_defines,
+        include_directories: _enet_incdirs_pub)
 else
     DEP_ENET = dependency('libenet')
 endif

@@ -35,6 +35,8 @@
 
 #include "webrtc_data_channel.h"
 
+#include "core/object/gdvirtual.gen.inc"
+
 class WebRTCDataChannelExtension : public WebRTCDataChannel {
 	GDCLASS(WebRTCDataChannelExtension, WebRTCDataChannel);
 
@@ -62,29 +64,29 @@ public:
 	virtual Error poll() override;
 	virtual void close() override;
 
-	GDVIRTUAL1(_set_write_mode, WriteMode);
-	GDVIRTUAL0RC(WriteMode, _get_write_mode);
-	GDVIRTUAL0RC(bool, _was_string_packet);
+	GDVIRTUAL1(set_write_mode, WriteMode);
+	GDVIRTUAL0RC(WriteMode, get_write_mode);
+	GDVIRTUAL0RC(bool, was_string_packet);
 
-	GDVIRTUAL0RC(ChannelState, _get_ready_state);
-	GDVIRTUAL0RC(String, _get_label);
-	GDVIRTUAL0RC(bool, _is_ordered);
-	GDVIRTUAL0RC(int, _get_id);
-	GDVIRTUAL0RC(int, _get_max_packet_life_time);
-	GDVIRTUAL0RC(int, _get_max_retransmits);
-	GDVIRTUAL0RC(String, _get_protocol);
-	GDVIRTUAL0RC(bool, _is_negotiated);
-	GDVIRTUAL0RC(int, _get_buffered_amount);
+	GDVIRTUAL0RC(ChannelState, get_ready_state);
+	GDVIRTUAL0RC(String, get_label);
+	GDVIRTUAL0RC(bool, is_ordered);
+	GDVIRTUAL0RC(int, get_id);
+	GDVIRTUAL0RC(int, get_max_packet_life_time);
+	GDVIRTUAL0RC(int, get_max_retransmits);
+	GDVIRTUAL0RC(String, get_protocol);
+	GDVIRTUAL0RC(bool, is_negotiated);
+	GDVIRTUAL0RC(int, get_buffered_amount);
 
-	GDVIRTUAL0R(Error, _poll);
-	GDVIRTUAL0(_close);
+	GDVIRTUAL0R(Error, poll);
+	GDVIRTUAL0(close);
 
 	/** Inherited from PacketPeer: **/
 	virtual int get_available_packet_count() const override;
 	virtual int get_max_packet_size() const override;
 
-	GDVIRTUAL0RC(int, _get_available_packet_count);
-	GDVIRTUAL1RC(int, _get_max_packet_size);
+	GDVIRTUAL0RC(int, get_available_packet_count);
+	GDVIRTUAL1RC(int, get_max_packet_size);
 
 	// TODO! PTR
 	virtual Error get_packet(const uint8_t **r_buffer, int &r_buffer_size) override; ///< buffer is GONE after next get_packet

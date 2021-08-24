@@ -52,20 +52,20 @@ WebRTCPeerConnection *WebRTCPeerConnectionExtension::_create() {
 }
 
 void WebRTCPeerConnectionExtension::_bind_methods() {
-	GDVIRTUAL_BIND(_get_connection_state);
-	GDVIRTUAL_BIND(_initialize);
-	GDVIRTUAL_BIND(_create_data_channel);
-	GDVIRTUAL_BIND(_create_offer);
-	GDVIRTUAL_BIND(_set_remote_description);
-	GDVIRTUAL_BIND(_set_local_description);
-	GDVIRTUAL_BIND(_add_ice_candidate);
-	GDVIRTUAL_BIND(_poll);
-	GDVIRTUAL_BIND(_close);
+	GDVIRTUAL_BIND(get_connection_state);
+	GDVIRTUAL_BIND(initialize);
+	GDVIRTUAL_BIND(create_data_channel);
+	GDVIRTUAL_BIND(create_offer);
+	GDVIRTUAL_BIND(set_remote_description);
+	GDVIRTUAL_BIND(set_local_description);
+	GDVIRTUAL_BIND(add_ice_candidate);
+	GDVIRTUAL_BIND(poll);
+	GDVIRTUAL_BIND(close);
 }
 
 Error WebRTCPeerConnectionExtension::initialize(Dictionary p_config) {
 	Error err;
-	if (GDVIRTUAL_CALL(_initialize, p_config, err)) {
+	if (GDVIRTUAL_CALL(initialize, p_config, err)) {
 		return err;
 	}
 	return ERR_UNCONFIGURED;
@@ -73,7 +73,7 @@ Error WebRTCPeerConnectionExtension::initialize(Dictionary p_config) {
 
 Ref<WebRTCDataChannel> WebRTCPeerConnectionExtension::create_data_channel(String p_label, Dictionary p_options) {
 	Ref<WebRTCDataChannel> channel;
-	if (GDVIRTUAL_CALL(_create_data_channel, p_label, p_options, channel)) {
+	if (GDVIRTUAL_CALL(create_data_channel, p_label, p_options, channel)) {
 		return channel;
 	}
 	return nullptr;
@@ -81,7 +81,7 @@ Ref<WebRTCDataChannel> WebRTCPeerConnectionExtension::create_data_channel(String
 
 Error WebRTCPeerConnectionExtension::create_offer() {
 	Error err;
-	if (GDVIRTUAL_CALL(_create_offer, err)) {
+	if (GDVIRTUAL_CALL(create_offer, err)) {
 		return err;
 	}
 	return ERR_UNCONFIGURED;
@@ -89,7 +89,7 @@ Error WebRTCPeerConnectionExtension::create_offer() {
 
 Error WebRTCPeerConnectionExtension::set_local_description(String p_type, String p_sdp) {
 	Error err;
-	if (GDVIRTUAL_CALL(_set_local_description, p_type, p_sdp, err)) {
+	if (GDVIRTUAL_CALL(set_local_description, p_type, p_sdp, err)) {
 		return err;
 	}
 	return ERR_UNCONFIGURED;
@@ -97,7 +97,7 @@ Error WebRTCPeerConnectionExtension::set_local_description(String p_type, String
 
 Error WebRTCPeerConnectionExtension::set_remote_description(String p_type, String p_sdp) {
 	Error err;
-	if (GDVIRTUAL_CALL(_set_remote_description, p_type, p_sdp, err)) {
+	if (GDVIRTUAL_CALL(set_remote_description, p_type, p_sdp, err)) {
 		return err;
 	}
 	return ERR_UNCONFIGURED;
@@ -105,7 +105,7 @@ Error WebRTCPeerConnectionExtension::set_remote_description(String p_type, Strin
 
 Error WebRTCPeerConnectionExtension::add_ice_candidate(String sdpMidName, int sdpMlineIndexName, String sdpName) {
 	Error err;
-	if (GDVIRTUAL_CALL(_add_ice_candidate, sdpMidName, sdpMlineIndexName, sdpName, err)) {
+	if (GDVIRTUAL_CALL(add_ice_candidate, sdpMidName, sdpMlineIndexName, sdpName, err)) {
 		return err;
 	}
 	return ERR_UNCONFIGURED;
@@ -113,19 +113,19 @@ Error WebRTCPeerConnectionExtension::add_ice_candidate(String sdpMidName, int sd
 
 Error WebRTCPeerConnectionExtension::poll() {
 	Error err;
-	if (GDVIRTUAL_CALL(_poll, err)) {
+	if (GDVIRTUAL_CALL(poll, err)) {
 		return err;
 	}
 	return err;
 }
 
 void WebRTCPeerConnectionExtension::close() {
-	GDVIRTUAL_CALL(_close);
+	GDVIRTUAL_CALL(close);
 }
 
 WebRTCPeerConnection::ConnectionState WebRTCPeerConnectionExtension::get_connection_state() const {
 	ConnectionState state;
-	if (GDVIRTUAL_CALL(_get_connection_state, state)) {
+	if (GDVIRTUAL_CALL(get_connection_state, state)) {
 		return state;
 	}
 	return STATE_DISCONNECTED;

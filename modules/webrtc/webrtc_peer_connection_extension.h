@@ -35,6 +35,8 @@
 
 #include "webrtc_peer_connection.h"
 
+#include "core/object/gdvirtual.gen.inc"
+
 class WebRTCPeerConnectionExtension : public WebRTCPeerConnection {
 	GDCLASS(WebRTCPeerConnectionExtension, WebRTCPeerConnection);
 
@@ -62,16 +64,16 @@ public:
 	virtual Error poll() override;
 	virtual void close() override;
 
-	GDVIRTUAL0RC(ConnectionState, _get_connection_state);
+	GDVIRTUAL0RC(ConnectionState, get_connection_state);
 
-	GDVIRTUAL1R(Error, _initialize, Dictionary);
-	GDVIRTUAL2R(Ref<WebRTCDataChannel>, _create_data_channel, String, Dictionary);
-	GDVIRTUAL0R(Error, _create_offer);
-	GDVIRTUAL2R(Error, _set_remote_description, String, String);
-	GDVIRTUAL2R(Error, _set_local_description, String, String);
-	GDVIRTUAL3R(Error, _add_ice_candidate, String, int, String);
-	GDVIRTUAL0R(Error, _poll);
-	GDVIRTUAL0(_close);
+	GDVIRTUAL1R(Error, initialize, Dictionary);
+	GDVIRTUAL2R(Ref<WebRTCDataChannel>, create_data_channel, String, Dictionary);
+	GDVIRTUAL0R(Error, create_offer);
+	GDVIRTUAL2R(Error, set_remote_description, String, String);
+	GDVIRTUAL2R(Error, set_local_description, String, String);
+	GDVIRTUAL3R(Error, add_ice_candidate, String, int, String);
+	GDVIRTUAL0R(Error, poll);
+	GDVIRTUAL0(close);
 
 	WebRTCPeerConnectionExtension() {}
 	~WebRTCPeerConnectionExtension() {}

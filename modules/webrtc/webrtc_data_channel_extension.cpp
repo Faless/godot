@@ -37,43 +37,43 @@
 
 void WebRTCDataChannelExtension::_bind_methods() {
 	ADD_PROPERTY_DEFAULT("write_mode", WRITE_MODE_BINARY);
-	GDVIRTUAL(_set_write_mode);
-	GDVIRTUAL(_get_write_mode);
-	GDVIRTUAL(_was_string_packet);
+	GDVIRTUAL(set_write_mode);
+	GDVIRTUAL(get_write_mode);
+	GDVIRTUAL(was_string_packet);
 
-	GDVIRTUAL(_get_ready_state);
-	GDVIRTUAL(_get_label);
-	GDVIRTUAL(_is_ordered);
-	GDVIRTUAL(_get_id);
-	GDVIRTUAL(_get_max_packet_life_time);
-	GDVIRTUAL(_get_max_retransmits);
-	GDVIRTUAL(_get_protocol);
-	GDVIRTUAL(_is_negotiated);
-	GDVIRTUAL(_get_buffered_amount);
+	GDVIRTUAL(get_ready_state);
+	GDVIRTUAL(get_label);
+	GDVIRTUAL(is_ordered);
+	GDVIRTUAL(get_id);
+	GDVIRTUAL(get_max_packet_life_time);
+	GDVIRTUAL(get_max_retransmits);
+	GDVIRTUAL(get_protocol);
+	GDVIRTUAL(is_negotiated);
+	GDVIRTUAL(get_buffered_amount);
 
-	GDVIRTUAL(_poll);
-	GDVIRTUAL(_close);
+	GDVIRTUAL(poll);
+	GDVIRTUAL(close);
 }
 
 Error WebRTCDataChannelExtension::poll() {
 	Error err;
-	if (GDVIRTUAL_CALL(_poll, err)) {
+	if (GDVIRTUAL_CALL(poll, err)) {
 		return err;
 	}
 	return ERR_UNCONFIGURED;
 }
 
 void WebRTCDataChannelExtension::close() {
-	GDVIRTUAL_CALL(_close);
+	GDVIRTUAL_CALL(close);
 }
 
 void WebRTCDataChannelExtension::set_write_mode(WriteMode p_mode) {
-	GDVIRTUAL_CALL(_set_write_mode);
+	GDVIRTUAL_CALL(set_write_mode);
 }
 
 WebRTCDataChannel::WriteMode WebRTCDataChannelExtension::get_write_mode() const {
 	WebRTCDataChannel::WriteMode mode;
-	if (GDVIRTUAL_CALL(_get_write_mode, mode)) {
+	if (GDVIRTUAL_CALL(get_write_mode, mode)) {
 		return mode;
 	}
 	return WRITE_MODE_BINARY;
@@ -81,7 +81,7 @@ WebRTCDataChannel::WriteMode WebRTCDataChannelExtension::get_write_mode() const 
 
 bool WebRTCDataChannelExtension::was_string_packet() const {
 	bool was_string;
-	if (GDVIRTUAL_CALL(_was_string_packet, was_string)) {
+	if (GDVIRTUAL_CALL(was_string_packet, was_string)) {
 		return was_string;
 	}
 	return false;
@@ -89,7 +89,7 @@ bool WebRTCDataChannelExtension::was_string_packet() const {
 
 WebRTCDataChannel::ChannelState WebRTCDataChannelExtension::get_ready_state() const {
 	WebRTCDataChannel::ChannelState state;
-	if (GDVIRTUAL_CALL(_get_ready_state, state)) {
+	if (GDVIRTUAL_CALL(get_ready_state, state)) {
 		return state;
 	}
 	return STATE_CLOSED;
@@ -97,7 +97,7 @@ WebRTCDataChannel::ChannelState WebRTCDataChannelExtension::get_ready_state() co
 
 String WebRTCDataChannelExtension::get_label() const {
 	String label;
-	if (GDVIRTUAL_CALL(_get_label, label)) {
+	if (GDVIRTUAL_CALL(get_label, label)) {
 		return label;
 	}
 	return "";
@@ -105,7 +105,7 @@ String WebRTCDataChannelExtension::get_label() const {
 
 bool WebRTCDataChannelExtension::is_ordered() const {
 	bool ordered;
-	if (GDVIRTUAL_CALL(_is_ordered, ordered)) {
+	if (GDVIRTUAL_CALL(is_ordered, ordered)) {
 		return ordered;
 	}
 	return false;
@@ -113,7 +113,7 @@ bool WebRTCDataChannelExtension::is_ordered() const {
 
 int WebRTCDataChannelExtension::get_id() const {
 	int id;
-	if (GDVIRTUAL_CALL(_get_id, id)) {
+	if (GDVIRTUAL_CALL(get_id, id)) {
 		return id;
 	}
 	return -1;
@@ -121,7 +121,7 @@ int WebRTCDataChannelExtension::get_id() const {
 
 int WebRTCDataChannelExtension::get_max_packet_life_time() const {
 	int lifetime;
-	if (GDVIRTUAL_CALL(_get_max_packet_life_time, lifetime)) {
+	if (GDVIRTUAL_CALL(get_max_packet_life_time, lifetime)) {
 		return lifetime;
 	}
 	return -1;
@@ -129,7 +129,7 @@ int WebRTCDataChannelExtension::get_max_packet_life_time() const {
 
 int WebRTCDataChannelExtension::get_max_retransmits() const {
 	int retransmits;
-	if (GDVIRTUAL_CALL(_get_max_retransmits, retransmits)) {
+	if (GDVIRTUAL_CALL(get_max_retransmits, retransmits)) {
 		return retransmits;
 	}
 	return -1;
@@ -137,7 +137,7 @@ int WebRTCDataChannelExtension::get_max_retransmits() const {
 
 String WebRTCDataChannelExtension::get_protocol() const {
 	String proto;
-	if (GDVIRTUAL_CALL(_get_protocol, proto)) {
+	if (GDVIRTUAL_CALL(get_protocol, proto)) {
 		return proto;
 	}
 	return "";
@@ -145,7 +145,7 @@ String WebRTCDataChannelExtension::get_protocol() const {
 
 bool WebRTCDataChannelExtension::is_negotiated() const {
 	bool negotiated;
-	if (GDVIRTUAL_CALL(_is_negotiated, negotiated)) {
+	if (GDVIRTUAL_CALL(is_negotiated, negotiated)) {
 		return negotiated;
 	}
 	return false;
@@ -153,7 +153,7 @@ bool WebRTCDataChannelExtension::is_negotiated() const {
 
 int WebRTCDataChannelExtension::get_buffered_amount() const {
 	int buffered;
-	if (GDVIRTUAL_CALL(_get_buffered_amount, amount)) {
+	if (GDVIRTUAL_CALL(get_buffered_amount, amount)) {
 		return amount;
 	}
 	return 0;
@@ -171,7 +171,7 @@ Error WebRTCDataChannelExtension::put_packet(const uint8_t *p_buffer, int p_buff
 
 int WebRTCDataChannelExtension::get_max_packet_size() const {
 	int size;
-	if (GDVIRTUAL_CALL(_get_max_packet_size, size)) {
+	if (GDVIRTUAL_CALL(get_max_packet_size, size)) {
 		return size;
 	}
 	return 0;
@@ -179,7 +179,7 @@ int WebRTCDataChannelExtension::get_max_packet_size() const {
 
 int WebRTCDataChannelExtension::get_available_packet_count() const {
 	int count;
-	if (GDVIRTUAL_CALL(_get_available_packet_count, count)) {
+	if (GDVIRTUAL_CALL(get_available_packet_count, count)) {
 		return count;
 	}
 	return 0;

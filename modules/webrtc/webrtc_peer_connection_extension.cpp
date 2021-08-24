@@ -30,92 +30,109 @@
 
 #ifdef WEBRTC_EXTENSION_ENABLED
 
-#include "webrtc_peer_connection_gdnative.h"
+#include "webrtc_peer_connection_extension.h"
 
 #include "core/io/resource_loader.h"
-#include "modules/gdnative/nativescript/nativescript.h"
-#include "webrtc_data_channel_gdnative.h"
+#include "webrtc_data_channel_extension.h"
 
-const godot_net_webrtc_library *WebRTCPeerConnectionExtension::default_library = nullptr;
+//const godot_net_webrtc_library *WebRTCPeerConnectionExtension::default_library = nullptr;
 
-Error WebRTCPeerConnectionExtension::set_default_library(const godot_net_webrtc_library *p_lib) {
-	if (default_library) {
-		const godot_net_webrtc_library *old = default_library;
-		default_library = nullptr;
-		old->unregistered();
-	}
-	default_library = p_lib;
-	return OK; // Maybe add version check and fail accordingly
-}
+//Error WebRTCPeerConnectionExtension::set_default_library(const godot_net_webrtc_library *p_lib) {
+//	if (default_library) {
+//		const godot_net_webrtc_library *old = default_library;
+//		default_library = nullptr;
+//		old->unregistered();
+//	}
+//	default_library = p_lib;
+//	return OK; // Maybe add version check and fail accordingly
+//}
 
 WebRTCPeerConnection *WebRTCPeerConnectionExtension::_create() {
-	WebRTCPeerConnectionExtension *obj = memnew(WebRTCPeerConnectionExtension);
-	ERR_FAIL_COND_V_MSG(!default_library, obj, "Default Extension WebRTC implementation not defined.");
-
-	// Call Extension constructor
-	Error err = (Error)default_library->create_peer_connection(obj);
-	ERR_FAIL_COND_V_MSG(err != OK, obj, "Extension default library constructor returned an error.");
-
-	return obj;
+	return memnew(WebRTCPeerConnectionExtension);
 }
 
 void WebRTCPeerConnectionExtension::_bind_methods() {
-}
-
-WebRTCPeerConnectionExtension::WebRTCPeerConnectionExtension() {
-	interface = nullptr;
-}
-
-WebRTCPeerConnectionExtension::~WebRTCPeerConnectionExtension() {
+	GDVIRTUAL_BIND(_get_connection_state);
+	GDVIRTUAL_BIND(_initialize);
+	GDVIRTUAL_BIND(_create_data_channel);
+	GDVIRTUAL_BIND(_create_offer);
+	GDVIRTUAL_BIND(_set_remote_description);
+	GDVIRTUAL_BIND(_set_local_description);
+	GDVIRTUAL_BIND(_add_ice_candidate);
+	GDVIRTUAL_BIND(_poll);
+	GDVIRTUAL_BIND(_close);
 }
 
 Error WebRTCPeerConnectionExtension::initialize(Dictionary p_config) {
-	ERR_FAIL_COND_V(interface == nullptr, ERR_UNCONFIGURED);
-	return (Error)interface->initialize(interface->data, (const godot_dictionary *)&p_config);
+	Error err;
+	if (GDVIRTUAL_CALL(_initialize, p_config, err)) {
+		return err;
+	}
+	return ERR_UNCONFIGURED;
 }
 
 Ref<WebRTCDataChannel> WebRTCPeerConnectionExtension::create_data_channel(String p_label, Dictionary p_options) {
-	ERR_FAIL_COND_V(interface == nullptr, nullptr);
-	return (WebRTCDataChannel *)interface->create_data_channel(interface->data, p_label.utf8().get_data(), (const godot_dictionary *)&p_options);
+	Ref<WebRTCDataChannel> channel;
+	if (GDVIRTUAL_CALL(_create_data_channel, p_label, p_options, channel)) {
+		return channel;
+	}
+	return nullptr;
 }
 
 Error WebRTCPeerConnectionExtension::create_offer() {
-	ERR_FAIL_COND_V(interface == nullptr, ERR_UNCONFIGURED);
-	return (Error)interface->create_offer(interface->data);
+	Error err;
+	if (GDVIRTUAL_CALL(_create_offer, err)) {
+		return err;
+	}
+	return ERR_UNCONFIGURED;
 }
 
 Error WebRTCPeerConnectionExtension::set_local_description(String p_type, String p_sdp) {
-	ERR_FAIL_COND_V(interface == nullptr, ERR_UNCONFIGURED);
-	return (Error)interface->set_local_description(interface->data, p_type.utf8().get_data(), p_sdp.utf8().get_data());
+	Error err;
+	if (GDVIRTUAL_CALL(_set_local_description, p_type, p_sdp, err)) {
+		return err;
+	}
+	return ERR_UNCONFIGURED;
 }
 
 Error WebRTCPeerConnectionExtension::set_remote_description(String p_type, String p_sdp) {
-	ERR_FAIL_COND_V(interface == nullptr, ERR_UNCONFIGURED);
-	return (Error)interface->set_remote_description(interface->data, p_type.utf8().get_data(), p_sdp.utf8().get_data());
+	Error err;
+	if (GDVIRTUAL_CALL(_set_remote_description, p_type, p_sdp, err)) {
+		return err;
+	}
+	return ERR_UNCONFIGURED;
 }
 
 Error WebRTCPeerConnectionExtension::add_ice_candidate(String sdpMidName, int sdpMlineIndexName, String sdpName) {
-	ERR_FAIL_COND_V(interface == nullptr, ERR_UNCONFIGURED);
-	return (Error)interface->add_ice_candidate(interface->data, sdpMidName.utf8().get_data(), sdpMlineIndexName, sdpName.utf8().get_data());
+	Error err;
+	if (GDVIRTUAL_CALL(_add_ice_candidate, sdpMidName, sdpMlineIndexName, sdpName, err)) {
+		return err;
+	}
+	return ERR_UNCONFIGURED;
 }
 
 Error WebRTCPeerConnectionExtension::poll() {
-	ERR_FAIL_COND_V(interface == nullptr, ERR_UNCONFIGURED);
-	return (Error)interface->poll(interface->data);
+	Error err;
+	if (GDVIRTUAL_CALL(_poll, err)) {
+		return err;
+	}
+	return err;
 }
 
 void WebRTCPeerConnectionExtension::close() {
-	ERR_FAIL_COND(interface == nullptr);
-	interface->close(interface->data);
+	GDVIRTUAL_CALL(_close);
 }
 
 WebRTCPeerConnection::ConnectionState WebRTCPeerConnectionExtension::get_connection_state() const {
-	ERR_FAIL_COND_V(interface == nullptr, STATE_DISCONNECTED);
-	return (ConnectionState)interface->get_connection_state(interface->data);
+	ConnectionState state;
+	if (GDVIRTUAL_CALL(_get_connection_state, state)) {
+		return state;
+	}
+	return STATE_DISCONNECTED;
 }
 
-void WebRTCPeerConnectionExtension::set_native_webrtc_peer_connection(const godot_net_webrtc_peer_connection *p_impl) {
-	interface = p_impl;
-}
+//void WebRTCPeerConnectionExtension::set_native_webrtc_peer_connection(const godot_net_webrtc_peer_connection *p_impl) {
+//	interface = p_impl;
+//}
 
 #endif // WEBRTC_EXTENSION_ENABLED

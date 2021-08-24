@@ -1,31 +1,31 @@
 /*************************************************************************/
-/*  webrtc_peer_connection_gdnative.h                                    */
+/*  webrtc_peer_connection_gdnative.h					 */
 /*************************************************************************/
-/*                       This file is part of:                           */
-/*                           GODOT ENGINE                                */
-/*                      https://godotengine.org                          */
+/*			  This file is part of:			      */
+/*			      GODOT ENGINE				    */
+/*			 https://godotengine.org			     */
 /*************************************************************************/
-/* Copyright (c) 2007-2021 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2007-2021 Juan Linietsky, Ariel Manzur.		   */
 /* Copyright (c) 2014-2021 Godot Engine contributors (cf. AUTHORS.md).   */
-/*                                                                       */
+/*										 */
 /* Permission is hereby granted, free of charge, to any person obtaining */
-/* a copy of this software and associated documentation files (the       */
+/* a copy of this software and associated documentation files (the	*/
 /* "Software"), to deal in the Software without restriction, including   */
 /* without limitation the rights to use, copy, modify, merge, publish,   */
 /* distribute, sublicense, and/or sell copies of the Software, and to    */
 /* permit persons to whom the Software is furnished to do so, subject to */
-/* the following conditions:                                             */
-/*                                                                       */
-/* The above copyright notice and this permission notice shall be        */
-/* included in all copies or substantial portions of the Software.       */
-/*                                                                       */
-/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,       */
+/* the following conditions:						   */
+/*										 */
+/* The above copyright notice and this permission notice shall be	 */
+/* included in all copies or substantial portions of the Software.	*/
+/*										 */
+/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,	*/
 /* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF    */
 /* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.*/
 /* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY  */
 /* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,  */
 /* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE     */
-/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
+/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.		  */
 /*************************************************************************/
 
 #ifndef WEBRTC_PEER_CONNECTION_EXTENSION_H
@@ -44,11 +44,10 @@ protected:
 	static WebRTCPeerConnection *_create();
 
 private:
-	static const godot_net_webrtc_library *default_library;
-	const godot_net_webrtc_peer_connection *interface;
+	//static const godot_net_webrtc_library *default_library;
 
 public:
-	static Error set_default_library(const godot_net_webrtc_library *p_library);
+	//static Error set_default_library(const godot_net_webrtc_library *p_library);
 	static void make_default() { WebRTCPeerConnection::_create = WebRTCPeerConnectionExtension::_create; }
 
 	void set_native_webrtc_peer_connection(const godot_net_webrtc_peer_connection *p_impl);
@@ -64,8 +63,19 @@ public:
 	virtual Error poll() override;
 	virtual void close() override;
 
-	WebRTCPeerConnectionExtension();
-	~WebRTCPeerConnectionExtension();
+	GDVIRTUAL0RC(ConnectionState, _get_connection_state);
+
+	GDVIRTUAL1R(Error, _initialize, Dictionary);
+	GDVIRTUAL2R(Ref<WebRTCDataChannel>, _create_data_channel, String, Dictionary);
+	GDVIRTUAL0R(Error, _create_offer);
+	GDVIRTUAL2R(Error, _set_remote_description, String, String);
+	GDVIRTUAL2R(Error, _set_local_description, String, String);
+	GDVIRTUAL3R(Error, _add_ice_candidate, String, int, String);
+	GDVIRTUAL0R(Error, _poll);
+	GDVIRTUAL0(_close);
+
+	WebRTCPeerConnectionExtension() {}
+	~WebRTCPeerConnectionExtension() {}
 };
 
 #endif // WEBRTC_EXTENSION_ENABLED

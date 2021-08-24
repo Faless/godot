@@ -116,7 +116,4 @@ void GDAPI godot_net_bind_multiplayer_peer(godot_object *p_obj, const godot_net_
 }
 #endif
 
-// WebRTC Bindings
-#include "net/godot_webrtc.h"
-
 #endif /* GODOT_NATIVENET_H */

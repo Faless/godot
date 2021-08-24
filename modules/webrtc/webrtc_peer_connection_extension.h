@@ -28,16 +28,16 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 
-#ifndef WEBRTC_PEER_CONNECTION_GDNATIVE_H
-#define WEBRTC_PEER_CONNECTION_GDNATIVE_H
+#ifndef WEBRTC_PEER_CONNECTION_EXTENSION_H
+#define WEBRTC_PEER_CONNECTION_EXTENSION_H
 
-#ifdef WEBRTC_GDNATIVE_ENABLED
+#ifdef WEBRTC_EXTENSION_ENABLED
 
 #include "modules/gdnative/include/net/godot_net.h"
 #include "webrtc_peer_connection.h"
 
-class WebRTCPeerConnectionGDNative : public WebRTCPeerConnection {
-	GDCLASS(WebRTCPeerConnectionGDNative, WebRTCPeerConnection);
+class WebRTCPeerConnectionExtension : public WebRTCPeerConnection {
+	GDCLASS(WebRTCPeerConnectionExtension, WebRTCPeerConnection);
 
 protected:
 	static void _bind_methods();
@@ -49,7 +49,7 @@ private:
 
 public:
 	static Error set_default_library(const godot_net_webrtc_library *p_library);
-	static void make_default() { WebRTCPeerConnection::_create = WebRTCPeerConnectionGDNative::_create; }
+	static void make_default() { WebRTCPeerConnection::_create = WebRTCPeerConnectionExtension::_create; }
 
 	void set_native_webrtc_peer_connection(const godot_net_webrtc_peer_connection *p_impl);
 
@@ -64,10 +64,10 @@ public:
 	virtual Error poll() override;
 	virtual void close() override;
 
-	WebRTCPeerConnectionGDNative();
-	~WebRTCPeerConnectionGDNative();
+	WebRTCPeerConnectionExtension();
+	~WebRTCPeerConnectionExtension();
 };
 
-#endif // WEBRTC_GDNATIVE_ENABLED
+#endif // WEBRTC_EXTENSION_ENABLED
 
-#endif // WEBRTC_PEER_CONNECTION_GDNATIVE_H
+#endif // WEBRTC_PEER_CONNECTION_EXTENSION_H

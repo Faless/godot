@@ -28,16 +28,16 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 
-#ifndef WEBRTC_DATA_CHANNEL_GDNATIVE_H
-#define WEBRTC_DATA_CHANNEL_GDNATIVE_H
+#ifndef WEBRTC_DATA_CHANNEL_EXTENSION_H
+#define WEBRTC_DATA_CHANNEL_EXTENSION_H
 
-#ifdef WEBRTC_GDNATIVE_ENABLED
+#ifdef WEBRTC_EXTENSION_ENABLED
 
 #include "modules/gdnative/include/net/godot_net.h"
 #include "webrtc_data_channel.h"
 
-class WebRTCDataChannelGDNative : public WebRTCDataChannel {
-	GDCLASS(WebRTCDataChannelGDNative, WebRTCDataChannel);
+class WebRTCDataChannelExtension : public WebRTCDataChannel {
+	GDCLASS(WebRTCDataChannelExtension, WebRTCDataChannel);
 
 protected:
 	static void _bind_methods();
@@ -72,10 +72,10 @@ public:
 
 	virtual int get_max_packet_size() const override;
 
-	WebRTCDataChannelGDNative();
-	~WebRTCDataChannelGDNative();
+	WebRTCDataChannelExtension();
+	~WebRTCDataChannelExtension();
 };
 
-#endif // WEBRTC_GDNATIVE_ENABLED
+#endif // WEBRTC_EXTENSION_ENABLED
 
-#endif // WEBRTC_DATA_CHANNEL_GDNATIVE_H
+#endif // WEBRTC_DATA_CHANNEL_EXTENSION_H

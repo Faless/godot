@@ -33,7 +33,6 @@
 #include "webrtc_data_channel_extension.h"
 
 #include "core/io/resource_loader.h"
-#include "core/object/gdvirtual.gen.inc"
 
 void WebRTCDataChannelExtension::_bind_methods() {
 	ADD_PROPERTY_DEFAULT("write_mode", WRITE_MODE_BINARY);

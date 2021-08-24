@@ -35,6 +35,7 @@
 
 #include "webrtc_data_channel.h"
 
+#include "core/object/script_language.h"
 #include "core/object/gdvirtual.gen.inc"
 
 class WebRTCDataChannelExtension : public WebRTCDataChannel {
@@ -86,7 +87,7 @@ public:
 	virtual int get_max_packet_size() const override;
 
 	GDVIRTUAL0RC(int, get_available_packet_count);
-	GDVIRTUAL1RC(int, get_max_packet_size);
+	GDVIRTUAL0RC(int, get_max_packet_size);
 
 	// TODO! PTR
 	virtual Error get_packet(const uint8_t **r_buffer, int &r_buffer_size) override; ///< buffer is GONE after next get_packet

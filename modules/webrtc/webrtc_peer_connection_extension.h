@@ -35,6 +35,7 @@
 
 #include "webrtc_peer_connection.h"
 
+#include "core/object/script_language.h"
 #include "core/object/gdvirtual.gen.inc"
 
 class WebRTCPeerConnectionExtension : public WebRTCPeerConnection {

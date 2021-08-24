@@ -37,9 +37,9 @@
 #include "emscripten.h"
 #include "webrtc_peer_connection_js.h"
 #endif
-#ifdef WEBRTC_GDNATIVE_ENABLED
-#include "webrtc_data_channel_gdnative.h"
-#include "webrtc_peer_connection_gdnative.h"
+#ifdef WEBRTC_EXTENSION_ENABLED
+#include "webrtc_data_channel_extension.h"
+#include "webrtc_peer_connection_extension.h"
 #endif
 #include "webrtc_multiplayer_peer.h"
 
@@ -52,14 +52,14 @@ void register_webrtc_types() {
 
 #ifdef JAVASCRIPT_ENABLED
 	WebRTCPeerConnectionJS::make_default();
-#elif defined(WEBRTC_GDNATIVE_ENABLED)
-	WebRTCPeerConnectionGDNative::make_default();
+#elif defined(WEBRTC_EXTENSION_ENABLED)
+	WebRTCPeerConnectionExtension::make_default();
 #endif
 
 	ClassDB::register_custom_instance_class<WebRTCPeerConnection>();
-#ifdef WEBRTC_GDNATIVE_ENABLED
-	GDREGISTER_CLASS(WebRTCPeerConnectionGDNative);
-	GDREGISTER_CLASS(WebRTCDataChannelGDNative);
+#ifdef WEBRTC_EXTENSION_ENABLED
+	GDREGISTER_CLASS(WebRTCPeerConnectionExtension);
+	GDREGISTER_CLASS(WebRTCDataChannelExtension);
 #endif
 	GDREGISTER_VIRTUAL_CLASS(WebRTCDataChannel);
 	GDREGISTER_CLASS(WebRTCMultiplayerPeer);

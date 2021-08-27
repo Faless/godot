@@ -1,6 +1,8 @@
-def can_build(env, platform):
-    return env.module_check_dependencies("msdfgen", ["freetype"])
+def can_build(env: dict) -> str:
+    return False
 
+def get_name() -> str:
+    return 'msdfgen'
 
 def configure(env):
     pass

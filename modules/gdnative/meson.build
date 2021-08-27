@@ -25,7 +25,7 @@ subdir('nativescript')
 subdir('net')
 subdir('pluginscript')
 subdir('videodecoder')
-subdir('xr')
+#subdir('xr')
 subdir('text')
 
 _module_gdnative_incdirs = include_directories('include')

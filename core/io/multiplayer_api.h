@@ -34,6 +34,7 @@
 #include "core/io/multiplayer_peer.h"
 #include "core/io/resource_uid.h"
 #include "core/object/ref_counted.h"
+#include "core/object/script_language.h"
 
 class MultiplayerReplicator;
 
@@ -41,32 +42,6 @@ class MultiplayerAPI : public RefCounted {
 	GDCLASS(MultiplayerAPI, RefCounted);
 
 public:
-	enum RPCMode {
-		RPC_MODE_DISABLED, // No rpc for this method, calls to this will be blocked (default)
-		RPC_MODE_REMOTE, // Using rpc() on it will call method in all remote peers
-		RPC_MODE_MASTER, // Using rpc() on it will call method on wherever the master is, be it local or remote
-		RPC_MODE_PUPPET, // Using rpc() on it will call method for all puppets
-	};
-
-	struct RPCConfig {
-		StringName name;
-		RPCMode rpc_mode = RPC_MODE_DISABLED;
-		bool sync = false;
-		MultiplayerPeer::TransferMode transfer_mode = MultiplayerPeer::TRANSFER_MODE_RELIABLE;
-		int channel = 0;
-
-		bool operator==(RPCConfig const &p_other) const {
-			return name == p_other.name;
-		}
-	};
-
-	struct SortRPCConfig {
-		StringName::AlphCompare compare;
-		bool operator()(const RPCConfig &p_a, const RPCConfig &p_b) const {
-			return compare(p_a.name, p_b.name);
-		}
-	};
-
 	enum NetworkCommands {
 		NETWORK_COMMAND_REMOTE_CALL = 0,
 		NETWORK_COMMAND_SIMPLIFY_PATH,
@@ -176,7 +151,5 @@ public:
 	MultiplayerAPI();
 	~MultiplayerAPI();
 };
-
-VARIANT_ENUM_CAST(MultiplayerAPI::RPCMode);
 
 #endif // MULTIPLAYER_API_H

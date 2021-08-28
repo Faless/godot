@@ -1,5 +1,5 @@
 /*************************************************************************/
-/*  pluginscript_instance.h                                              */
+/*  rpc.h                                                                */
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
@@ -28,57 +28,41 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 
-#ifndef PLUGINSCRIPT_INSTANCE_H
-#define PLUGINSCRIPT_INSTANCE_H
+#ifndef RPC_H
+#define RPC_H
 
-// Godot imports
-#include "core/object/script_language.h"
+#include "core/string/string_name.h"
 
-// PluginScript imports
-#include <pluginscript/godot_pluginscript.h>
-
-class PluginScript;
-
-class PluginScriptInstance : public ScriptInstance {
-	friend class PluginScript;
-
-private:
-	Ref<PluginScript> _script;
-	Object *_owner = nullptr;
-	Variant _owner_variant;
-	godot_pluginscript_instance_data *_data = nullptr;
-	const godot_pluginscript_instance_desc *_desc = nullptr;
-
-public:
-	_FORCE_INLINE_ Object *get_owner() { return _owner; }
-
-	virtual bool set(const StringName &p_name, const Variant &p_value);
-	virtual bool get(const StringName &p_name, Variant &r_ret) const;
-	virtual void get_property_list(List<PropertyInfo> *p_properties) const;
-	virtual Variant::Type get_property_type(const StringName &p_name, bool *r_is_valid = nullptr) const;
-
-	virtual void get_method_list(List<MethodInfo> *p_list) const;
-	virtual bool has_method(const StringName &p_method) const;
-
-	virtual Variant call(const StringName &p_method, const Variant **p_args, int p_argcount, Callable::CallError &r_error);
-
-	virtual void notification(int p_notification);
-	virtual String to_string(bool *r_valid);
-
-	virtual Ref<Script> get_script() const;
-
-	virtual ScriptLanguage *get_language();
-
-	void set_path(const String &p_path);
-
-	virtual const Vector<RPCConfig> get_rpc_methods() const;
-
-	virtual void refcount_incremented();
-	virtual bool refcount_decremented();
-
-	PluginScriptInstance();
-	bool init(PluginScript *p_script, Object *p_owner);
-	virtual ~PluginScriptInstance();
+enum RPCTransferMode {
+	RPC_TRANSFER_UNRELIABLE,
+	RPC_TRANSFER_ORDERED,
+	RPC_TRANSFER_RELIABLE
 };
 
-#endif // PLUGINSCRIPT_INSTANCE_H
+enum RPCMode {
+	RPC_DISABLED, // No rpc for this method, calls to this will be blocked (default)
+	RPC_REMOTE, // Using rpc() on it will call method in all remote peers
+	RPC_MASTER, // Using rpc() on it will call method on wherever the master is, be it local or remote
+	RPC_PUPPET, // Using rpc() on it will call method for all puppets
+};
+
+struct RPCConfig {
+	StringName name;
+	RPCMode rpc_mode = RPC_DISABLED;
+	bool sync = false;
+	RPCTransferMode transfer_mode = RPC_TRANSFER_RELIABLE;
+	int channel = 0;
+
+	bool operator==(RPCConfig const &p_other) const {
+		return name == p_other.name;
+	}
+
+	struct Sort {
+		StringName::AlphCompare compare;
+		bool operator()(const RPCConfig &p_a, const RPCConfig &p_b) const {
+			return compare(p_a.name, p_b.name);
+		}
+	};
+};
+
+#endif // RPC_H

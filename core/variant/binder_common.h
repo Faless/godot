@@ -32,6 +32,7 @@
 #define BINDER_COMMON_H
 
 #include "core/input/input_enums.h"
+#include "core/io/rpc.h"
 #include "core/object/object.h"
 #include "core/os/keyboard.h"
 #include "core/templates/list.h"
@@ -107,6 +108,8 @@ VARIANT_ENUM_CAST(VAlign);
 VARIANT_ENUM_CAST(InlineAlign);
 VARIANT_ENUM_CAST(PropertyHint);
 VARIANT_ENUM_CAST(PropertyUsageFlags);
+VARIANT_ENUM_CAST(RPCMode);
+VARIANT_ENUM_CAST(RPCTransferMode);
 VARIANT_ENUM_CAST(Variant::Type);
 VARIANT_ENUM_CAST(Variant::Operator);
 

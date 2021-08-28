@@ -67,6 +67,7 @@ class HTTPClientCurl : public HTTPClient {
     int read_chunk_size = 0;
     bool in_flight = false;
 
+    String scheme;
     String host;
     int port;
     
@@ -96,7 +97,7 @@ class HTTPClientCurl : public HTTPClient {
 
 protected:
     virtual Error _resolve_dns();
-    virtual Error _request(IPAddress p_addr);
+    virtual Error _request(IPAddress p_addr, bool p_init_dns);
     
 
 public:

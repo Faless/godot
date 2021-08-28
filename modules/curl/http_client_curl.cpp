@@ -86,6 +86,7 @@ size_t HTTPClientCurl::_write_callback(char *buffer, size_t size, size_t nitems,
 
 curl_slist *HTTPClientCurl::_ip_addr_to_slist(const IPAddress &p_addr) {
     String addr = String(p_addr);
+    print_line("addr: " + addr);
     addr = addr.substr(0, addr.rfind(":"));
     String h = host + ":" + String::num_int64(port) + ":" + addr;
     print_line("resolve host: " + h);
@@ -106,7 +107,7 @@ Error HTTPClientCurl::_resolve_dns() {
         case IP::RESOLVER_STATUS_DONE: {
             IPAddress addr = IP::get_singleton()->get_resolve_item_address(resolver_id);
             
-            Error err = _request(addr);
+            Error err = _request(addr, true);
             
             IP::get_singleton()->erase_resolve_item(resolver_id);
             resolver_id = IP::RESOLVER_INVALID_ID;
@@ -150,7 +151,6 @@ Error HTTPClientCurl::_poll_curl() {
                 status = STATUS_DISCONNECTED;
                 return FAILED;
             }
-
             RequestContext* ctx;
             CURLcode rc = curl_easy_getinfo(msg->easy_handle, CURLINFO_RESPONSE_CODE, &response_code);
             if (rc != CURLE_OK) {
@@ -232,15 +232,22 @@ Error HTTPClientCurl::_init_request_headers(CURL *p_chandler, Vector<String> p_h
     return OK;
 }
 
-Error HTTPClientCurl::_request(IPAddress p_addr) {
+Error HTTPClientCurl::_request(IPAddress p_addr, bool p_init_dns) {
+    String h = p_addr;
+    if (h.find(":") != -1) {
+        h = "["+h+"]";
+    }
     CURL* eh = curl_easy_init();
-    curl_easy_setopt(eh, CURLOPT_URL, (host+url).ascii().get_data());
+    print_line("url: " + scheme+h+":"+String::num_int64(port)+url);
+    curl_easy_setopt(eh, CURLOPT_URL, (scheme+h+":"+String::num_int64(port)+url).ascii().get_data());
     curl_easy_setopt(eh, CURLOPT_CUSTOMREQUEST, methods[(int)method]);
     curl_easy_setopt(eh, CURLOPT_BUFFERSIZE, read_chunk_size);
-    
-    Error err = _init_dns(eh, p_addr);
-    if (err != OK) {
-        return err;
+    Error err;
+    if (p_init_dns) {
+        err = _init_dns(eh, p_addr);
+        if (err != OK) {
+            return err;
+        }
     }
     
     RequestContext *ctx = _create_request_context();
@@ -306,7 +313,7 @@ Error HTTPClientCurl::connect_to_host(const String &p_host, int p_port, bool p_s
     response_chunks.clear();
     keep_alive = false;
     status = STATUS_CONNECTED;
-    
+    scheme = p_host.begins_with("https://") ? "https://" : "http://";
     host = p_host.trim_prefix("http://").trim_prefix("https://");
     port = p_port;
     ssl = p_ssl;
@@ -334,9 +341,16 @@ Error HTTPClientCurl::request(Method p_method, const String &p_url, const Vector
     request_headers = p_headers;
     request_body = p_body;
     request_body_size = p_body_size;
-
-    resolver_id = IP::get_singleton()->resolve_hostname_queue_item(host, IP::Type::TYPE_IPV4);
-    status = STATUS_RESOLVING;
+    #ifdef ENABLE_IPV6
+    print_line("ipv6 enabled");
+    #endif
+    print_line("host: " + host);
+    if (host.is_valid_ip_address()) {
+        _request(host, false);
+    } else {
+        resolver_id = IP::get_singleton()->resolve_hostname_queue_item(host, IP::Type::TYPE_ANY);
+        status = STATUS_RESOLVING;
+    }
 
     return OK;
 }

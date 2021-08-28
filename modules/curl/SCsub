@@ -194,6 +194,10 @@ if env["builtin_curl"]:
     if env["builtin_mbedtls"]:
         env_curl.Prepend(CPPPATH=["#thirdparty/mbedtls/include/"])
 
+    platform = env["platform"]
+    if platform != "windows":
+        env_curl.Append(CPPDEFINES=["HAVE_CONFIG_H"])
+
     thirdparty_obj = []
 
     thirdparty_dir = "#thirdparty/curl/"

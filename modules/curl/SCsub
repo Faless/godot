@@ -191,7 +191,7 @@ if env["builtin_curl"]:
         "ENABLE_IPV6",
     ])
     env_curl.Prepend(CPPPATH=["#thirdparty/curl/include/", "#thirdparty/curl/lib/"])
-    if not env["builtin_mbedtls"]:
+    if env["builtin_mbedtls"]:
         env_curl.Prepend(CPPPATH=["#thirdparty/mbedtls/include/"])
 
     thirdparty_obj = []

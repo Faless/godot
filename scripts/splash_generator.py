@@ -2,11 +2,7 @@
 
 import argparse
 import os
-
-
-# TODO path is hardcoded
-def fix_path(path : str):
-    return os.path.join("..", "main", os.path.basename(path))
+from utils import fix_path
 
 
 def make_splash(input: str, output: str):
@@ -14,7 +10,7 @@ def make_splash(input: str, output: str):
         buf = f.read()
 
     # TODO path is hardcoded.
-    with open(fix_path(output), "w") as g:
+    with open(fix_path(output, "main"), "w") as g:
         g.write("/* THIS FILE IS GENERATED DO NOT EDIT */\n")
         g.write("#ifndef BOOT_SPLASH_H\n")
         g.write("#define BOOT_SPLASH_H\n")
@@ -31,7 +27,7 @@ def make_splash_editor(input: str, output: str):
     with open(input, "rb") as f:
         buf = f.read()
 
-    with open(fix_path(output), "w") as g:
+    with open(fix_path(output, "main"), "w") as g:
         g.write("/* THIS FILE IS GENERATED DO NOT EDIT */\n")
         g.write("#ifndef BOOT_SPLASH_EDITOR_H\n")
         g.write("#define BOOT_SPLASH_EDITOR_H\n")
@@ -49,7 +45,7 @@ def make_app_icon(input: str, output: str):
     with open(input, "rb") as f:
         buf = f.read()
 
-    with open(fix_path(output), "w") as g:
+    with open(fix_path(output, "main"), "w") as g:
         g.write("/* THIS FILE IS GENERATED DO NOT EDIT */\n")
         g.write("#ifndef APP_ICON_H\n")
         g.write("#define APP_ICON_H\n")

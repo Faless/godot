@@ -1,3 +1,5 @@
+import os, sys
+
 def escape_string(s: str) -> str:
     def charcode_to_c_escapes(c):
         rev_result = []
@@ -20,3 +22,7 @@ def escape_string(s: str) -> str:
 
 def forward_slashes(s: str) -> str:
     return s.replace('\\', '/')
+
+
+def fix_path(name: str, dest: str):
+    return os.path.join(os.getenv('MESON_SOURCE_ROOT'), dest, os.path.basename(name))

@@ -3,7 +3,7 @@ project(
     ['cpp', 'c'],
     version: '4.0.0',
     license: 'MIT',
-    meson_version: '>= 0.56',
+    meson_version: '>= 0.57',
     default_options: [
         'c_std=c11',
         'cpp_std=c++17',
@@ -96,6 +96,7 @@ endif
 # Load Scripts
 ################################################################################
 
+SCRIPTS_ENV = ['MESON_SOURCE_ROOT=' + meson.source_root()]
 subdir('scripts')
 
 ################################################################################
@@ -291,7 +292,8 @@ subdir('splash')
 
 gdivirtuals_gen = custom_target('gdivirtuals.gen',
     output: 'gdvirtual.gen.inc',
-    command: [SCRIPT_VIRTUALS, '@OUTPUT@'])
+    command: [SCRIPT_VIRTUALS, '@OUTPUT@'],
+    env: SCRIPTS_ENV)
 SOURCES += gdivirtuals_gen
 
 # then thirdparty

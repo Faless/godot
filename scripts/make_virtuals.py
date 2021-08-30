@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import sys, os
+from utils import fix_path
 
 proto = """
 #define GDVIRTUAL$VER($RET m_name $ARG) \\
@@ -155,7 +156,7 @@ def run(ofilename):
 
     txt += "#endif"
 
-    with open(os.path.join("core", "object", ofilename), "w") as f:
+    with open(fix_path(ofilename, os.path.join("core", "object")), "w") as f:
         f.write(txt)
 
 

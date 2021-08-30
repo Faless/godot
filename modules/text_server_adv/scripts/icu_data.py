@@ -1,15 +1,18 @@
 #!/usr/bin/python3
 
 import argparse
+import os
 
 
 def _make_icu_data(input_data_file: str, output_gen_file: str):
     import os
-    g = open(output_gen_file, "w", encoding="utf-8")
+    print(os.path.join("..", "thirdparty", "icu4c", os.path.basename(output_gen_file)))
+    print(os.getcwd())
+    g = open(os.path.join("..", "thirdparty", "icu4c", os.path.basename(output_gen_file)), "w", encoding="utf-8")
 
     g.write("/* THIS FILE IS GENERATED DO NOT EDIT */\n")
     g.write("/* (C) 2016 and later: Unicode, Inc. and others. */\n")
-    g.write("/* License & terms of use: http://www.unicode.org/copyright.html */\n")
+    g.write("/* License & terms of use: https://www.unicode.org/copyright.html */\n")
     g.write("#ifndef _ICU_DATA_H\n")
     g.write("#define _ICU_DATA_H\n")
     g.write('#include "unicode/utypes.h"\n')
@@ -20,10 +23,8 @@ def _make_icu_data(input_data_file: str, output_gen_file: str):
     buf = f.read()
     import os.path
 
-    g.write('extern "C" U_EXPORT const size_t U_ICUDATA_SIZE = ' +
-            str(len(buf)) + ";\n")
-    g.write(
-        'extern "C" U_EXPORT const unsigned char U_ICUDATA_ENTRY_POINT[] = {\n')
+    g.write('extern "C" U_EXPORT const size_t U_ICUDATA_SIZE = ' + str(len(buf)) + ";\n")
+    g.write('extern "C" U_EXPORT const unsigned char U_ICUDATA_ENTRY_POINT[] = {\n')
     for i in range(len(buf)):
         g.write("\t" + str(buf[i]) + ",\n")
 

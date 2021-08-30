@@ -297,6 +297,9 @@ SOURCES += gdivirtuals_gen
 # then thirdparty
 subdir('thirdparty')
 
+# generate the module include files
+subdir('modules')
+
 # get all of godot except main
 subdir('platform')
 subdir('core')
@@ -304,9 +307,6 @@ subdir('scene')
 subdir('drivers')
 subdir('servers')
 subdir('editor')
-
-# generate the module include files
-subdir('modules')
 
 _godot_all = library('godot_all',
     SOURCES + HEADERS,

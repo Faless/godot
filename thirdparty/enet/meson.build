@@ -16,9 +16,9 @@ if get_option('builtin_enet')
     _enet_compile_dep_defines = ['-DGODOT_ENET']
 
     if PLATFORM == 'windows'
-        _enet_compile_dep_defines += '-DGODOT_ENET_WINDOWS_ENABLED'
+        _enet_compile_dep_defines += '-DWINDOWS_ENABLED'
     else
-        _enet_compile_dep_defines += '-DGODOT_ENET_UNIX_ENABLED'
+        _enet_compile_dep_defines += '-DUNIX_ENABLED'
     endif
 
     _lib_enet = static_library('builtin_enet', _enet_srcs,

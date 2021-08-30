@@ -1,5 +1,5 @@
 def can_build(env):
-    return False#env["tools"] and not env["disable_3d"]
+    return env.tools_enabled
 
 
 def configure(env):

@@ -21,6 +21,10 @@ if get_option('builtin_enet')
         _enet_compile_dep_defines += '-DGODOT_ENET_UNIX_ENABLED'
     endif
 
+    if meson.get_compiler('c').get_id() == 'emscripten'
+        _enet_compile_dep_defines += '-std=gnu99'
+    endif
+
     _lib_enet = static_library('builtin_enet', _enet_srcs,
         include_directories: _enet_incdirs,
         cpp_args: _enet_compile_dep_defines,

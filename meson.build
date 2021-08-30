@@ -290,7 +290,7 @@ DEPENDENCIES = []
 subdir('splash')
 
 gdivirtuals_gen = custom_target('gdivirtuals.gen',
-    output: 'core/object/gdvirtual.gen.inc',
+    output: 'gdvirtual.gen.inc',
     command: [SCRIPT_VIRTUALS, '@OUTPUT@'])
 SOURCES += gdivirtuals_gen
 

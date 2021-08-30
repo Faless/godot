@@ -1,4 +1,4 @@
-_spirv_reflect_incdirs = include_directories('include')
+_spirv_reflect_incdirs = include_directories('spirv')
 
 _spirv_reflect_sources = files([
     'spirv_reflect.c'

@@ -1,13 +1,15 @@
 #!/usr/bin/python3
 
 import argparse
+import os
 
 
 def make_splash(input: str, output: str):
     with open(input, "rb") as f:
         buf = f.read()
 
-    with open(output, "w") as g:
+    # TODO path is hardcoded.
+    with open(os.path.join("..", "main", os.path.basename(output)), "w") as g:
         g.write("/* THIS FILE IS GENERATED DO NOT EDIT */\n")
         g.write("#ifndef BOOT_SPLASH_H\n")
         g.write("#define BOOT_SPLASH_H\n")

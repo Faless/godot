@@ -286,7 +286,10 @@ SOURCES = []
 HEADERS = []
 DEPENDENCIES = []
 
-# thirdparty first
+# generator first
+subdir('splash')
+
+# then thirdparty
 subdir('thirdparty')
 
 # get all of godot except main
@@ -296,8 +299,6 @@ subdir('scene')
 subdir('drivers')
 subdir('servers')
 subdir('editor')
-# generate our splashes
-subdir('splash')
 
 # generate the module include files
 subdir('modules')

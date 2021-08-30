@@ -7,8 +7,6 @@ if get_option('tools')
     _module_tsa_compile_args += '-DICU_STATIC_DATA'
 endif
 
-_module_tsa_compile_args += '-DU_NO_DEFAULT_INCLUDE_UTF_HEADERS=0'
-
 lib_module_tsa = library('module_text_server_adv', module_tsa_srcs,
     dependencies: [DEP_GODOT_ALL, DEP_HARFBUZZ, DEP_ICU, DEP_FREETYPE, DEP_GRAPHITE, DEP_MSDF],
     cpp_args: _module_tsa_compile_args

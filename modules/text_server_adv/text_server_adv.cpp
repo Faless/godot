@@ -34,7 +34,7 @@
 #include "core/string/translation.h"
 
 #ifdef ICU_STATIC_DATA
-#include "modules/text_server_adv/icu_data/icudata.gen.h"
+#include "thirdparty/icu4c/icudata.gen.h"
 #endif
 
 #ifdef MODULE_MSDFGEN_ENABLED

@@ -30,16 +30,6 @@
 
 #include "variant_construct.h"
 
-#include "core/core_string_names.h"
-#include "core/crypto/crypto_core.h"
-#include "core/debugger/engine_debugger.h"
-#include "core/io/compression.h"
-#include "core/object/class_db.h"
-#include "core/os/os.h"
-#include "core/templates/local_vector.h"
-#include "core/templates/oa_hash_map.h"
-#include "core/variant/method_ptrcall.h"
-
 struct VariantConstructData {
 	void (*construct)(Variant &r_base, const Variant **p_args, Callable::CallError &r_error);
 	Variant::ValidatedConstructor validated_construct;

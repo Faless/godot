@@ -4,7 +4,7 @@ on: [push, pull_request]
 # Global Settings
 env:
   GODOT_BASE_BRANCH: master
-  MESONFLAGS: -Ddisabled_modules=mono
+  MESONFLAGS: ''
   # platform=osx verbose=yes warnings=extra werror=yes debug_symbols=no --jobs=2 module_text_server_fb_enabled=yes
 
 concurrency:

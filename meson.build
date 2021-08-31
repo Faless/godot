@@ -248,6 +248,10 @@ if get_option('tools')
     endif
 endif
 
+if get_option('tests')
+    CPP_ARGS += '-DTESTS_ENABLED'
+endif
+
 ################################################################################
 # Custom optimization/debug params
 ################################################################################
@@ -308,6 +312,16 @@ _modules_enabled_gen = custom_target(
 )
 SOURCES += [_modules_enabled_gen]
 
+_modules_tests_gen = custom_target(
+    'modules_tests',
+    output: ['modules_tests.gen.h'],
+    input: [MODULES_DB_FILE],
+    command: [SCRIPT_MODULES_GEN, 'modules_tests', '@INPUT@', '@OUTPUT@'],
+    build_by_default: true,
+    env: SCRIPTS_ENV
+)
+SOURCES += [_modules_tests_gen]
+
 # then thirdparty
 subdir('thirdparty')
 
@@ -331,6 +345,11 @@ _godot_all = library('godot_all',
     link_args: LINK_ARGS)
 
 DEP_GODOT_ALL = declare_dependency(link_with: _godot_all, include_directories: INCDIRS, compile_args: CPP_ARGS, link_args: LINK_ARGS)
+
+# Tests if needed
+if get_option('tests')
+    subdir('tests')
+endif
 
 # build up our module list
 MODULE_DEPENDENCIES = []

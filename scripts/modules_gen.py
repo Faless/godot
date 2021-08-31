@@ -6,6 +6,20 @@ import argparse
 import os
 from utils import fix_path
 
+def __make_modules_tests_header(module_db_file: dict, output: str):
+    import glob
+
+    mdb = module_db.load_db(module_db_file)
+    with open(fix_path(output, "modules"), "w") as f:
+        for module in mdb.get_modules():
+            if not module.build:
+                continue
+            path = os.path.join(fix_path("tests", module.path))
+            headers = glob.glob(os.path.join(path, "*.h"))
+            for h in headers:
+                f.write('#include "%s"\n' % (os.path.normpath(h)))
+
+
 def __make_modules_enabled_header(module_db_file: dict, output: str):
     mdb = module_db.load_db(module_db_file)
     modules_enabled: [str] = mdb.get_modules_enabled_names()
@@ -113,6 +127,16 @@ if __name__ == '__main__':
         'output', type=str, help='The output header file.'
     )
 
+    # module tests
+    module_enabled_parser = subparsers.add_parser(
+        'modules_tests', help='Generate the modules_tests file')
+    module_enabled_parser.add_argument(
+        'module_db_file', type=str, help='The module db json file.'
+    )
+    module_enabled_parser.add_argument(
+        'output', type=str, help='The output header file.'
+    )
+
     # register module type
     register_module_type_parser = subparsers.add_parser(
         'register_module_types', help='Generate the register_module_types file'
@@ -134,3 +158,7 @@ if __name__ == '__main__':
     elif args.command == 'register_module_types':
         __make_register_module_types_cpp(
             args.module_db_file, args.project_root, args.output)
+    elif args.command == 'modules_tests':
+        __make_modules_tests_header(args.module_db_file, args.output)
+    else:
+        sys.exit(255)

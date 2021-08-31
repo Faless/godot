@@ -28,6 +28,7 @@ endif
 if get_option('tests')
     _module_gdscript_cpp_args += ['-DTESTS_ENABLED']
     _module_gdscript_srcs += files(run_command(globber, 'tests/*.cpp').stdout().split('\n'))
+    _module_gdscript_deps += DEP_TESTS
 endif
 
 lib_gdscript = library('module_gdscript',

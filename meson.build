@@ -290,11 +290,23 @@ DEPENDENCIES = []
 # generator first
 subdir('splash')
 
-gdivirtuals_gen = custom_target('gdivirtuals.gen',
+_gdivirtuals_gen = custom_target('gdivirtuals.gen',
     output: 'gdvirtual.gen.inc',
     command: [SCRIPT_VIRTUALS, '@OUTPUT@'],
-    env: SCRIPTS_ENV)
-SOURCES += gdivirtuals_gen
+    build_by_default: true,
+    env: SCRIPTS_ENV
+)
+SOURCES += _gdivirtuals_gen
+
+_modules_enabled_gen = custom_target(
+    'modules_enabled',
+    output: ['modules_enabled.gen.h'],
+    input: [MODULES_DB_FILE],
+    command: [SCRIPT_MODULES_GEN, 'modules_enabled', '@INPUT@', '@OUTPUT@'],
+    build_by_default: true,
+    env: SCRIPTS_ENV
+)
+SOURCES += [_modules_enabled_gen]
 
 # then thirdparty
 subdir('thirdparty')

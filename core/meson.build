@@ -118,5 +118,5 @@ subdir('variant')
 cdata = configuration_data()
 configure_file(output: 'disabled_classes.gen.h',
     configuration: cdata)
-    DEP_CORE_MISC = declare_dependency(link_with: _lib_core_misc, sources: gdivirtuals_gen)
+    DEP_CORE_MISC = declare_dependency(link_with: _lib_core_misc)
     DEPENDENCIES += [DEP_CORE_MISC]

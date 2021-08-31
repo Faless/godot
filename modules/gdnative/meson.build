@@ -32,7 +32,6 @@ _module_gdnative_incdirs = include_directories('include')
 
 lib_module_gdnative = library('module_gdnative',
     module_gdnative_srcs,
-    gdivirtuals_gen,
     link_args: module_gdnative_link_args,
     cpp_args: module_gdnative_cpp_args,
     include_directories: _module_gdnative_incdirs,

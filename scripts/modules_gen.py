@@ -4,14 +4,13 @@ import module_db
 
 import argparse
 import os
-#import glob
-
+from utils import fix_path
 
 def __make_modules_enabled_header(module_db_file: dict, output: str):
     mdb = module_db.load_db(module_db_file)
     modules_enabled: [str] = mdb.get_modules_enabled_names()
 
-    with open(output, "w") as f:
+    with open(fix_path(output, "modules"), "w") as f:
         f.write('#ifndef MODULE_GUARD_DEFINES\n')
         f.write('#define MODULE_GUARD_DEFINES\n\n')
         for module in modules_enabled:

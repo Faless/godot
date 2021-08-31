@@ -1,4 +1,4 @@
-name: 🤖 Android Builds
+name: 🤖 Android Meson Builds
 on: [push, pull_request]
 
 # Global Settings
@@ -44,7 +44,7 @@ jobs:
 
       - name: Generate meson cross compilation file (armv7a).
         run: |
-          python3 misc/scripts/make_android_cross.py "${{ env.ANDROID_NDK_ROOT }}" -m armv7a -o cross/android.gen.txt
+          python3 misc/scripts/make_android_cross.py /usr/local/lib/android/sdk/ndk-bundle -m armv7a -o cross/android.gen.txt
 
       - name: Compilation
         uses: ./.github/actions/meson_build

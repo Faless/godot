@@ -2,6 +2,7 @@ _module_mbedtls_srcs = files(run_command(globber, '*.cpp').stdout().split('\n'))
 _module_mbedtls_deps = [DEP_GODOT_ALL, DEP_MBEDTLS]
 
 if get_option('tests')
+    _module_mbedtls_srcs += files(run_command(globber, 'tests/*.cpp').stdout().split('\n'))
     _module_mbedtls_deps += DEP_TESTS
 endif
 

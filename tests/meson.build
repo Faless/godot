@@ -16,6 +16,4 @@ if get_option('tests')
     # include_directories: _builtin_libogg_incdirs,
 
     DEP_TESTS = declare_dependency(link_with: lib_tests)
-    #DEPENDENCIES += DEP_TESTS
-    #, include_directories: _builtin_libogg_incdirs)
 endif

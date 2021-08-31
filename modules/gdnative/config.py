@@ -2,7 +2,7 @@ def get_name() -> str:
     return 'gdnative'
 
 def can_build(env: dict) -> bool:
-    return True
+    return False
 
 
 def get_doc_classes() -> [str]:

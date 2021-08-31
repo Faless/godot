@@ -96,7 +96,7 @@ endif
 # Load Scripts
 ################################################################################
 
-SCRIPTS_ENV = ['MESON_SOURCE_ROOT=' + meson.source_root()]
+SCRIPTS_ENV = ['MESON_SOURCE_ROOT=' + meson.current_source_dir()]
 subdir('scripts')
 
 ################################################################################

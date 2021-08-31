@@ -12,12 +12,12 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - name: "Temporary disabled"
-      shell: bash
-      run: |
-        echo "Temporary disabled"
-#    - uses: actions/upload-artifact@v2
-#      with:
-#        name: ${{ github.job }}
-#        path: bin/*
-#        retention-days: 14
+#    - name: "Temporary disabled"
+#      shell: bash
+#      run: |
+#        echo "Temporary disabled"
+    - uses: actions/upload-artifact@v2
+      with:
+        name: ${{ github.job }}
+        path: builddir/*
+        retention-days: 14

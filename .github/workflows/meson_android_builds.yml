@@ -4,7 +4,7 @@ on: [push, pull_request]
 # Global Settings
 env:
   GODOT_BASE_BRANCH: master
-  MESONFLAGS: --cross-file cross/android.gen.txt
+  MESONFLAGS: ""
   # platform=android verbose=yes warnings=extra werror=yes debug_symbols=no --jobs=2 module_text_server_fb_enabled=yes
   SCONS_CACHE_LIMIT: 4096
 
@@ -42,14 +42,22 @@ jobs:
       - name: Setup python and meson
         uses: ./.github/actions/meson_install
 
-      - name: Generate meson cross compilation file (armv7a).
+      - name: Generate meson cross compilation file (armv7a, aarch64).
         run: |
-          python3 misc/scripts/make_android_cross.py /usr/local/lib/android/sdk/ndk-bundle -m armv7a -o cross/android.gen.txt
+          python3 misc/scripts/make_android_cross.py "$ANDROID_NDK_ROOT" -m armv7a -o cross/android.armv7a.gen.txt
+          python3 misc/scripts/make_android_cross.py "$ANDROID_NDK_ROOT" -m aarch64 -o cross/android.aarch64.gen.txt
 
-      - name: Compilation
+      - name: Compilation (armv7a)
         uses: ./.github/actions/meson_build
         with:
-          mesonflags: ${{ env.MESONFLAGS }}
+          mesonflags: ${{ env.MESONFLAGS }} --cross-file cross/android.armv7a.gen.txt
+          buildtype: release
+          tools: false
+
+      - name: Compilation (armv7a)
+        uses: ./.github/actions/meson_build
+        with:
+          mesonflags: ${{ env.MESONFLAGS }} --cross-file cross/android.aarch64.gen.txt
           buildtype: release
           tools: false
 

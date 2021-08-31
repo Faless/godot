@@ -31,5 +31,4 @@ runs:
     - name: Meson compile
       shell: bash
       run: |
-          echo "Nope"
-          #${{ inputs.meson }} compile -C ${{ inputs.destination }}
+          ${{ inputs.meson }} compile -C ${{ inputs.destination }}

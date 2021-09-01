@@ -12,6 +12,19 @@ inputs:
 runs:
   using: "composite"
   steps:
+    # Upload cache on completion and check it out now
+    - name: Load .scons_cache directory
+      id: linux-editor-cache
+      uses: actions/cache@v2
+      with:
+        path: ${{github.workspace}}/.scons_cache/
+        key: ${{github.job}}-${{env.GODOT_BASE_BRANCH}}-${{github.ref}}-${{github.sha}}
+        restore-keys: |
+          ${{github.job}}-${{env.GODOT_BASE_BRANCH}}-${{github.ref}}-${{github.sha}}
+          ${{github.job}}-${{env.GODOT_BASE_BRANCH}}-${{github.ref}}
+          ${{github.job}}-${{env.GODOT_BASE_BRANCH}}
+      continue-on-error: true
+
     # Use python 3.x release (works cross platform)
     - name: Set up Python 3.x
       uses: actions/setup-python@v2
@@ -20,11 +33,10 @@ runs:
         python-version: ${{ inputs.python-version }}
         # Optional - x64 or x86 architecture, defaults to x64
         architecture: ${{ inputs.python-arch }}
-    - name: Setup meson and ninja
+
+    - name: Setup scons
       shell: bash
       run: |
         python -c "import sys; print(sys.version)"
-        python -m pip install meson ninja
-        python --version
-        meson --version
-        ninja --version
+        python -m pip install scons
+        scons --version

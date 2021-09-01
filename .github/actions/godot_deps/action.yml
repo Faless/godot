@@ -40,7 +40,6 @@ runs:
           ${{github.job}}-${{env.GODOT_BASE_BRANCH}}-${{github.ref}}-${{github.sha}}
           ${{github.job}}-${{env.GODOT_BASE_BRANCH}}-${{github.ref}}
           ${{github.job}}-${{env.GODOT_BASE_BRANCH}}
-        continue-on-error: true
 
     # Use python 3.x release (works cross platform)
     - name: Set up Python 3.x

@@ -33,5 +33,5 @@ runs:
           SCONS_CACHE: ${{ inputs.scons_cache }}
           SCONS_CACHE_LIMIT: ${{ inputs.scons_cache_limit }}
       run: |
-          scons p={{ inputs.platform }} target=${{ inputs.target }} tools=${{ inputs.tools }} ${{ inputs.sconsflags }} --jobs=2
+          scons p=${{ inputs.platform }} target=${{ inputs.target }} tools=${{ inputs.tools }} ${{ inputs.sconsflags }} --jobs=2
           ls -l bin/

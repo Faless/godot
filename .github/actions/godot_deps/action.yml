@@ -16,28 +16,20 @@ runs:
   using: "composite"
   steps:
     - name: Linux dependencies
-      if: ${{ inputs.platform == 'linuxbsd' }}
       shell: bash
       run: |
-        # Azure repositories are not reliable, we need to prevent azure giving us packages.
-        sudo rm -f /etc/apt/sources.list.d/*
-        sudo cp -f misc/ci/sources.list /etc/apt/sources.list
-        sudo apt-get update
-        # The actual dependencies
-        sudo apt-get install build-essential pkg-config libx11-dev libxcursor-dev \
-            libxinerama-dev libgl1-mesa-dev libglu-dev libasound2-dev libpulse-dev \
-            libdbus-1-dev libudev-dev libxi-dev libxrandr-dev yasm xvfb wget unzip
-
-    # Additional cache for Emscripten generated system libraries
-    - name: Emscripten dependencies
-      if: ${{ platform == 'javascript' }}
-      shell: bash
-      run: |
-      id: javascript-template-emscripten-cache
-      uses: actions/cache@v2
-      with:
-        path: ${{env.EM_CACHE_FOLDER}}
-        key: ${{env.EM_VERSION}}-${{github.job}}
+        if [ "${{ inputs.platform }}" == "linuxbsd" ]; then
+            # Azure repositories are not reliable, we need to prevent azure giving us packages.
+            sudo rm -f /etc/apt/sources.list.d/*
+            sudo cp -f misc/ci/sources.list /etc/apt/sources.list
+            sudo apt-get update
+            # The actual dependencies
+            sudo apt-get install build-essential pkg-config libx11-dev libxcursor-dev \
+                libxinerama-dev libgl1-mesa-dev libglu-dev libasound2-dev libpulse-dev \
+                libdbus-1-dev libudev-dev libxi-dev libxrandr-dev yasm xvfb wget unzip
+        elif
+            echo "Skipping for platform ${{ inputs.platform }}"
+        fi
 
     # Upload cache on completion and check it out now
     - name: Load .scons_cache directory

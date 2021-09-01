@@ -1,3 +1,6 @@
+# Platform (so we can force it in CI and not get builds for the wrong one if cross file are broken)
+option('platform', type: 'string', value: '', description: 'Build for the given platform (name must match the one in platform/)')
+
 option('tools', type: 'boolean', value: true, description: 'Build the tools (a.k.a. the Godot editor)')
 option('tests', type: 'boolean', value: false, description: 'Build the unit tests')
 

@@ -30,8 +30,11 @@ endif
 
 # First, let us determine what platform we are from a cross or native file
 # if it has been specified. Otherwise, fallback to the host machine.
-PLATFORM = meson.get_external_property('platform', 'none')
-if PLATFORM == 'none'
+PLATFORM = get_option('platform')
+if PLATFORM == ''
+    PLATFORM = meson.get_external_property('platform', '')
+endif
+if PLATFORM == ''
     PLATFORM = 'linuxbsd'
     if host_machine.system() == 'windows'
         PLATFORM = 'windows'

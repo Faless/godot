@@ -11,6 +11,7 @@ inputs:
     default: 'x64'
   platform:
     description: 'The platform to setup for, when it needs extra dependencies (linuxbsd/emscripten)'
+    default: ''
 runs:
   using: "composite"
   steps:

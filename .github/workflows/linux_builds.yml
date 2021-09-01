@@ -20,7 +20,8 @@ jobs:
 
       - name: Setup platform dependencies, python and scons
         uses: ./.github/actions/godot_deps
-        platform: linuxbsd
+        with:
+          platform: linuxbsd
 
       - name: Compilation
         uses: ./.github/actions/godot_build
@@ -65,7 +66,8 @@ jobs:
 
       - name: Setup platform dependencies, python and scons
         uses: ./.github/actions/godot_deps
-        platform: linuxbsd
+        with:
+          platform: linuxbsd
 
       - name: Compilation
         uses: ./.github/actions/godot_build
@@ -118,7 +120,8 @@ jobs:
 
       - name: Setup platform dependencies, python and scons
         uses: ./.github/actions/godot_deps
-        platform: linuxbsd
+        with:
+          platform: linuxbsd
 
       - name: Compilation
         uses: ./.github/actions/godot_build

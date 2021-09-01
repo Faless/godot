@@ -12,12 +12,9 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - name: "Temporary disabled"
-      shell: bash
-      run: |
-        echo "Temporary disabled"
-#    - uses: actions/upload-artifact@v2
-#      with:
-#        name: ${{ github.job }}
-#        path: bin/*
-#        retention-days: 14
+    - name: Upload Godot Artifact
+      uses: actions/upload-artifact@v2
+      with:
+        name: ${{ inputs.name }}
+        path: ${{ inputs.path }}
+        retention-days: 14

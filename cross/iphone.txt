@@ -17,8 +17,8 @@ objcpp_args = ['-arch', 'arm64', '-miphoneos-version-min=11.0', '-isysroot', '/A
 [properties]
 
 [host_machine]
+platform = 'iphone'
 system = 'darwin'
 cpu_family = 'aarch64'
 cpu = 'aarch64'
 endian = 'little'
-

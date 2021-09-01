@@ -4,7 +4,7 @@ on: [push, pull_request]
 # Global Settings
 env:
   GODOT_BASE_BRANCH: master
-  MESONFLAGS: --cross-file=cross/iphone.txt
+  MESONFLAGS: --cross-file=cross/iphone.txt -Dplatform=iphone
   # platform=iphone verbose=yes warnings=extra werror=yes debug_symbols=no --jobs=2 module_text_server_fb_enabled=yes
 
 concurrency:

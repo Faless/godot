@@ -4,7 +4,7 @@ on: [push, pull_request]
 # Global Settings
 env:
   GODOT_BASE_BRANCH: master
-  MESONFLAGS: --cross-file cross/emscripten -Dbuiltin_pcre2_with_jit=false -Ddisabled_modules=mono,text_server_adv,text_server_fb
+  MESONFLAGS: --cross-file cross/emscripten -Dplatform=javascript -Dbuiltin_pcre2_with_jit=false -Ddisabled_modules=mono,text_server_adv,text_server_fb
   EM_VERSION: 2.0.27
   EM_CACHE_FOLDER: 'emsdk-cache'
 

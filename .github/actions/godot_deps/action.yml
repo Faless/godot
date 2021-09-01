@@ -1,5 +1,5 @@
-name: 'Setup python meson ninja.'
-description: 'Setup python installation, and install pip version of meson and ninja.'
+name: Setup platform dependencies, python and scons.
+description: 'Setup the platform dependencies (linuxbsd, javascript), and install pip version of scons.'
 inputs:
   python-version:
     description: 'The python version to use'
@@ -9,9 +9,35 @@ inputs:
     description: 'The python architecture'
     required: true
     default: 'x64'
+  platform:
+    description: 'The platform to setup for, when it needs extra dependencies (linuxbsd/emscripten)'
 runs:
   using: "composite"
   steps:
+    - name: Linux dependencies
+      if: ${{ platform == 'linuxbsd' }}
+      shell: bash
+      run: |
+        # Azure repositories are not reliable, we need to prevent azure giving us packages.
+        sudo rm -f /etc/apt/sources.list.d/*
+        sudo cp -f misc/ci/sources.list /etc/apt/sources.list
+        sudo apt-get update
+        # The actual dependencies
+        sudo apt-get install build-essential pkg-config libx11-dev libxcursor-dev \
+            libxinerama-dev libgl1-mesa-dev libglu-dev libasound2-dev libpulse-dev \
+            libdbus-1-dev libudev-dev libxi-dev libxrandr-dev yasm xvfb wget unzip
+
+    # Additional cache for Emscripten generated system libraries
+    - name: Emscripten dependencies
+      if: ${{ platform == 'javascript' }}
+      shell: bash
+      run: |
+      id: javascript-template-emscripten-cache
+      uses: actions/cache@v2
+      with:
+        path: ${{env.EM_CACHE_FOLDER}}
+        key: ${{env.EM_VERSION}}-${{github.job}}
+
     # Upload cache on completion and check it out now
     - name: Load .scons_cache directory
       id: linux-editor-cache

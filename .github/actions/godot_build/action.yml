@@ -8,16 +8,30 @@ inputs:
   tools:
     description: 'If tools are to be built'
     required: true
-    default: true
+    default: false
+  tests:
+    description: 'If tests are to be built'
+    required: true
+    default: false
   platform:
     description: 'The Godot platform to build.'
     required: false
   sconsflags:
     default: ''
+  scons_cache:
+    description: 'The scons cache path'
+    default: ${{github.workspace}}/.scons_cache/
+  scons_cache_limit:
+    description: 'The scons cache size limit'
+    default: 4096
 runs:
   using: "composite"
   steps:
     - name: Scons Build
       shell: sh
+      env:
+          SCONS_CACHE: ${{ inputs.scons_cache }}
+          SCONS_CACHE_LIMIT: ${{ inputs.scons_cache_limit }}
       run: |
-          scons p={{ inputs.platform }} target=${{ inputs.target }} tools=${{ inputs.tools }} ${{ inputs.sconsflags }}
+          scons p={{ inputs.platform }} target=${{ inputs.target }} tools=${{ inputs.tools }} ${{ inputs.sconsflags }} --jobs=2
+          ls -l bin/

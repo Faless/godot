@@ -15,9 +15,9 @@ objc_args = ['-arch', 'arm64', '-miphoneos-version-min=11.0', '-isysroot', '/App
 objcpp_args = ['-arch', 'arm64', '-miphoneos-version-min=11.0', '-isysroot', '/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk']
 
 [properties]
+platform = 'iphone'
 
 [host_machine]
-platform = 'iphone'
 system = 'darwin'
 cpu_family = 'aarch64'
 cpu = 'aarch64'

@@ -16,7 +16,7 @@ runs:
   using: "composite"
   steps:
     - name: Linux dependencies
-      if: ${{ platform == 'linuxbsd' }}
+      if: ${{ inputs.platform == 'linuxbsd' }}
       shell: bash
       run: |
         # Azure repositories are not reliable, we need to prevent azure giving us packages.
@@ -50,7 +50,7 @@ runs:
           ${{github.job}}-${{env.GODOT_BASE_BRANCH}}-${{github.ref}}-${{github.sha}}
           ${{github.job}}-${{env.GODOT_BASE_BRANCH}}-${{github.ref}}
           ${{github.job}}-${{env.GODOT_BASE_BRANCH}}
-      continue-on-error: true
+        continue-on-error: true
 
     # Use python 3.x release (works cross platform)
     - name: Set up Python 3.x

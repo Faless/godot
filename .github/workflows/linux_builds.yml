@@ -20,17 +20,17 @@ jobs:
           - target: release_debug
             tools: true
             tests: true
-            SCONSFLAGS: ${{ env.SCONSFLAGS }}
+            SCONSFLAGS: ""
 
           - target: debug
             tools: true
             tests: true
-            SCONSFLAGS: ${{ env.SCONSFLAGS }} debug_symbols=no use_asan=yes use_ubsan=yes
+            SCONSFLAGS: debug_symbols=no use_asan=yes use_ubsan=yes
 
           - target: release
             tools: false
             tests: false
-            SCONSFLAGS: ${{ env.SCONSFLAGS }} module_mono_enabled=yes mono_glue=no
+            SCONSFLAGS: module_mono_enabled=yes mono_glue=no
 
     steps:
       - uses: actions/checkout@v2
@@ -53,7 +53,7 @@ jobs:
       - name: Compilation
         uses: ./.github/actions/godot_build
         with:
-          sconsflags: ${{ matrix.SCONSFLAGS }}
+          sconsflags: ${{ env.SCONSFLAGS }} ${{ matrix.SCONSFLAGS }}
           platform: linuxbsd
           target: ${{ matrix.target }}
           tools: ${{ matrix.tools }}

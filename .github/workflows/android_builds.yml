@@ -46,10 +46,10 @@ jobs:
           tools: false
           tests: false
 
-      - name: Compilation (armv64v8)
+      - name: Compilation (arm64v8)
         uses: ./.github/actions/godot_build
         with:
-          sconsflags: ${{ env.SCONSFLAGS }} android_arch=armv64v8
+          sconsflags: ${{ env.SCONSFLAGS }} android_arch=arm64v8
           platform: android
           target: release
           tools: false

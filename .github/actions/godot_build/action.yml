@@ -18,10 +18,10 @@ inputs:
     required: false
   sconsflags:
     default: ''
-  scons_cache:
+  scons-cache:
     description: 'The scons cache path'
-    default: ${{github.workspace}}/.scons_cache/
-  scons_cache_limit:
+    default: ${{github.workspace}}/.scons-cache/
+  scons-cache-limit:
     description: 'The scons cache size limit'
     default: 4096
 runs:
@@ -30,8 +30,8 @@ runs:
     - name: Scons Build
       shell: sh
       env:
-          SCONS_CACHE: ${{ inputs.scons_cache }}
-          SCONS_CACHE_LIMIT: ${{ inputs.scons_cache_limit }}
+          SCONS_CACHE: ${{ inputs.scons-cache }}
+          SCONS_CACHE_LIMIT: ${{ inputs.scons-cache-limit }}
       run: |
           scons p=${{ inputs.platform }} target=${{ inputs.target }} tools=${{ inputs.tools }} tests=${{ inputs.tests }} ${{ inputs.sconsflags }} --jobs=2
           ls -l bin/

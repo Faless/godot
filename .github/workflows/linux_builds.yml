@@ -17,19 +17,22 @@ jobs:
     strategy:
       matrix:
         include:
-          - target: release_debug
+          - name: linux-editor
+            target: release_debug
             tools: true
             tests: true
             SCONSFLAGS: ""
             doc-test: true
 
-          - target: debug
+          - name: linux-editor-sanitizers
+            target: debug
             tools: true
             tests: true
             SCONSFLAGS: debug_symbols=no use_asan=yes use_ubsan=yes
             proj-test: true
 
-          - target: release
+          - name: linux-template-mono
+            target: release
             tools: false
             tests: false
             SCONSFLAGS: module_mono_enabled=yes mono_glue=no
@@ -51,6 +54,8 @@ jobs:
 
       - name: Setup platform dependencies, python and scons
         uses: ./.github/actions/godot_deps
+        with:
+          cache-name: ${{ matrix.name }}
 
       - name: Compilation
         uses: ./.github/actions/godot_build
@@ -110,3 +115,5 @@ jobs:
 
       - name: Upload artifact
         uses: ./.github/actions/upload-artifact
+        with:
+          name: ${{ matrix.name }}

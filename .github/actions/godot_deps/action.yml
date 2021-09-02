@@ -9,6 +9,10 @@ inputs:
     description: 'The python architecture'
     required: true
     default: 'x64'
+  cache-name:
+    description: 'The cache base name (job name by default).'
+    required: true
+    default: ${{github.job}}
 runs:
   using: "composite"
   steps:

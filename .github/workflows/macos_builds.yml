@@ -35,10 +35,13 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
-      - name: Setup python and scons
-        uses: ./.github/actions/godot_deps
+      - name: Setup Godot build cache
+        uses: ./.github/actions/godot-cache
         with:
           cache-name: ${{ matrix.name }}
+
+      - name: Setup python and scons
+        uses: ./.github/actions/godot_deps
 
       - name: Compilation
         uses: ./.github/actions/godot_build

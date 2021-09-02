@@ -1,0 +1,20 @@
+name: Setup Godot build cache.
+description: Setup Godot build cache.
+inputs:
+  cache-name:
+    description: 'The cache base name (job name by default).'
+    required: true
+    default: ${{github.job}}
+runs:
+  using: "composite"
+    # Upload cache on completion and check it out now
+    - name: Load .scons_cache directory
+      id: build-cache
+      uses: actions/cache@v2
+      with:
+        path: ${{github.workspace}}/.scons_cache/
+        key: ${{inputs.cache-name}}-${{env.GODOT_BASE_BRANCH}}-${{github.ref}}-${{github.sha}}
+        restore-keys: |
+          ${{inputs.cache-name}}-${{env.GODOT_BASE_BRANCH}}-${{github.ref}}-${{github.sha}}
+          ${{inputs.cache-name}}-${{env.GODOT_BASE_BRANCH}}-${{github.ref}}
+          ${{inputs.cache-name}}-${{env.GODOT_BASE_BRANCH}}

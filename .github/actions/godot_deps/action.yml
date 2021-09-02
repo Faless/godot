@@ -1,5 +1,5 @@
-name: Setup platform dependencies, python and scons.
-description: 'Setup cache and python, install the pip version of scons.'
+name: Setup python and scons.
+description: Setup python, install the pip version of scons.
 inputs:
   python-version:
     description: 'The python version to use'
@@ -9,25 +9,9 @@ inputs:
     description: 'The python architecture'
     required: true
     default: 'x64'
-  cache-name:
-    description: 'The cache base name (job name by default).'
-    required: true
-    default: ${{github.job}}
 runs:
   using: "composite"
   steps:
-    # Upload cache on completion and check it out now
-    - name: Load .scons_cache directory
-      id: build-cache
-      uses: actions/cache@v2
-      with:
-        path: ${{github.workspace}}/.scons_cache/
-        key: ${{inputs.cache-name}}-${{env.GODOT_BASE_BRANCH}}-${{github.ref}}-${{github.sha}}
-        restore-keys: |
-          ${{inputs.cache-name}}-${{env.GODOT_BASE_BRANCH}}-${{github.ref}}-${{github.sha}}
-          ${{inputs.cache-name}}-${{env.GODOT_BASE_BRANCH}}-${{github.ref}}
-          ${{inputs.cache-name}}-${{env.GODOT_BASE_BRANCH}}
-
     # Use python 3.x release (works cross platform)
     - name: Set up Python 3.x
       uses: actions/setup-python@v2

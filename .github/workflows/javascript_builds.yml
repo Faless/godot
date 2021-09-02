@@ -38,6 +38,9 @@ jobs:
         run: |
           emcc -v
 
+      - name: Setup Godot build cache
+        uses: ./.github/actions/godot-cache
+
       - name: Setup python and scons
         uses: ./.github/actions/godot_deps
 

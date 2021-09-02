@@ -18,7 +18,7 @@ runs:
   steps:
     # Upload cache on completion and check it out now
     - name: Load .scons_cache directory
-      id: ${{ inpits.cache-name }}-cache
+      id: ${{ inputs.cache-name }}-cache
       uses: actions/cache@v2
       with:
         path: ${{github.workspace}}/.scons_cache/

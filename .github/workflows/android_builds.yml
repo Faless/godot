@@ -13,7 +13,6 @@ concurrency:
 jobs:
   android-template:
     runs-on: "ubuntu-20.04"
-
     name: Template (target=release, tools=no)
 
     steps:
@@ -47,7 +46,7 @@ jobs:
           tools: false
           tests: false
 
-      - name: Compilation (armv7)
+      - name: Compilation (armv64v8)
         uses: ./.github/actions/godot_build
         with:
           sconsflags: ${{ env.SCONSFLAGS }} android_arch=armv64v8

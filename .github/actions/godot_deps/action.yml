@@ -1,5 +1,5 @@
 name: Setup platform dependencies, python and scons.
-description: 'Setup the platform dependencies (linuxbsd, javascript), and install pip version of scons.'
+description: 'Setup cache and python, install the pip version of scons.'
 inputs:
   python-version:
     description: 'The python version to use'

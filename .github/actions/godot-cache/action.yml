@@ -7,6 +7,7 @@ inputs:
     default: ${{github.job}}
 runs:
   using: "composite"
+  steps:
     # Upload cache on completion and check it out now
     - name: Load .scons_cache directory
       id: build-cache

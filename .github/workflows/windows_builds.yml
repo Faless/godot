@@ -19,6 +19,7 @@ jobs:
     runs-on: "windows-latest"
     name: 🏁 Windows Builds
     strategy:
+      fail-fast: false
       matrix:
         include:
           - name: windows-editor
@@ -46,7 +47,7 @@ jobs:
         uses: ./.github/actions/godot_build
         with:
           sconsflags: ${{ env.SCONSFLAGS }} ${{ matrix.SCONSFLAGS }}
-          platform: linuxbsd
+          platform: windows
           target: ${{ matrix.target }}
           tools: ${{ matrix.tools }}
           tests: ${{ matrix.tests }}

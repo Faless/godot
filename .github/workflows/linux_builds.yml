@@ -15,6 +15,7 @@ jobs:
     runs-on: "ubuntu-20.04"
     name: 🐧 Linux Builds
     strategy:
+      fail-fast: false
       matrix:
         include:
           - name: linux-editor

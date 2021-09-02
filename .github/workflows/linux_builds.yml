@@ -21,11 +21,13 @@ jobs:
             tools: true
             tests: true
             SCONSFLAGS: ""
+            doc-test: true
 
           - target: debug
             tools: true
             tests: true
             SCONSFLAGS: debug_symbols=no use_asan=yes use_ubsan=yes
+            proj-test: true
 
           - target: release
             tools: false
@@ -77,7 +79,7 @@ jobs:
 
       # Check class reference
       - name: Check for class reference updates
-        if: ${{ matrix.tests && matrix.target == "release_debug" }}
+        if: ${{ matrix.doc-test }}
         run: |
           echo "Running --doctool to see if this changes the public API without updating the documentation."
           echo -e "If a diff is shown, it means that your code/doc changes are incomplete and you should update the class reference with --doctool.\n\n"
@@ -86,7 +88,7 @@ jobs:
 
       # Download and extract zip archive with project, folder is renamed to be able to easy change used project
       - name: Download test project
-        if: ${{ matrix.tests && matrix.target == "debug" }}
+        if: ${{ matrix.proj-test }}
         run: |
           wget https://github.com/qarmin/RegressionTestProject/archive/4.0.zip
           unzip 4.0.zip
@@ -94,14 +96,14 @@ jobs:
 
       # Editor is quite complicated piece of software, so it is easy to introduce bug here
       - name: Open and close editor
-        if: ${{ matrix.tests && matrix.target == "debug" }}
+        if: ${{ matrix.proj-test }}
         run: |
           VK_ICD_FILENAMES=$(pwd)/vk_swiftshader_icd.json DRI_PRIME=0 xvfb-run bin/godot.linuxbsd.tools.64s --audio-driver Dummy -e -q --path test_project 2>&1 | tee sanitizers_log.txt || true
           misc/scripts/check_ci_log.py sanitizers_log.txt
 
       # Run test project
       - name: Run project
-        if: ${{ matrix.tests && matrix.target == "debug" }}
+        if: ${{ matrix.proj-test }}
         run: |
           VK_ICD_FILENAMES=$(pwd)/vk_swiftshader_icd.json DRI_PRIME=0 xvfb-run bin/godot.linuxbsd.tools.64s 40 --audio-driver Dummy --path test_project 2>&1 | tee sanitizers_log.txt || true
           misc/scripts/check_ci_log.py sanitizers_log.txt

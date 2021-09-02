@@ -32,7 +32,7 @@ jobs:
             tests: true
             SCONSFLAGS: debug_symbols=no use_asan=yes use_ubsan=yes
             proj-test: true
-            bin: "./bin/godot.linuxbsd.opt.tools.64s"
+            bin: "./bin/godot.linuxbsd.tools.64s"
 
           - name: linux-template-mono
             target: release

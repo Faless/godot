@@ -212,7 +212,7 @@ if get_option('builtin_icu')
         '-DUCONFIG_NO_IDNA',
         '-DUCONFIG_NO_FILE_IO',
         '-DUCONFIG_NO_TRANSLITERATION',
-        '-DICU_DATA_NAME=' + _icu_data_name,
+	'-DICU_DATA_NAME=' + _icu_data_name,
     ]
 
     _builtin_icu_compile_flags = []
@@ -230,7 +230,7 @@ if get_option('builtin_icu')
     DEP_ICU = declare_dependency(
         link_with: lib_builtin_icu,
         include_directories: _builtin_icu_incdirs,
-        compile_args: _builtin_icu_compile_dep_flags,
+        compile_args: ['-DICU_DATA_NAME=' + _icu_data_name],
         variables: {
             'icu_data_name': _icu_data_name,
         }

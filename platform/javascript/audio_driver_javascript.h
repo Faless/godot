@@ -49,6 +49,26 @@ public:
 		virtual ~AudioNode() {}
 	};
 
+#ifdef NO_THREADS
+	class ScriptProcessorNode : public AudioNode {
+	private:
+		static void _process_callback();
+
+	public:
+		int create(int p_buffer_samples, int p_channels) override;
+		void start(float *p_out_buf, int p_out_buf_size, float *p_in_buf, int p_in_buf_size) override;
+	};
+
+	class WorkletNode : public AudioNode {
+	private:
+		static void _audio_process(int p_pos, int p_samples);
+		static void _audio_capture(int p_pos, int p_samples);
+
+	public:
+		int create(int p_buffer_size, int p_output_channels) override;
+		void start(float *p_out_buf, int p_out_buf_size, float *p_in_buf, int p_in_buf_size) override;
+	};
+#else
 	class WorkletNode : public AudioNode {
 	private:
 		enum {
@@ -72,16 +92,7 @@ public:
 		void lock() override;
 		void unlock() override;
 	};
-
-	class ScriptProcessorNode : public AudioNode {
-	private:
-		static void _process_callback();
-
-	public:
-		int create(int p_buffer_samples, int p_channels) override;
-		void start(float *p_out_buf, int p_out_buf_size, float *p_in_buf, int p_in_buf_size) override;
-	};
-
+#endif
 private:
 	AudioNode *node = nullptr;
 
@@ -93,6 +104,7 @@ private:
 	int channel_count = 0;
 	int state = 0;
 	float output_latency = 0.0;
+	bool prefer_worklet = false;
 
 	static void _state_change_callback(int p_state);
 	static void _latency_update_callback(float p_latency);
@@ -120,6 +132,8 @@ public:
 
 	virtual Error capture_start();
 	virtual Error capture_stop();
+
+	void set_prefer_audio_worklet() { prefer_worklet = true; }
 
 	AudioDriverJavaScript();
 };

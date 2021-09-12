@@ -750,11 +750,15 @@ const char *OS_JavaScript::get_video_driver_name(int p_driver) const {
 // Audio
 
 int OS_JavaScript::get_audio_driver_count() const {
-	return 1;
+	return 2;
 }
 
 const char *OS_JavaScript::get_audio_driver_name(int p_driver) const {
-	return "JavaScript";
+	if (p_driver == 0) {
+		return "ScriptProcessor";
+	} else {
+		return "AudioWorklet";
+	}
 }
 
 // Clipboard
@@ -858,7 +862,11 @@ Error OS_JavaScript::initialize(const VideoMode &p_desired, int p_video_driver, 
 
 	video_driver_index = p_video_driver;
 
-	AudioDriverManager::initialize(p_audio_driver);
+	if (p_audio_driver == 1 && audio_driver_javascript) {
+		audio_driver_javascript->set_prefer_audio_worklet();
+	}
+	// The second driver is a "fake" one (i.e. only one is added),
+	AudioDriverManager::initialize(p_audio_driver ? p_audio_driver - 1 : 0);
 	visual_server = memnew(VisualServerRaster());
 #ifndef NO_THREADS
 	visual_server = memnew(VisualServerWrapMT(visual_server, false));

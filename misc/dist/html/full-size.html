@@ -136,10 +136,19 @@ $GODOT_HEAD_INCLUDE
 	<script type='text/javascript' src='$GODOT_URL'></script>
 	<script type='text/javascript'>//<![CDATA[
 
-		const GODOT_CONFIG = $GODOT_CONFIG;
-		var engine = new Engine(GODOT_CONFIG);
+		var engine = null;
 
 		(function() {
+			const GODOT_CONFIG = $GODOT_CONFIG;
+			// Always prefer Audio Worklet for Chrome.
+			if (navigator.userAgent.match('Chrome')) {
+				let args = GODOT_CONFIG['args'] || [];
+				if (!('--audio-driver' in args)) {
+					args = ['--audio-driver', 'AudioWorklet'].concat(args);
+				}
+				GODOT_CONFIG['args'] = args;
+			}
+			engine = new Engine(GODOT_CONFIG);
 			const INDETERMINATE_STATUS_STEP_MS = 100;
 			var statusProgress = document.getElementById('status-progress');
 			var statusProgressInner = document.getElementById('status-progress-inner');

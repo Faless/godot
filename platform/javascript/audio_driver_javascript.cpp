@@ -110,10 +110,23 @@ Error AudioDriverJavaScript::init() {
 
 	channel_count = godot_audio_init(&mix_rate, latency, &_state_change_callback, &_latency_update_callback);
 	buffer_length = closest_power_of_2((latency * mix_rate / 1000));
-#ifndef NO_THREADS
-	node = memnew(WorkletNode);
+	int has_worklet = godot_audio_has_worklet();
+#ifdef NO_THREADS
+	int has_processor = godot_audio_has_script_processor();
+	bool use_worklet = prefer_worklet || !has_processor;
+	if (use_worklet && has_worklet) {
+		node = memnew(WorkletNode);
+	} else if (has_processor) {
+		node = memnew(ScriptProcessorNode);
+	} else {
+		return ERR_UNAVAILABLE;
+	}
 #else
-	node = memnew(ScriptProcessorNode);
+	if (has_worklet) {
+		node = memnew(WorkletNode);
+	} else {
+		return ERR_UNAVAILABLE;
+	}
 #endif
 	buffer_length = node->create(buffer_length, channel_count);
 	if (output_rb) {
@@ -221,8 +234,30 @@ int AudioDriverJavaScript::ScriptProcessorNode::create(int p_buffer_samples, int
 void AudioDriverJavaScript::ScriptProcessorNode::start(float *p_out_buf, int p_out_buf_size, float *p_in_buf, int p_in_buf_size) {
 	godot_audio_script_start(p_in_buf, p_in_buf_size, p_out_buf, p_out_buf_size, &_process_callback);
 }
+
+/// AudioWorkletNode implementation (no threads)
+int AudioDriverJavaScript::WorkletNode::create(int p_buffer_size, int p_channels) {
+	godot_audio_worklet_create(p_channels);
+	return p_buffer_size;
+}
+
+void AudioDriverJavaScript::WorkletNode::start(float *p_out_buf, int p_out_buf_size, float *p_in_buf, int p_in_buf_size) {
+	AudioDriverJavaScript *driver = AudioDriverJavaScript::singleton;
+	driver->_audio_driver_process();
+	godot_audio_worklet_start_no_threads(p_out_buf, p_out_buf_size, &_audio_process, p_in_buf, p_in_buf_size, &_audio_capture);
+}
+
+void AudioDriverJavaScript::WorkletNode::_audio_process(int p_pos, int p_samples) {
+	AudioDriverJavaScript *driver = AudioDriverJavaScript::singleton;
+	driver->_audio_driver_process(p_pos, p_samples);
+}
+
+void AudioDriverJavaScript::WorkletNode::_audio_capture(int p_pos, int p_samples) {
+	AudioDriverJavaScript *driver = AudioDriverJavaScript::singleton;
+	driver->_audio_driver_capture(p_pos, p_samples);
+}
 #else
-/// AudioWorkletNode implementation
+/// AudioWorkletNode implementation (threads)
 void AudioDriverJavaScript::WorkletNode::_audio_thread_func(void *p_data) {
 	AudioDriverJavaScript::WorkletNode *obj = static_cast<AudioDriverJavaScript::WorkletNode *>(p_data);
 	AudioDriverJavaScript *driver = AudioDriverJavaScript::singleton;

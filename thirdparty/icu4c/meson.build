@@ -212,7 +212,8 @@ if get_option('builtin_icu')
         '-DUCONFIG_NO_IDNA',
         '-DUCONFIG_NO_FILE_IO',
         '-DUCONFIG_NO_TRANSLITERATION',
-	'-DICU_DATA_NAME=' + _icu_data_name,
+        '-DPKGDATA_MODE=static',
+        '-DICU_DATA_NAME=' + _icu_data_name,
     ]
 
     _builtin_icu_compile_flags = []
@@ -226,6 +227,14 @@ if get_option('builtin_icu')
         cpp_args: [_builtin_icu_compile_flags, _builtin_icu_compile_dep_flags],
         build_by_default: false
     )
+
+    _builtin_icu_dep_flags = [
+	'-DICU_DATA_NAME=' + _icu_data_name,
+    ]
+
+    if meson.get_option('tools')
+        _builtin_icu_dep_flags += ['-DICU_STATIC_DATA']
+    endif
 
     DEP_ICU = declare_dependency(
         link_with: lib_builtin_icu,

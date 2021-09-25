@@ -232,7 +232,7 @@ if get_option('builtin_icu')
 	'-DICU_DATA_NAME=' + _icu_data_name,
     ]
 
-    if meson.get_option('tools')
+    if get_option('tools')
         _builtin_icu_dep_flags += ['-DICU_STATIC_DATA']
     endif
 

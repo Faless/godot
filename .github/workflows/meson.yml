@@ -188,7 +188,7 @@ jobs:
       - name: Meson build (win)
         if: ${{ matrix.platform == 'windows' }}
         run: |
-          meson compilet -C builddir
+          meson compile -C builddir
 
       # Execute unit tests for the editor
       - name: Unit Tests

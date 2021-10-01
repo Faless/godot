@@ -27,10 +27,10 @@ runs:
   using: "composite"
   steps:
     - name: Meson Configure
-      shell: ${{ defaults.run.shell }}
+      shell: ${{ fromJSON('["bash", "pwsh"]')[runner.os == 'Windows'] }}
       run: |
           ${{ inputs.meson }} ${{ inputs.destination }} ${{ inputs.mesonflags }} -Dbuildtype=${{ inputs.buildtype }} -Dtools=${{ inputs.tools }}
     - name: Meson compile
-      shell: ${{ defaults.run.shell }}
+      shell: ${{ fromJSON('["bash", "pwsh"]')[runner.os == 'Windows'] }}
       run: |
           ${{ inputs.meson }} compile -C ${{ inputs.destination }}

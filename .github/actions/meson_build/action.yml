@@ -25,10 +25,8 @@ runs:
   using: "composite"
   steps:
     - name: Meson Configure
-      shell: bash
       run: |
           ${{ inputs.meson }} ${{ inputs.destination }} ${{ inputs.mesonflags }} -Dbuildtype=${{ inputs.buildtype }} -Dtools=${{ inputs.tools }}
     - name: Meson compile
-      shell: bash
       run: |
           ${{ inputs.meson }} compile -C ${{ inputs.destination }}

@@ -18,72 +18,72 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - name: 🤖 Android (release, armv7a)
-            os: ubuntu-20.04
-            platform: android
-            target: release
-            tools: false
-            mesonflags: '--cross-file cross/android.gen.txt'
-            arch: armv7a
-
-          - name: 🤖 Android (release, armv64v8)
-            os: ubuntu-20.04
-            platform: android
-            target: release
-            tools: false
-            mesonflags: '--cross-file cross/android.gen.txt'
-            arch: aarch64
-
-          - name: 🍏 iOS (release)
-            os: macos-latest
-            platform: iphone
-            target: release
-            tools: false
-            mesonflags: '--cross-file cross/iphone.txt'
-
-          - name: 🌐 JavaScript (minsize)
-            os: ubuntu-20.04
-            platform: javascript
-            target: minsize
-            tools: false
-            meson: './meson-upstream/'
-            mesonflags: '--cross-file cross/emscripten -Dbuiltin_pcre2_with_jit=false'
-
-          - name: 🐧 Linux (debug, asan+ubsan, tests)
-            os: ubuntu-20.04
-            platform: linuxbsd
-            target: debug
-            tools: true
-            tests: true
-            mesonflags: -Dtests=true -Duse_asan=true -Duse_ubsan=true
-
-          - name: 🐧 Linux (release_debug, tests)
-            os: ubuntu-20.04
-            platform: linuxbsd
-            target: debugoptimized
-            tools: true
-            tests: true
-            mesonflags: -Dtests=true
-
-          - name: 🐧 Linux (release)
-            os: ubuntu-20.04
-            platform: linuxbsd
-            target: release
-            tools: false
-
-          - name: 🍎 macOS (release_debug, tests)
-            os: macos-latest
-            platform: osx
-            target: debugoptimized
-            tools: true
-            tests: true
-            mesonflags: -Dtests=true
-
-          - name: 🍎 macOS (release)
-            os: macos-latest
-            platform: osx
-            target: debugoptimized
-            tools: false
+                #          - name: 🤖 Android (release, armv7a)
+                #            os: ubuntu-20.04
+                #            platform: android
+                #            target: release
+                #            tools: false
+                #            mesonflags: '--cross-file cross/android.gen.txt'
+                #            arch: armv7a
+                #
+                #          - name: 🤖 Android (release, armv64v8)
+                #            os: ubuntu-20.04
+                #            platform: android
+                #            target: release
+                #            tools: false
+                #            mesonflags: '--cross-file cross/android.gen.txt'
+                #            arch: aarch64
+                #
+                #          - name: 🍏 iOS (release)
+                #            os: macos-latest
+                #            platform: iphone
+                #            target: release
+                #            tools: false
+                #            mesonflags: '--cross-file cross/iphone.txt'
+                #
+                #          - name: 🌐 JavaScript (minsize)
+                #            os: ubuntu-20.04
+                #            platform: javascript
+                #            target: minsize
+                #            tools: false
+                #            meson: './meson-upstream/'
+                #            mesonflags: '--cross-file cross/emscripten -Dbuiltin_pcre2_with_jit=false'
+                #
+                #          - name: 🐧 Linux (debug, asan+ubsan, tests)
+                #            os: ubuntu-20.04
+                #            platform: linuxbsd
+                #            target: debug
+                #            tools: true
+                #            tests: true
+                #            mesonflags: -Dtests=true -Duse_asan=true -Duse_ubsan=true
+                #
+                #          - name: 🐧 Linux (release_debug, tests)
+                #            os: ubuntu-20.04
+                #            platform: linuxbsd
+                #            target: debugoptimized
+                #            tools: true
+                #            tests: true
+                #            mesonflags: -Dtests=true
+                #
+                #          - name: 🐧 Linux (release)
+                #            os: ubuntu-20.04
+                #            platform: linuxbsd
+                #            target: release
+                #            tools: false
+                #
+                #          - name: 🍎 macOS (release_debug, tests)
+                #            os: macos-latest
+                #            platform: osx
+                #            target: debugoptimized
+                #            tools: true
+                #            tests: true
+                #            mesonflags: -Dtests=true
+                #
+                #          - name: 🍎 macOS (release)
+                #            os: macos-latest
+                #            platform: osx
+                #            target: debugoptimized
+                #            tools: false
 
           - name: 🏁 Windows (release_debug, tests)
             os: windows-latest
@@ -170,6 +170,7 @@ jobs:
         with:
           arch: amd64
 
+        #        if: ${{ matrix.platform != 'windows' }}
       - name: Compilation (${{ matrix.platform }} ${{ matrix.arch }})
         uses: ./.github/actions/meson_build
         with:
@@ -177,6 +178,12 @@ jobs:
           buildtype: ${{ matrix.target }}
           meson: ${{ matrix.meson }}meson
           tools: ${{ matrix.tools }}
+
+          #      # Differnt build for windows due to github/MSVC messing up shell vars.
+          #      - name:
+          #        if: ${{ matrix.platform == 'windows' }}
+          #        run: |
+          #          meson builddir 
 
       # Execute unit tests for the editor
       - name: Unit Tests

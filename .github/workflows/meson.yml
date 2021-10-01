@@ -92,12 +92,14 @@ jobs:
             tools: true
             tests: true
             mesonflags: -Dtests=true
+            shell: pwsh
 
           - name: 🏁 Windows (release)
             os: windows-latest
             platform: windows
             target: release
             tools: false
+            shell: pwsh
 
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
@@ -178,6 +180,7 @@ jobs:
           buildtype: ${{ matrix.target }}
           meson: ${{ matrix.meson }}meson
           tools: ${{ matrix.tools }}
+          shell: ${{ matrix.shell }}
 
           #      # Differnt build for windows due to github/MSVC messing up shell vars.
           #      - name:

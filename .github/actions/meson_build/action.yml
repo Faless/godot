@@ -21,12 +21,16 @@ inputs:
     default: 'builddir'
   mesonflags:
     default: ''
+  shell:
+    default: 'bash'
 runs:
   using: "composite"
   steps:
     - name: Meson Configure
+      shell: ${{ inputs.shell }}
       run: |
           ${{ inputs.meson }} ${{ inputs.destination }} ${{ inputs.mesonflags }} -Dbuildtype=${{ inputs.buildtype }} -Dtools=${{ inputs.tools }}
     - name: Meson compile
+      shell: ${{ inputs.shell }}
       run: |
           ${{ inputs.meson }} compile -C ${{ inputs.destination }}

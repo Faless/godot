@@ -26,7 +26,7 @@ cpp_link_args = []
 [properties]
 
 [host_machine]
-system = 'android'
-cpu_family = 'aarch64'
-cpu = 'aarch64'
+system = '@ANDROID_ARCH@'
+cpu_family = '@ANDROID_ARCH@'
+cpu = '@ANDROID_ARCH@'
 endian = 'little'

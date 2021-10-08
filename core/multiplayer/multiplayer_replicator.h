@@ -35,6 +35,7 @@
 
 #include "core/io/resource_uid.h"
 #include "core/templates/hash_map.h"
+#include "core/templates/pair.h"
 #include "core/variant/typed_array.h"
 
 class MultiplayerReplicator : public Object {
@@ -81,7 +82,7 @@ private:
 	Vector<uint8_t> packet_cache;
 	Map<ResourceUID::ID, SceneConfig> replications;
 	Map<ObjectID, ResourceUID::ID> replicated_nodes;
-	HashMap<ResourceUID::ID, List<ObjectID>> tracked_objects;
+	HashMap<ResourceUID::ID, List<Pair<ObjectID, uint16_t>>> tracked_objects;
 
 	// Encoding
 	Error _get_state(const List<StringName> &p_properties, const Object *p_obj, List<Variant> &r_variant);

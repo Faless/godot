@@ -42,6 +42,8 @@ class MultiplayerReplicator : public Object {
 	GDCLASS(MultiplayerReplicator, Object);
 
 public:
+	using NetID = uint16_t;
+
 	enum {
 		SPAWN_CMD_OFFSET = 9,
 		SYNC_CMD_OFFSET = 9,
@@ -58,6 +60,7 @@ public:
 		uint64_t sync_interval = 0;
 		uint64_t sync_last = 0;
 		uint8_t sync_recv = 0;
+		NetID last_id = 0;
 		List<StringName> properties;
 		List<StringName> sync_properties;
 		Callable on_spawn_despawn_send;
@@ -82,7 +85,7 @@ private:
 	Vector<uint8_t> packet_cache;
 	Map<ResourceUID::ID, SceneConfig> replications;
 	Map<ObjectID, ResourceUID::ID> replicated_nodes;
-	HashMap<ResourceUID::ID, Map<ObjectID, uint16_t>> tracked_objects;
+	HashMap<ResourceUID::ID, Map<NetID, ObjectID>> tracked_objects;
 
 	// Encoding
 	Error _get_state(const List<StringName> &p_properties, const Object *p_obj, List<Variant> &r_variant);

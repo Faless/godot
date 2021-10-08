@@ -52,8 +52,8 @@ Error MultiplayerReplicator::_sync_all_default(const ResourceUID::ID &p_scene_id
 	};
 	Map<ObjectID, struct EncodeInfo> state;
 	if (tracked_objects.has(p_scene_id)) {
-		for (const KeyValue<NetID, ObjectID> &object : tracked_objects[p_scene_id]) {
-			const ObjectID &obj_id = object.value;
+		for (const KeyValue<ObjectID, NetID> &object : tracked_objects[p_scene_id].get_map()) {
+			const ObjectID &obj_id = object.key;
 			Object *obj = ObjectDB::get_instance(obj_id);
 			if (obj) {
 				struct EncodeInfo info;
@@ -98,8 +98,8 @@ Error MultiplayerReplicator::_sync_all_default(const ResourceUID::ID &p_scene_id
 	if (same_size) {
 		ofs += encode_uint16(last_size + (all_raw ? 1 << 15 : 0), &ptr[ofs]);
 	}
-	for (const KeyValue<NetID, ObjectID> &object : tracked_objects[p_scene_id]) {
-		const ObjectID &obj_id = object.value;
+	for (const KeyValue<ObjectID, NetID> &object : tracked_objects[p_scene_id].get_map()) {
+		const ObjectID &obj_id = object.key;
 		if (!state.has(obj_id)) {
 			continue;
 		}
@@ -155,8 +155,8 @@ void MultiplayerReplicator::_process_default_sync(const ResourceUID::ID &p_id, c
 		ofs += 2;
 		ERR_FAIL_COND(p_packet_len - ofs < data_size * count);
 	}
-	for (const KeyValue<NetID, ObjectID> &object : tracked_objects[p_id]) {
-		const ObjectID &obj_id = object.value;
+	for (const KeyValue<ObjectID, NetID> &object : tracked_objects[p_id].get_map()) {
+		const ObjectID &obj_id = object.key;
 		Object *obj = ObjectDB::get_instance(obj_id);
 		ERR_CONTINUE(!obj);
 		if (!same_size) {
@@ -348,8 +348,8 @@ void MultiplayerReplicator::process_sync(int p_from, const uint8_t *p_packet, in
 		if (tracked_objects.has(id)) {
 			objs.resize(tracked_objects[id].size());
 			int idx = 0;
-			for (const KeyValue<NetID, ObjectID> &object : tracked_objects[id]) {
-				const ObjectID &obj_id = object.value;
+			for (const KeyValue<ObjectID, NetID> &object : tracked_objects[id].get_map()) {
+				const ObjectID &obj_id = object.key;
 				objs[idx++] = ObjectDB::get_instance(obj_id);
 			}
 		}
@@ -696,10 +696,10 @@ void MultiplayerReplicator::_track(const ResourceUID::ID &p_scene_id, Object *p_
 	ERR_FAIL_COND(!p_obj);
 	ERR_FAIL_COND(!replications.has(p_scene_id));
 	if (!tracked_objects.has(p_scene_id)) {
-		tracked_objects[p_scene_id] = Map<NetID, ObjectID>();
+		tracked_objects[p_scene_id] = BiMap<ObjectID, NetID>();
 	}
 	int id = ++replications[p_scene_id].last_id;
-	tracked_objects[p_scene_id][id] = p_obj->get_instance_id();
+	tracked_objects[p_scene_id].insert(p_obj->get_instance_id(), id);
 }
 
 void MultiplayerReplicator::untrack(const ResourceUID::ID &p_scene_id, Object *p_obj) {
@@ -713,13 +713,7 @@ void MultiplayerReplicator::_untrack(const ResourceUID::ID &p_scene_id, Object *
 	ERR_FAIL_COND(!p_obj);
 	ERR_FAIL_COND(!replications.has(p_scene_id));
 	if (tracked_objects.has(p_scene_id)) {
-		const ObjectID id = p_obj->get_instance_id();
-		for (const KeyValue<NetID, ObjectID> &object : tracked_objects[p_scene_id]) {
-			if (object.value == id) {
-				tracked_objects[p_scene_id].erase(object.key);
-				break; // we know it's unique.
-			}
-		}
+		tracked_objects[p_scene_id].erase(p_obj->get_instance_id());
 	}
 }
 
@@ -734,8 +728,8 @@ Error MultiplayerReplicator::sync_all(const ResourceUID::ID &p_scene_id, int p_p
 		if (tracked_objects.has(p_scene_id)) {
 			objs.resize(tracked_objects[p_scene_id].size());
 			int idx = 0;
-			for (const KeyValue<NetID, ObjectID> &object : tracked_objects[p_scene_id]) {
-				const ObjectID &obj_id = object.value;
+			for (const KeyValue<ObjectID, NetID> &object : tracked_objects[p_scene_id].get_map()) {
+				const ObjectID &obj_id = object.key;
 				objs[idx++] = ObjectDB::get_instance(obj_id);
 			}
 		}

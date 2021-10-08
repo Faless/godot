@@ -73,6 +73,47 @@ protected:
 	static void _bind_methods();
 
 private:
+	template <class K1, class K2>
+	struct BiMap {
+		Map<K1, K2> map1;
+		Map<K2, K1> map2;
+
+		void insert(K1 p_k1, K2 p_k2) {
+			ERR_FAIL_COND(map1.has(p_k1) || map2.has(p_k2));
+			map1[p_k1] = p_k2;
+			map2[p_k2] = p_k1;
+		}
+		void erase(K1 p_k1) {
+			ERR_FAIL_COND(!map1.has(p_k1));
+			const K2 &k2 = map1[p_k1];
+			ERR_FAIL_COND(!map2.has(k2));
+			map2.erase(k2);
+			map1.erase(p_k1);
+		}
+		void erase(K2 p_k2) {
+			ERR_FAIL_COND(!map2.has(p_k2));
+			const K1 &k1 = map2[p_k2];
+			ERR_FAIL_COND(!map1.has(k1));
+			map1.erase(k1);
+			map2.erase(p_k2);
+		}
+		bool has(K1 p_k1) {
+			return map1.has(p_k1);
+		}
+		bool has(K2 p_k2) {
+			return map2.has(p_k2);
+		}
+		int size() {
+			return map1.size();
+		}
+		const Map<K1, K2> &get_map() const {
+			return map1;
+		}
+		const Map<K1, K2> &get_reverse_map() const {
+			return map2;
+		}
+	};
+
 	enum {
 		BYTE_OR_ZERO_SHIFT = MultiplayerAPI::CMD_FLAG_0_SHIFT,
 	};
@@ -85,7 +126,7 @@ private:
 	Vector<uint8_t> packet_cache;
 	Map<ResourceUID::ID, SceneConfig> replications;
 	Map<ObjectID, ResourceUID::ID> replicated_nodes;
-	HashMap<ResourceUID::ID, Map<NetID, ObjectID>> tracked_objects;
+	HashMap<ResourceUID::ID, BiMap<ObjectID, NetID>> tracked_objects;
 
 	// Encoding
 	Error _get_state(const List<StringName> &p_properties, const Object *p_obj, List<Variant> &r_variant);

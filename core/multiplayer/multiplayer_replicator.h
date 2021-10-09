@@ -35,7 +35,6 @@
 
 #include "core/io/resource_uid.h"
 #include "core/templates/hash_map.h"
-#include "core/templates/pair.h"
 #include "core/variant/typed_array.h"
 
 class MultiplayerReplicator : public Object {

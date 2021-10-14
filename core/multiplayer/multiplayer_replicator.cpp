@@ -261,7 +261,16 @@ void MultiplayerReplicator::_process_default_spawn_despawn(int p_from, const Res
 	ERR_FAIL_COND_MSG(name.validate_node_name() != name.replace("@", ""), vformat("Invalid node name received: '%s'", name));
 	ofs += name_len;
 
-	const SceneConfig &cfg = replications[p_scene_id];
+	int data_len = p_packet_len - ofs;
+	PackedByteArray pba;
+	if (data_len) {
+		pba.resize(data_len);
+		memcpy(pba.ptrw(), &p_packet[ofs], data_len);
+	}
+	NodePath parent_path = parent->get_path();
+	ERR_FAIL_COND(!spawners.has(parent_path));
+	spawners[parent_path](parent_path, p_from, p_scene_id, name, pba, p_spawn);
+#if 0
 	if (cfg.mode == REPLICATION_MODE_SERVER && p_from == 1) {
 		String scene_path = ResourceUID::get_singleton()->get_id_path(p_scene_id);
 		if (p_spawn) {
@@ -301,6 +310,7 @@ void MultiplayerReplicator::_process_default_spawn_despawn(int p_from, const Res
 			emit_signal(SNAME("despawn_requested"), p_from, p_scene_id, parent, name, data);
 		}
 	}
+#endif
 }
 
 void MultiplayerReplicator::process_spawn_despawn(int p_from, const uint8_t *p_packet, int p_packet_len, bool p_spawn) {
@@ -636,20 +646,19 @@ void MultiplayerReplicator::scene_enter_exit_notify(const String &p_scene, Node 
 	if (!replications.has(id)) {
 		return;
 	}
-	const SceneConfig &cfg = replications[id];
 	if (p_enter) {
-		if (cfg.mode == REPLICATION_MODE_SERVER && multiplayer->is_server()) {
-			replicated_nodes[p_node->get_instance_id()] = id;
-			_track(id, p_node);
-			spawn(id, p_node, 0);
-		}
+		//if (cfg.mode == REPLICATION_MODE_SERVER && multiplayer->is_server()) {
+		//	replicated_nodes[p_node->get_instance_id()] = id;
+		//	_track(id, p_node);
+		//	spawn(id, p_node, 0);
+		//}
 		emit_signal(SNAME("replicated_instance_added"), id, p_node);
 	} else {
-		if (cfg.mode == REPLICATION_MODE_SERVER && multiplayer->is_server() && replicated_nodes.has(p_node->get_instance_id())) {
-			replicated_nodes.erase(p_node->get_instance_id());
-			_untrack(id, p_node);
-			despawn(id, p_node, 0);
-		}
+		//if (cfg.mode == REPLICATION_MODE_SERVER && multiplayer->is_server() && replicated_nodes.has(p_node->get_instance_id())) {
+		//	replicated_nodes.erase(p_node->get_instance_id());
+		//	_untrack(id, p_node);
+		//	despawn(id, p_node, 0);
+		//}
 		emit_signal(SNAME("replicated_instance_removed"), id, p_node);
 	}
 }

@@ -41,7 +41,6 @@ class MultiplayerReplicator : public Object {
 	GDCLASS(MultiplayerReplicator, Object);
 
 public:
-	using SpawnDespawnFunc = void (*)(const NodePath &p_path, int p_from, const ResourceUID::ID &p_scene_id, const String &p_name, const PackedByteArray &p_data, bool p_spawn);
 	using NetID = uint16_t;
 
 	enum {
@@ -124,7 +123,6 @@ private:
 
 	MultiplayerAPI *multiplayer = nullptr;
 	Vector<uint8_t> packet_cache;
-	HashMap<NodePath, SpawnDespawnFunc> spawners;
 	Map<ResourceUID::ID, SceneConfig> replications;
 	Map<ObjectID, ResourceUID::ID> replicated_nodes;
 	HashMap<ResourceUID::ID, BiMap<ObjectID, NetID>> tracked_objects;
@@ -154,8 +152,6 @@ public:
 	Error decode_state(const ResourceUID::ID &p_scene_id, Object *p_node, PackedByteArray p_data, bool p_initial);
 
 	// Spawn
-	void register_spawner(const NodePath &p_path, SpawnDespawnFunc p_func) { spawners[p_path] = p_func; }
-	void deregister_spawner(const NodePath &p_path) { spawners.erase(p_path); }
 	Error spawn_config(const ResourceUID::ID &p_id, ReplicationMode p_mode, const TypedArray<StringName> &p_props = TypedArray<StringName>(), const Callable &p_on_send = Callable(), const Callable &p_on_recv = Callable());
 	Error spawn(ResourceUID::ID p_scene_id, Object *p_obj, int p_peer = 0);
 	Error despawn(ResourceUID::ID p_scene_id, Object *p_obj, int p_peer = 0);

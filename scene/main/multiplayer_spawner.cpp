@@ -11,15 +11,15 @@ void SceneReplicator::_spawn_send(int p_peer_id, ResourceUID::ID p_scene_id, Obj
 	PackedByteArray packet;
 	int ofs = 0;
 
+	SpawnableNode *base = Object::cast_to<SpawnableNode>(p_obj);
+
 	// Prepare simplified path
-	const Node *node = Object::cast_to<Node>(p_obj);
-	ERR_FAIL_COND(!node || !node->has_meta("_spawner_node"));
-	Variant v = node->get_meta("_spawner_node");
-	ERR_FAIL_COND(v.get_type() != Variant::NODE_PATH);
-	MultiplayerSpawner *spawner = Object::cast_to<MultiplayerSpawner>(SceneTree::get_singleton()->get_root()->get_node(v.operator NodePath()));
+	const Node *node = base->get_node();
+	ERR_FAIL_COND(!node);
+	MultiplayerSpawner *spawner = Object::cast_to<MultiplayerSpawner>(base->get_spawner());
 	ERR_FAIL_COND(node->get_parent() != spawner->get_parent());
 	Ref<MultiplayerAPI> multiplayer = spawner->get_multiplayer();
-	PackedByteArray state = multiplayer->get_replicator()->encode_state(p_scene_id, p_obj, true);
+	PackedByteArray state = multiplayer->get_replicator()->encode_state(p_scene_id, node, true);
 
 	const Node *root_node = multiplayer->get_root_node();
 	ERR_FAIL_COND(!root_node);
@@ -142,11 +142,12 @@ Error MultiplayerSpawner::spawn(Node *p_node, const PackedByteArray &p_data) {
 		return ERR_INVALID_PARAMETER;
 	}
 	ResourceUID::ID id = ResourceLoader::get_resource_uid(scene);
-	p_node->set_meta("_spawner_node", get_path());
+	spawning->setup(p_node, this);
 	get_parent()->add_child(p_node);
-	get_multiplayer()->get_replicator()->spawn(id, p_node, 0);
+	get_multiplayer()->get_replicator()->spawn(id, spawning.ptr(), 0);
 	return OK;
 }
 
 MultiplayerSpawner::MultiplayerSpawner() {
+	spawning.instantiate();
 }

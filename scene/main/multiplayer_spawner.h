@@ -17,8 +17,33 @@ public:
 	void add_spawnable(Ref<MultiplayerAPI> p_multiplayer, const ResourceUID::ID &p_id, const TypedArray<StringName> &p_initial_state);
 };
 
+class MultiplayerSpawner;
+
+class SpawnableNode : public RefCounted {
+protected:
+	Node *node = nullptr;
+	MultiplayerSpawner *spawner = nullptr;
+
+public:
+	Node *get_node() { return node; }
+	MultiplayerSpawner *get_spawner() { return spawner; }
+	void reset() {
+		node = nullptr;
+		spawner = nullptr;
+	}
+	void setup(Node *p_node, MultiplayerSpawner *p_spawner) {
+		node = p_node;
+		spawner = p_spawner;
+	}
+
+	SpawnableNode(){};
+};
+
 class MultiplayerSpawner : public Node {
 	GDCLASS(MultiplayerSpawner, Node);
+
+private:
+	Ref<SpawnableNode> spawning;
 
 protected:
 	static void _bind_methods();

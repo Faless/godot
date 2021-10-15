@@ -642,18 +642,22 @@ void MultiplayerReplicator::scene_enter_exit_notify(const String &p_scene, Node 
 		return;
 	}
 	if (p_enter) {
-		//if (cfg.mode == REPLICATION_MODE_SERVER && multiplayer->is_server()) {
-		//	replicated_nodes[p_node->get_instance_id()] = id;
-		//	_track(id, p_node);
-		//	spawn(id, p_node, 0);
-		//}
+#if 0
+		if (cfg.mode == REPLICATION_MODE_SERVER && multiplayer->is_server()) {
+			replicated_nodes[p_node->get_instance_id()] = id;
+			_track(id, p_node);
+			spawn(id, p_node, 0);
+		}
+#endif
 		emit_signal(SNAME("replicated_instance_added"), id, p_node);
 	} else {
-		//if (cfg.mode == REPLICATION_MODE_SERVER && multiplayer->is_server() && replicated_nodes.has(p_node->get_instance_id())) {
-		//	replicated_nodes.erase(p_node->get_instance_id());
-		//	_untrack(id, p_node);
-		//	despawn(id, p_node, 0);
-		//}
+#if 0
+		if (cfg.mode == REPLICATION_MODE_SERVER && multiplayer->is_server() && replicated_nodes.has(p_node->get_instance_id())) {
+			replicated_nodes.erase(p_node->get_instance_id());
+			_untrack(id, p_node);
+			despawn(id, p_node, 0);
+		}
+#endif
 		emit_signal(SNAME("replicated_instance_removed"), id, p_node);
 	}
 }

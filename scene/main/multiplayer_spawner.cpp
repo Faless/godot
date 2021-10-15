@@ -5,39 +5,60 @@
 #include "scene/main/window.h"
 #include "scene/resources/packed_scene.h"
 
-void MultiplayerSpawner::_bind_methods() {
-	ClassDB::bind_method(D_METHOD("spawn", "node", "data"), &MultiplayerSpawner::spawn, DEFVAL(PackedByteArray()));
-	ClassDB::bind_method(D_METHOD("add_spawnable", "scene_id", "initial_state"), &MultiplayerSpawner::add_spawnable, DEFVAL(TypedArray<StringName>()));
+SceneReplicator *SceneReplicator::singleton = nullptr;
 
-	ADD_SIGNAL(MethodInfo("despawned", PropertyInfo(Variant::INT, "scene_id"), PropertyInfo(Variant::OBJECT, "node", PROPERTY_HINT_RESOURCE_TYPE, "Node")));
-	ADD_SIGNAL(MethodInfo("spawned", PropertyInfo(Variant::INT, "scene_id"), PropertyInfo(Variant::OBJECT, "node", PROPERTY_HINT_RESOURCE_TYPE, "Node")));
-	ADD_SIGNAL(MethodInfo("despawn_requested", PropertyInfo(Variant::INT, "id"), PropertyInfo(Variant::INT, "scene_id"), PropertyInfo(Variant::OBJECT, "parent", PROPERTY_HINT_RESOURCE_TYPE, "Node"), PropertyInfo(Variant::STRING, "name"), PropertyInfo(Variant::PACKED_BYTE_ARRAY, "data")));
-	ADD_SIGNAL(MethodInfo("spawn_requested", PropertyInfo(Variant::INT, "id"), PropertyInfo(Variant::INT, "scene_id"), PropertyInfo(Variant::OBJECT, "parent", PROPERTY_HINT_RESOURCE_TYPE, "Node"), PropertyInfo(Variant::STRING, "name"), PropertyInfo(Variant::PACKED_BYTE_ARRAY, "data")));
-}
+void SceneReplicator::_spawn_send(int p_peer_id, ResourceUID::ID p_scene_id, Object *p_obj, bool p_spawn) {
+	PackedByteArray packet;
+	int ofs = 0;
 
-void MultiplayerSpawner::_notification(int p_what) {
-	if (p_what == NOTIFICATION_ENTER_TREE) {
-		//get_multiplayer()->get_replicator()->register_spawner(get_path(), &_spawn_despawn_cb);
-	} else if (p_what == NOTIFICATION_EXIT_TREE) {
-		//get_multiplayer()->get_replicator()->deregister_spawner(get_path());
+	// Prepare simplified path
+	const Node *node = Object::cast_to<Node>(p_obj);
+	ERR_FAIL_COND(!node || !node->has_meta("_spawner_node"));
+	Variant v = node->get_meta("_spawner_node");
+	ERR_FAIL_COND(v.get_type() != Variant::NODE_PATH);
+	MultiplayerSpawner *spawner = Object::cast_to<MultiplayerSpawner>(SceneTree::get_singleton()->get_root()->get_node(v.operator NodePath()));
+	ERR_FAIL_COND(node->get_parent() != spawner->get_parent());
+	Ref<MultiplayerAPI> multiplayer = spawner->get_multiplayer();
+	PackedByteArray state = multiplayer->get_replicator()->encode_state(p_scene_id, p_obj, true);
+
+	const Node *root_node = multiplayer->get_root_node();
+	ERR_FAIL_COND(!root_node);
+	NodePath rel_path = (root_node->get_path()).rel_path_to(spawner->get_path());
+
+	int path_id = 0;
+	multiplayer->send_confirm_path(spawner, rel_path, p_peer_id, path_id);
+
+	// Encode name and parent ID.
+	CharString cname = node->get_name().operator String().utf8();
+	int nlen = encode_cstring(cname.get_data(), nullptr);
+	packet.resize(4 + 4 + nlen + state.size());
+	uint8_t *ptr = packet.ptrw();
+	ofs = 0;
+	ofs += encode_uint32(path_id, &ptr[ofs]);
+	ofs += encode_uint32(nlen, &ptr[ofs]);
+	ofs += encode_cstring(cname.get_data(), &ptr[ofs]);
+	if (state.size()) {
+		memcpy(&ptr[ofs], state.ptr(), state.size());
+	}
+	if (p_spawn) {
+		multiplayer->get_replicator()->send_spawn(p_peer_id, p_scene_id, packet);
+	} else {
+		multiplayer->get_replicator()->send_despawn(p_peer_id, p_scene_id, packet);
 	}
 }
 
-void MultiplayerSpawner::add_spawnable(const ResourceUID::ID &p_id, const TypedArray<StringName> &p_initial_state) {
-	get_multiplayer()->get_replicator()->spawn_config(p_id, MultiplayerReplicator::REPLICATION_MODE_CUSTOM, p_initial_state, callable_mp(this, &MultiplayerSpawner::_spawn_send), callable_mp(this, &MultiplayerSpawner::_spawn_receive));
-}
-
-void MultiplayerSpawner::_spawn_receive(int p_from, ResourceUID::ID p_scene_id, const Variant &p_data, bool p_spawn) {
+void SceneReplicator::_spawn_receive(int p_from, ResourceUID::ID p_scene_id, const Variant &p_data, bool p_spawn, Ref<MultiplayerAPI> p_multiplayer) {
 	ERR_FAIL_COND_MSG(p_data.get_type() != Variant::PACKED_BYTE_ARRAY, "Invalid spawn packet received");
 	PackedByteArray packet = p_data;
 	const uint8_t *ptr = packet.ptr();
 	ERR_FAIL_COND_MSG(packet.size() < 9, "Invalid spawn packet received");
 	int ofs = 0;
 	uint32_t node_target = decode_uint32(&ptr[ofs]);
-	Ref<MultiplayerAPI> multiplayer = get_multiplayer();
+	Ref<MultiplayerAPI> multiplayer = p_multiplayer;
 	Node *parent = multiplayer->get_cached_node(p_from, node_target);
-	ERR_FAIL_COND(parent != this);
-	parent = parent->get_parent();
+	MultiplayerSpawner *spawner = Object::cast_to<MultiplayerSpawner>(parent);
+	ERR_FAIL_COND(!parent);
+	parent = spawner->get_parent();
 	ofs += 4;
 	ERR_FAIL_COND_MSG(parent == nullptr, "Invalid packet received. Requested node was not found.");
 
@@ -64,62 +85,53 @@ void MultiplayerSpawner::_spawn_receive(int p_from, ResourceUID::ID p_scene_id, 
 			ERR_FAIL_COND(!node);
 			//replicated_nodes[node->get_instance_id()] = p_scene_id;
 			//_track(p_scene_id, node);
-			get_multiplayer()->get_replicator()->decode_state(p_scene_id, node, state, true);
+			multiplayer->get_replicator()->decode_state(p_scene_id, node, state, true);
 			parent->_add_child_nocheck(node, name);
-			emit_signal(SNAME("spawned"), p_scene_id, node);
+			spawner->emit_signal(SNAME("spawned"), p_scene_id, node);
 		} else {
 			ERR_FAIL_COND_MSG(!parent->has_node(name), vformat("Path not found: %s/%s", parent->get_path(), name));
 			Node *node = parent->get_node(name);
 			//ERR_FAIL_COND_MSG(!replicated_nodes.has(node->get_instance_id()), vformat("Trying to despawn a Node that was not replicated: %s/%s", parent->get_path(), name));
-			emit_signal(SNAME("despawned"), p_scene_id, node);
+			spawner->emit_signal(SNAME("despawned"), p_scene_id, node);
 			//_untrack(p_scene_id, node);
 			//replicated_nodes.erase(node->get_instance_id());
 			node->queue_delete();
 		}
 	} else {
 		if (p_spawn) {
-			emit_signal(SNAME("spawn_requested"), p_from, p_scene_id, parent, name, state);
+			spawner->emit_signal(SNAME("spawn_requested"), p_from, p_scene_id, parent, name, state);
 		} else {
-			emit_signal(SNAME("despawn_requested"), p_from, p_scene_id, parent, name, state);
+			spawner->emit_signal(SNAME("despawn_requested"), p_from, p_scene_id, parent, name, state);
 		}
 	}
 }
 
-void MultiplayerSpawner::_spawn_send(int p_peer_id, ResourceUID::ID p_scene_id, Object *p_obj, bool p_spawn) {
-	PackedByteArray packet;
-	int ofs = 0;
+void SceneReplicator::add_spawnable(Ref<MultiplayerAPI> p_multiplayer, const ResourceUID::ID &p_id, const TypedArray<StringName> &p_initial_state) {
+	Variant v = p_multiplayer;
+	const Variant *argv = &v;
+	p_multiplayer->get_replicator()->spawn_config(p_id, MultiplayerReplicator::REPLICATION_MODE_CUSTOM, p_initial_state, callable_mp(this, &SceneReplicator::_spawn_send), callable_mp(this, &SceneReplicator::_spawn_receive).bind(&argv, 1));
+}
 
-	// Prepare simplified path
-	const Node *node = Object::cast_to<Node>(p_obj);
-	ERR_FAIL_COND(!node);
-	ERR_FAIL_COND(node->get_parent() != get_parent());
-	Ref<MultiplayerAPI> multiplayer = get_multiplayer();
-	PackedByteArray state = multiplayer->get_replicator()->encode_state(p_scene_id, p_obj, true);
+void MultiplayerSpawner::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("spawn", "node", "data"), &MultiplayerSpawner::spawn, DEFVAL(PackedByteArray()));
+	ClassDB::bind_method(D_METHOD("add_spawnable", "scene_id", "initial_state"), &MultiplayerSpawner::add_spawnable, DEFVAL(TypedArray<StringName>()));
 
-	const Node *root_node = multiplayer->get_root_node();
-	ERR_FAIL_COND(!root_node);
-	NodePath rel_path = (root_node->get_path()).rel_path_to(get_path());
+	ADD_SIGNAL(MethodInfo("despawned", PropertyInfo(Variant::INT, "scene_id"), PropertyInfo(Variant::OBJECT, "node", PROPERTY_HINT_RESOURCE_TYPE, "Node")));
+	ADD_SIGNAL(MethodInfo("spawned", PropertyInfo(Variant::INT, "scene_id"), PropertyInfo(Variant::OBJECT, "node", PROPERTY_HINT_RESOURCE_TYPE, "Node")));
+	ADD_SIGNAL(MethodInfo("despawn_requested", PropertyInfo(Variant::INT, "id"), PropertyInfo(Variant::INT, "scene_id"), PropertyInfo(Variant::OBJECT, "parent", PROPERTY_HINT_RESOURCE_TYPE, "Node"), PropertyInfo(Variant::STRING, "name"), PropertyInfo(Variant::PACKED_BYTE_ARRAY, "data")));
+	ADD_SIGNAL(MethodInfo("spawn_requested", PropertyInfo(Variant::INT, "id"), PropertyInfo(Variant::INT, "scene_id"), PropertyInfo(Variant::OBJECT, "parent", PROPERTY_HINT_RESOURCE_TYPE, "Node"), PropertyInfo(Variant::STRING, "name"), PropertyInfo(Variant::PACKED_BYTE_ARRAY, "data")));
+}
 
-	int path_id = 0;
-	multiplayer->send_confirm_path(this, rel_path, p_peer_id, path_id);
-
-	// Encode name and parent ID.
-	CharString cname = node->get_name().operator String().utf8();
-	int nlen = encode_cstring(cname.get_data(), nullptr);
-	packet.resize(4 + 4 + nlen + state.size());
-	uint8_t *ptr = packet.ptrw();
-	ofs = 0;
-	ofs += encode_uint32(path_id, &ptr[ofs]);
-	ofs += encode_uint32(nlen, &ptr[ofs]);
-	ofs += encode_cstring(cname.get_data(), &ptr[ofs]);
-	if (state.size()) {
-		memcpy(&ptr[ofs], state.ptr(), state.size());
+void MultiplayerSpawner::_notification(int p_what) {
+	if (p_what == NOTIFICATION_ENTER_TREE) {
+		//get_multiplayer()->get_replicator()->register_spawner(get_path(), &_spawn_despawn_cb);
+	} else if (p_what == NOTIFICATION_EXIT_TREE) {
+		//get_multiplayer()->get_replicator()->deregister_spawner(get_path());
 	}
-	if (p_spawn) {
-		multiplayer->get_replicator()->send_spawn(p_peer_id, p_scene_id, packet);
-	} else {
-		multiplayer->get_replicator()->send_despawn(p_peer_id, p_scene_id, packet);
-	}
+}
+
+void MultiplayerSpawner::add_spawnable(const ResourceUID::ID &p_id, const TypedArray<StringName> &p_initial_state) {
+	SceneReplicator::get_singleton()->add_spawnable(get_multiplayer(), p_id, p_initial_state);
 }
 
 Error MultiplayerSpawner::spawn(Node *p_node, const PackedByteArray &p_data) {
@@ -130,6 +142,7 @@ Error MultiplayerSpawner::spawn(Node *p_node, const PackedByteArray &p_data) {
 		return ERR_INVALID_PARAMETER;
 	}
 	ResourceUID::ID id = ResourceLoader::get_resource_uid(scene);
+	p_node->set_meta("_spawner_node", get_path());
 	get_parent()->add_child(p_node);
 	get_multiplayer()->get_replicator()->spawn(id, p_node, 0);
 	return OK;

@@ -10,11 +10,7 @@ precision highp float;
 precision highp int;
 #endif
 
-/* clang-format on */
-#include "stdlib.glsl"
-/* clang-format off */
-
-#define SHADER_IS_SRGB true
+#define SHADER_IS_SRGB true //TODO remove
 
 #define M_PI 3.14159265359
 
@@ -695,8 +691,6 @@ precision mediump float;
 precision mediump int;
 #endif
 #endif
-
-#include "stdlib.glsl"
 
 #define M_PI 3.14159265359
 #define SHADER_IS_SRGB true

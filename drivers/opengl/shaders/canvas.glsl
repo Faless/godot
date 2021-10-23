@@ -13,8 +13,6 @@ precision highp int;
 uniform highp mat4 projection_matrix;
 /* clang-format on */
 
-#include "stdlib.glsl"
-
 uniform highp mat4 modelview_matrix;
 uniform highp mat4 extra_matrix;
 attribute highp vec2 vertex; // attrib:0
@@ -327,8 +325,6 @@ precision mediump float;
 precision mediump int;
 #endif
 #endif
-
-#include "stdlib.glsl"
 
 uniform sampler2D color_texture; // texunit:-1
 /* clang-format on */

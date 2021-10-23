@@ -63,8 +63,6 @@ precision mediump int;
 #endif
 #endif
 
-#include "stdlib.glsl"
-
 varying vec2 uv_interp;
 /* clang-format on */
 

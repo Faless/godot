@@ -131,6 +131,7 @@ opts.Add(BoolVariable("use_lto", "Use link-time optimization", False))
 opts.Add(BoolVariable("deprecated", "Enable deprecated features", True))
 opts.Add(BoolVariable("minizip", "Enable ZIP archive support using minizip", True))
 opts.Add(BoolVariable("xaudio2", "Enable the XAudio2 audio driver", False))
+opts.Add(BoolVariable("opengl", "Enable the OpenGL video driver", True))
 opts.Add(BoolVariable("vulkan", "Enable the vulkan video driver", True))
 opts.Add("custom_modules", "A list of comma-separated directory paths containing custom modules to build.", "")
 opts.Add(BoolVariable("custom_modules_recursive", "Detect custom modules recursively for each specified path.", True))
@@ -712,16 +713,15 @@ if selected_platform in platform_list:
     }
     env.Append(BUILDERS=GLSL_BUILDERS)
 
-    if not env["platform"] == "server":
-        env.Append(
-            BUILDERS={
-                "OpenGL_GLSL": env.Builder(
-                    action=run_in_subprocess(opengl_builders.build_opengl_headers),
-                    suffix="glsl.gen.h",
-                    src_suffix=".glsl",
-                )
-            }
-        )
+    env.Append(
+        BUILDERS={
+            "OpenGL_GLSL": env.Builder(
+                action=run_in_subprocess(opengl_builders.build_opengl_headers),
+                suffix="glsl.gen.h",
+                src_suffix=".glsl",
+            )
+        }
+    )
 
     scons_cache_path = os.environ.get("SCONS_CACHE")
     if scons_cache_path != None:

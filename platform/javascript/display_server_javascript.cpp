@@ -30,6 +30,7 @@
 
 #include "platform/javascript/display_server_javascript.h"
 
+#include "drivers/opengl/rasterizer_opengl.h"
 #include "platform/javascript/os_javascript.h"
 #include "servers/rendering/rasterizer_dummy.h"
 
@@ -579,7 +580,9 @@ void DisplayServerJavaScript::process_joypads() {
 
 Vector<String> DisplayServerJavaScript::get_rendering_drivers_func() {
 	Vector<String> drivers;
-	drivers.push_back("dummy");
+#ifdef GLES_ENABLED
+	drivers.push_back("webgl2");
+#endif
 	return drivers;
 }
 
@@ -677,40 +680,29 @@ DisplayServerJavaScript::DisplayServerJavaScript(const String &p_rendering_drive
 	// Expose method for requesting quit.
 	godot_js_os_request_quit_cb(request_quit_callback);
 
-	RasterizerDummy::make_current(); // TODO OpenGL in Godot 4.0... or webgpu?
-#if 0
-	EmscriptenWebGLContextAttributes attributes;
-	emscripten_webgl_init_context_attributes(&attributes);
-	attributes.alpha = GLOBAL_GET("display/window/per_pixel_transparency/allowed");
-	attributes.antialias = false;
-	ERR_FAIL_INDEX_V(p_video_driver, VIDEO_DRIVER_MAX, ERR_INVALID_PARAMETER);
+#ifdef GLES_ENABLED
+	bool wants_webgl2 = p_rendering_driver == "webgl2";
+	bool webgl2_init_failed = wants_webgl2 && !godot_js_display_has_webgl(2);
+	if (wants_webgl2 && !webgl2_init_failed) {
+		EmscriptenWebGLContextAttributes attributes;
+		emscripten_webgl_init_context_attributes(&attributes);
+		//attributes.alpha = GLOBAL_GET("display/window/per_pixel_transparency/allowed");
+		attributes.alpha = true;
+		attributes.antialias = false;
+		attributes.majorVersion = 2;
 
-	if (p_desired.layered) {
-		set_window_per_pixel_transparency_enabled(true);
+		EMSCRIPTEN_WEBGL_CONTEXT_HANDLE ctx = emscripten_webgl_create_context(canvas_id, &attributes);
+		if (emscripten_webgl_make_context_current(ctx) != EMSCRIPTEN_RESULT_SUCCESS) {
+			webgl2_init_failed = true;
+		} else {
+			RasterizerOpenGL::make_current();
+		}
 	}
-
-	bool gl_initialization_error = false;
-
-	if (RasterizerOpenGLis_viable() == OK) {
-		attributes.majorVersion = 1;
-		RasterizerOpenGLregister_config();
-		RasterizerOpenGLmake_current();
-	} else {
-		gl_initialization_error = true;
-	}
-
-	EMSCRIPTEN_WEBGL_CONTEXT_HANDLE ctx = emscripten_webgl_create_context(canvas_id, &attributes);
-	if (emscripten_webgl_make_context_current(ctx) != EMSCRIPTEN_RESULT_SUCCESS) {
-		gl_initialization_error = true;
-	}
-
-	if (gl_initialization_error) {
-		OS::get_singleton()->alert("Your browser does not seem to support WebGL. Please update your browser version.",
+	if (!wants_webgl2 || webgl2_init_failed) {
+		OS::get_singleton()->alert("Your browser does not seem to support WebGL2. Please update your browser version.",
 				"Unable to initialize video driver");
-		return ERR_UNAVAILABLE;
+		RasterizerDummy::make_current();
 	}
-
-	video_driver_index = p_video_driver;
 #endif
 
 	// JS Input interface (js/libs/library_godot_input.js)

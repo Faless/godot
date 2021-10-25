@@ -305,7 +305,7 @@ const GodotOS = {
 
 	godot_js_os_hw_concurrency_get__sig: 'i',
 	godot_js_os_hw_concurrency_get: function () {
-		return navigator.hardwareConcurrency || 1;
+		return 1; // navigator.hardwareConcurrency || 1;
 	},
 
 	godot_js_os_download_buffer__sig: 'viiii',

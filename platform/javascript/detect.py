@@ -209,6 +209,8 @@ def configure(env):
         env.Append(LINKFLAGS=["-s", "RELOCATABLE=1"])
         env.extra_suffix = ".gdnative" + env.extra_suffix
 
+    env.AppendUnique(CPPDEFINES=["GLES_ENABLED"])
+
     # Reduce code size by generating less support code (e.g. skip NodeJS support).
     env.Append(LINKFLAGS=["-s", "ENVIRONMENT=web,worker"])
 

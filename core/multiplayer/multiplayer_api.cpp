@@ -42,6 +42,21 @@
 #include "core/os/os.h"
 #endif
 
+MultiplayerReplicationInterface *(*MultiplayerAPI::create_default_replication_interface)() = nullptr;
+
+void MultiplayerAPI::set_replication_interface(MultiplayerReplicationInterface *p_interface) {
+	if (p_interface) {
+		p_interface->reference();
+	}
+	if (replication_interface) {
+		replication_interface->set_multiplayer(nullptr);
+		if (replication_interface != default_replication_interface) {
+			replication_interface->unreference();
+		}
+	}
+	replication_interface = p_interface ? p_interface : default_replication_interface;
+}
+
 #ifdef DEBUG_ENABLED
 void MultiplayerAPI::profile_bandwidth(const String &p_inout, int p_size) {
 	if (EngineDebugger::is_profiling("multiplayer")) {

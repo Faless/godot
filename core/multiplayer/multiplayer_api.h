@@ -35,6 +35,7 @@
 #include "core/multiplayer/multiplayer_peer.h"
 #include "core/object/ref_counted.h"
 
+class MultiplayerReplicationInterface;
 class MultiplayerReplicator;
 class RPCManager;
 
@@ -108,6 +109,9 @@ protected:
 	void _process_raw(int p_from, const uint8_t *p_packet, int p_packet_len);
 
 public:
+	MultiplayerReplicationInterface *(*create_default_replication_interface)();
+	void set_replication_interface(MultiplayerReplicationInterface *p_interface);
+
 	void poll();
 	void clear();
 	void set_root_node(Node *p_node);

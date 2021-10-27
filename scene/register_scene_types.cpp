@@ -134,6 +134,7 @@
 #include "scene/main/timer.h"
 #include "scene/main/viewport.h"
 #include "scene/main/window.h"
+#include "scene/multiplayer/scene_tree_replicator.h"
 #include "scene/resources/audio_stream_sample.h"
 #include "scene/resources/bit_map.h"
 #include "scene/resources/box_shape_3d.h"
@@ -1066,6 +1067,7 @@ void register_scene_types() {
 		}
 	}
 	SceneDebugger::initialize();
+	SceneTreeReplicatorInterface::make_default();
 
 	NativeExtensionManager::get_singleton()->initialize_extensions(NativeExtension::INITIALIZATION_LEVEL_SCENE);
 }

@@ -664,6 +664,10 @@ void MultiplayerAPI::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("poll"), &MultiplayerAPI::poll);
 	ClassDB::bind_method(D_METHOD("clear"), &MultiplayerAPI::clear);
 
+	ClassDB::bind_method(D_METHOD("spawn", "object", "peer"), &MultiplayerAPI::spawn, DEFVAL(0));
+	ClassDB::bind_method(D_METHOD("despawn", "object", "peer"), &MultiplayerAPI::despawn, DEFVAL(0));
+	ClassDB::bind_method(D_METHOD("sync", "object", "peer"), &MultiplayerAPI::sync, DEFVAL(0));
+
 	ClassDB::bind_method(D_METHOD("get_peers"), &MultiplayerAPI::get_peer_ids);
 	ClassDB::bind_method(D_METHOD("set_refuse_new_connections", "refuse"), &MultiplayerAPI::set_refuse_new_connections);
 	ClassDB::bind_method(D_METHOD("is_refusing_new_connections"), &MultiplayerAPI::is_refusing_new_connections);
@@ -685,7 +689,13 @@ void MultiplayerAPI::_bind_methods() {
 }
 
 MultiplayerAPI::MultiplayerAPI() {
-	set_replication_interface(nullptr);
+	if (create_default_replication_interface) {
+		replicator = create_default_replication_interface();
+		if (replicator) {
+			replicator->reference();
+			replicator->set_multiplayer(this);
+		}
+	}
 	rpc_manager = memnew(RPCManager(this));
 	clear();
 }

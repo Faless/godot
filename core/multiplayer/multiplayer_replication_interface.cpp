@@ -8,6 +8,7 @@ void MultiplayerReplicationInterface::set_multiplayer(MultiplayerAPI *p_multipla
 
 Error MultiplayerReplicationInterface::_do_send(int p_peer, const PackedByteArray &p_data, Multiplayer::TransferMode p_mode, int p_channel, int p_cmd) {
 	ERR_FAIL_COND_V(!multiplayer, ERR_UNCONFIGURED);
+	ERR_FAIL_COND_V(!multiplayer->has_multiplayer_peer(), ERR_UNCONFIGURED);
 	int size = p_data.size();
 	if (packet_cache.size() < 1 + size) {
 		packet_cache.resize(1 + size);

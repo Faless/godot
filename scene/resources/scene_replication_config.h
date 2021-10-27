@@ -1,3 +1,6 @@
+#ifndef SCENE_REPLICATION_CONFIG_H
+#define SCENE_REPLICATION_CONFIG_H
+
 #include "core/io/resource.h"
 
 #include "core/variant/typed_array.h"
@@ -53,3 +56,5 @@ public:
 	//PackedByteArray encode_spawn_state(Object *p_object);
 	//Error decode_spawn_state(Object *p_object, PackedByteArray p_state);
 };
+
+#endif // SCENE_REPLICATION_CONFIG_H

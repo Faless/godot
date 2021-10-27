@@ -1,10 +1,17 @@
+#ifndef SCENE_TREE_REPLICATOR_INTERFACE_H
+#define SCENE_TREE_REPLICATOR_INTERFACE_H
+
 #include "core/multiplayer/multiplayer_replication_interface.h"
+
+#include "scene/multiplayer/multiplayer_spawner.h"
 
 class SceneTreeReplicatorInterface : public MultiplayerReplicationInterface {
 	GDCLASS(SceneTreeReplicatorInterface, MultiplayerReplicationInterface);
 
 private:
 	Map<int, ObjectID> tracked_objects;
+
+	Error _send_spawn(MultiplayerSpawner *spawner, Node *p_node, int p_peer);
 
 protected:
 	static MultiplayerReplicationInterface *_create();
@@ -27,3 +34,4 @@ public:
 	SceneTreeReplicator();
 	~SceneTreeReplicator();
 };
+#endif // SCENE_TREE_REPLICATOR_INTERFACE_H

@@ -13,11 +13,13 @@ class MultiplayerReplicationInterface : public RefCounted {
 	GDCLASS(MultiplayerReplicationInterface, RefCounted);
 
 private:
-	MultiplayerAPI *multiplayer = nullptr;
-
 	Error _do_send(int p_peer, const PackedByteArray &p_data, Multiplayer::TransferMode p_mode, int p_channel, int p_cmd);
 
 	Vector<uint8_t> packet_cache;
+
+protected:
+	// TODO should be private?
+	MultiplayerAPI *multiplayer = nullptr;
 
 public:
 	void set_multiplayer(MultiplayerAPI *p_multiplayer);

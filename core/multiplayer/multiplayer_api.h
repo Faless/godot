@@ -96,7 +96,7 @@ private:
 	Node *root_node = nullptr;
 	bool allow_object_decoding = false;
 
-	MultiplayerReplicator *replicator = nullptr;
+	MultiplayerReplicationInterface *replicator = nullptr;
 	RPCManager *rpc_manager = nullptr;
 
 protected:
@@ -109,7 +109,7 @@ protected:
 	void _process_raw(int p_from, const uint8_t *p_packet, int p_packet_len);
 
 public:
-	MultiplayerReplicationInterface *(*create_default_replication_interface)();
+	static MultiplayerReplicationInterface *(*create_default_replication_interface)();
 	void set_replication_interface(MultiplayerReplicationInterface *p_interface);
 
 	void poll();
@@ -126,8 +126,10 @@ public:
 
 	// Called by Node.rpc
 	void rpcp(Node *p_node, int p_peer_id, const StringName &p_method, const Variant **p_arg, int p_argcount);
-	// Called by Node._notification
-	void scene_enter_exit_notify(const String &p_scene, Node *p_node, bool p_enter);
+	// Replication API
+	Error spawn(Object *p_object, int p_peer = 0);
+	Error despawn(Object *p_object, int p_peer = 0);
+	Error sync(Object *p_object, int p_peer = 0);
 	// Called by replicator
 	bool send_confirm_path(Node *p_node, NodePath p_path, int p_target, int &p_id);
 	Node *get_cached_node(int p_from, uint32_t p_node_id);
@@ -152,7 +154,6 @@ public:
 	void set_allow_object_decoding(bool p_enable);
 	bool is_object_decoding_allowed() const;
 
-	MultiplayerReplicator *get_replicator() const { return replicator; }
 	RPCManager *get_rpc_manager() const { return rpc_manager; }
 
 #ifdef DEBUG_ENABLED

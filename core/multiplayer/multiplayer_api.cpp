@@ -32,7 +32,7 @@
 
 #include "core/debugger/engine_debugger.h"
 #include "core/io/marshalls.h"
-#include "core/multiplayer/multiplayer_replicator.h"
+#include "core/multiplayer/multiplayer_replication_interface.h"
 #include "core/multiplayer/rpc_manager.h"
 #include "scene/main/node.h"
 
@@ -45,16 +45,22 @@
 MultiplayerReplicationInterface *(*MultiplayerAPI::create_default_replication_interface)() = nullptr;
 
 void MultiplayerAPI::set_replication_interface(MultiplayerReplicationInterface *p_interface) {
-	if (p_interface) {
-		p_interface->reference();
+	if (p_interface == replicator) {
+		return;
 	}
-	if (replication_interface) {
-		replication_interface->set_multiplayer(nullptr);
-		if (replication_interface != default_replication_interface) {
-			replication_interface->unreference();
-		}
+	MultiplayerReplicationInterface *interface = p_interface;
+	if (!interface && create_default_replication_interface) {
+		interface = create_default_replication_interface();
 	}
-	replication_interface = p_interface ? p_interface : default_replication_interface;
+	if (replicator) {
+		replicator->set_multiplayer(nullptr);
+		replicator->unreference();
+	}
+	if (interface) {
+		interface->set_multiplayer(this);
+		interface->reference();
+	}
+	replicator = interface;
 }
 
 #ifdef DEBUG_ENABLED
@@ -100,13 +106,9 @@ void MultiplayerAPI::poll() {
 			break; // It's also possible that a packet or RPC caused a disconnection, so also check here.
 		}
 	}
-	if (multiplayer_peer.is_valid() && multiplayer_peer->get_connection_status() == MultiplayerPeer::CONNECTION_CONNECTED) {
-		replicator->poll();
-	}
 }
 
 void MultiplayerAPI::clear() {
-	replicator->clear();
 	connected_peers.clear();
 	path_get_cache.clear();
 	path_send_cache.clear();
@@ -182,13 +184,19 @@ void MultiplayerAPI::_process_packet(int p_from, const uint8_t *p_packet, int p_
 			_process_raw(p_from, p_packet, p_packet_len);
 		} break;
 		case NETWORK_COMMAND_SPAWN: {
-			replicator->process_spawn_despawn(p_from, p_packet, p_packet_len, true);
+			if (replicator) {
+				replicator->on_spawn_receive(p_from, p_packet, p_packet_len);
+			}
 		} break;
 		case NETWORK_COMMAND_DESPAWN: {
-			replicator->process_spawn_despawn(p_from, p_packet, p_packet_len, false);
+			if (replicator) {
+				replicator->on_despawn_receive(p_from, p_packet, p_packet_len);
+			}
 		} break;
 		case NETWORK_COMMAND_SYNC: {
-			replicator->process_sync(p_from, p_packet, p_packet_len);
+			if (replicator) {
+				replicator->on_sync_receive(p_from, p_packet, p_packet_len);
+			}
 		} break;
 	}
 }
@@ -485,9 +493,6 @@ Error MultiplayerAPI::decode_and_decompress_variant(Variant &r_variant, const ui
 void MultiplayerAPI::_add_peer(int p_id) {
 	connected_peers.insert(p_id);
 	path_get_cache.insert(p_id, PathGetCache());
-	if (is_server()) {
-		replicator->spawn_all(p_id);
-	}
 	emit_signal(SNAME("peer_connected"), p_id);
 }
 
@@ -627,12 +632,23 @@ bool MultiplayerAPI::is_object_decoding_allowed() const {
 	return allow_object_decoding;
 }
 
-void MultiplayerAPI::scene_enter_exit_notify(const String &p_scene, Node *p_node, bool p_enter) {
-	replicator->scene_enter_exit_notify(p_scene, p_node, p_enter);
-}
-
 void MultiplayerAPI::rpcp(Node *p_node, int p_peer_id, const StringName &p_method, const Variant **p_arg, int p_argcount) {
 	rpc_manager->rpcp(p_node, p_peer_id, p_method, p_arg, p_argcount);
+}
+
+Error MultiplayerAPI::spawn(Object *p_object, int p_peer) {
+	ERR_FAIL_COND_V(!replicator, ERR_BUG);
+	return replicator->on_spawn_send(p_object, p_peer);
+}
+
+Error MultiplayerAPI::despawn(Object *p_object, int p_peer) {
+	ERR_FAIL_COND_V(!replicator, ERR_BUG);
+	return replicator->on_despawn_send(p_object, p_peer);
+}
+
+Error MultiplayerAPI::sync(Object *p_object, int p_peer) {
+	ERR_FAIL_COND_V(!replicator, ERR_BUG);
+	return replicator->on_sync_send(p_object, p_peer);
 }
 
 void MultiplayerAPI::_bind_methods() {
@@ -653,14 +669,12 @@ void MultiplayerAPI::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("is_refusing_new_connections"), &MultiplayerAPI::is_refusing_new_connections);
 	ClassDB::bind_method(D_METHOD("set_allow_object_decoding", "enable"), &MultiplayerAPI::set_allow_object_decoding);
 	ClassDB::bind_method(D_METHOD("is_object_decoding_allowed"), &MultiplayerAPI::is_object_decoding_allowed);
-	ClassDB::bind_method(D_METHOD("get_replicator"), &MultiplayerAPI::get_replicator);
 
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "allow_object_decoding"), "set_allow_object_decoding", "is_object_decoding_allowed");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "refuse_new_connections"), "set_refuse_new_connections", "is_refusing_new_connections");
 	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "multiplayer_peer", PROPERTY_HINT_RESOURCE_TYPE, "MultiplayerPeer", PROPERTY_USAGE_NONE), "set_multiplayer_peer", "get_multiplayer_peer");
 	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "root_node", PROPERTY_HINT_RESOURCE_TYPE, "Node", PROPERTY_USAGE_NONE), "set_root_node", "get_root_node");
 	ADD_PROPERTY_DEFAULT("refuse_new_connections", false);
-	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "replicator", PROPERTY_HINT_RESOURCE_TYPE, "MultiplayerReplicator", PROPERTY_USAGE_NONE), "", "get_replicator");
 
 	ADD_SIGNAL(MethodInfo("peer_connected", PropertyInfo(Variant::INT, "id")));
 	ADD_SIGNAL(MethodInfo("peer_disconnected", PropertyInfo(Variant::INT, "id")));
@@ -671,13 +685,17 @@ void MultiplayerAPI::_bind_methods() {
 }
 
 MultiplayerAPI::MultiplayerAPI() {
-	replicator = memnew(MultiplayerReplicator(this));
+	set_replication_interface(nullptr);
 	rpc_manager = memnew(RPCManager(this));
 	clear();
 }
 
 MultiplayerAPI::~MultiplayerAPI() {
 	clear();
-	memdelete(replicator);
+	if (replicator) {
+		replicator->set_multiplayer(nullptr);
+		replicator->unreference();
+		replicator = nullptr;
+	}
 	memdelete(rpc_manager);
 }

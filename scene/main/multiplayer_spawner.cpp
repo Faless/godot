@@ -19,7 +19,8 @@ void SceneReplicator::_spawn_send(int p_peer_id, ResourceUID::ID p_scene_id, Obj
 	MultiplayerSpawner *spawner = Object::cast_to<MultiplayerSpawner>(base->get_spawner());
 	ERR_FAIL_COND(node->get_parent() != spawner->get_parent());
 	Ref<MultiplayerAPI> multiplayer = spawner->get_multiplayer();
-	PackedByteArray state = multiplayer->get_replicator()->encode_state(p_scene_id, node, true);
+	//PackedByteArray state = multiplayer->get_replicator()->encode_state(p_scene_id, node, true);
+	PackedByteArray state; // FIXME
 
 	const Node *root_node = multiplayer->get_root_node();
 	ERR_FAIL_COND(!root_node);
@@ -40,10 +41,11 @@ void SceneReplicator::_spawn_send(int p_peer_id, ResourceUID::ID p_scene_id, Obj
 	if (state.size()) {
 		memcpy(&ptr[ofs], state.ptr(), state.size());
 	}
+	// FIXME
 	if (p_spawn) {
-		multiplayer->get_replicator()->send_spawn(p_peer_id, p_scene_id, packet);
+		//multiplayer->get_replicator()->send_spawn(p_peer_id, p_scene_id, packet);
 	} else {
-		multiplayer->get_replicator()->send_despawn(p_peer_id, p_scene_id, packet);
+		//multiplayer->get_replicator()->send_despawn(p_peer_id, p_scene_id, packet);
 	}
 }
 
@@ -85,7 +87,8 @@ void SceneReplicator::_spawn_receive(int p_from, ResourceUID::ID p_scene_id, con
 			ERR_FAIL_COND(!node);
 			//replicated_nodes[node->get_instance_id()] = p_scene_id;
 			//_track(p_scene_id, node);
-			multiplayer->get_replicator()->decode_state(p_scene_id, node, state, true);
+			// FIXME
+			//multiplayer->get_replicator()->decode_state(p_scene_id, node, state, true);
 			parent->_add_child_nocheck(node, name);
 			spawner->emit_signal(SNAME("spawned"), p_scene_id, node);
 		} else {
@@ -109,7 +112,8 @@ void SceneReplicator::_spawn_receive(int p_from, ResourceUID::ID p_scene_id, con
 void SceneReplicator::add_spawnable(Ref<MultiplayerAPI> p_multiplayer, const ResourceUID::ID &p_id, const TypedArray<StringName> &p_initial_state) {
 	Variant v = p_multiplayer;
 	const Variant *argv = &v;
-	p_multiplayer->get_replicator()->spawn_config(p_id, MultiplayerReplicator::REPLICATION_MODE_CUSTOM, p_initial_state, callable_mp(this, &SceneReplicator::_spawn_send), callable_mp(this, &SceneReplicator::_spawn_receive).bind(&argv, 1));
+	// FIXME
+	//p_multiplayer->get_replicator()->spawn_config(p_id, MultiplayerReplicator::REPLICATION_MODE_CUSTOM, p_initial_state, callable_mp(this, &SceneReplicator::_spawn_send), callable_mp(this, &SceneReplicator::_spawn_receive).bind(&argv, 1));
 }
 
 void MultiplayerSpawner::_bind_methods() {
@@ -144,7 +148,8 @@ Error MultiplayerSpawner::spawn(Node *p_node, const PackedByteArray &p_data) {
 	ResourceUID::ID id = ResourceLoader::get_resource_uid(scene);
 	spawning->setup(p_node, this);
 	get_parent()->add_child(p_node);
-	get_multiplayer()->get_replicator()->spawn(id, spawning.ptr(), 0);
+	// FIXME
+	//get_multiplayer()->get_replicator()->spawn(id, spawning.ptr(), 0);
 	return OK;
 }
 

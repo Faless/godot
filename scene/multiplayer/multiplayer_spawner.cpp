@@ -5,6 +5,7 @@
 #include "scene/main/window.h"
 #include "scene/resources/packed_scene.h"
 
+#if 0
 SceneReplicator *SceneReplicator::singleton = nullptr;
 
 void SceneReplicator::_spawn_send(int p_peer_id, ResourceUID::ID p_scene_id, Object *p_obj, bool p_spawn) {
@@ -115,15 +116,17 @@ void SceneReplicator::add_spawnable(Ref<MultiplayerAPI> p_multiplayer, const Res
 	// FIXME
 	//p_multiplayer->get_replicator()->spawn_config(p_id, MultiplayerReplicator::REPLICATION_MODE_CUSTOM, p_initial_state, callable_mp(this, &SceneReplicator::_spawn_send), callable_mp(this, &SceneReplicator::_spawn_receive).bind(&argv, 1));
 }
+#endif
 
 void MultiplayerSpawner::_bind_methods() {
-	ClassDB::bind_method(D_METHOD("spawn", "node", "data"), &MultiplayerSpawner::spawn, DEFVAL(PackedByteArray()));
-	ClassDB::bind_method(D_METHOD("add_spawnable", "scene_id", "initial_state"), &MultiplayerSpawner::add_spawnable, DEFVAL(TypedArray<StringName>()));
+	ClassDB::bind_method(D_METHOD("spawn", "node", "peer"), &MultiplayerSpawner::spawn, DEFVAL(0));
+	ClassDB::bind_method(D_METHOD("get_spawnable_scenes"), &MultiplayerSpawner::get_spawnable_scenes);
+	ClassDB::bind_method(D_METHOD("set_spawnable_scenes", "scenes"), &MultiplayerSpawner::set_spawnable_scenes);
+
+	ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "replication", PROPERTY_HINT_ARRAY_TYPE, vformat("%s/%s:%s", Variant::OBJECT, PROPERTY_HINT_RESOURCE_TYPE, "PackedScene"), (PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_SCRIPT_VARIABLE)), "set_spawnable_scenes", "get_spawnable_scenes");
 
 	ADD_SIGNAL(MethodInfo("despawned", PropertyInfo(Variant::INT, "scene_id"), PropertyInfo(Variant::OBJECT, "node", PROPERTY_HINT_RESOURCE_TYPE, "Node")));
 	ADD_SIGNAL(MethodInfo("spawned", PropertyInfo(Variant::INT, "scene_id"), PropertyInfo(Variant::OBJECT, "node", PROPERTY_HINT_RESOURCE_TYPE, "Node")));
-	ADD_SIGNAL(MethodInfo("despawn_requested", PropertyInfo(Variant::INT, "id"), PropertyInfo(Variant::INT, "scene_id"), PropertyInfo(Variant::OBJECT, "parent", PROPERTY_HINT_RESOURCE_TYPE, "Node"), PropertyInfo(Variant::STRING, "name"), PropertyInfo(Variant::PACKED_BYTE_ARRAY, "data")));
-	ADD_SIGNAL(MethodInfo("spawn_requested", PropertyInfo(Variant::INT, "id"), PropertyInfo(Variant::INT, "scene_id"), PropertyInfo(Variant::OBJECT, "parent", PROPERTY_HINT_RESOURCE_TYPE, "Node"), PropertyInfo(Variant::STRING, "name"), PropertyInfo(Variant::PACKED_BYTE_ARRAY, "data")));
 }
 
 void MultiplayerSpawner::_notification(int p_what) {
@@ -134,25 +137,32 @@ void MultiplayerSpawner::_notification(int p_what) {
 	}
 }
 
-void MultiplayerSpawner::add_spawnable(const ResourceUID::ID &p_id, const TypedArray<StringName> &p_initial_state) {
-	SceneReplicator::get_singleton()->add_spawnable(get_multiplayer(), p_id, p_initial_state);
+TypedArray<PackedScene> MultiplayerSpawner::get_spawnable_scenes() const {
+	TypedArray<PackedScene> out;
+	for (const Ref<PackedScene> &scene : spawnable_scenes) {
+		out.push_back(scene);
+	}
+	return out;
 }
 
-Error MultiplayerSpawner::spawn(Node *p_node, const PackedByteArray &p_data) {
+void MultiplayerSpawner::set_spawnable_scenes(const TypedArray<PackedScene> &p_scenes) {
+	spawnable_scenes.clear();
+	for (int i = 0; i < p_scenes.size(); i++) {
+		spawnable_scenes.push_back(p_scenes[i]);
+	}
+}
+
+Error MultiplayerSpawner::spawn(Node *p_node, int p_peer) {
 	ERR_FAIL_COND_V(!is_inside_tree(), ERR_UNCONFIGURED);
 	// TODO must be a scene, must be replicated!
 	const String scene = p_node->get_scene_file_path();
 	if (scene.is_empty()) {
 		return ERR_INVALID_PARAMETER;
 	}
-	ResourceUID::ID id = ResourceLoader::get_resource_uid(scene);
-	spawning->setup(p_node, this);
-	get_parent()->add_child(p_node);
+	//ResourceUID::ID id = ResourceLoader::get_resource_uid(scene);
+	//spawning->setup(p_node, this);
+	//get_parent()->add_child(p_node);
 	// FIXME
 	//get_multiplayer()->get_replicator()->spawn(id, spawning.ptr(), 0);
 	return OK;
-}
-
-MultiplayerSpawner::MultiplayerSpawner() {
-	spawning.instantiate();
 }

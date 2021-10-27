@@ -4,6 +4,7 @@
 
 class SceneReplicationConfig : public Resource {
 	GDCLASS(SceneReplicationConfig, Resource);
+	OBJ_SAVE_TYPE(SceneReplicationConfig);
 	RES_BASE_EXTENSION("repl");
 
 private:

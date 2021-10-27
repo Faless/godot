@@ -1,5 +1,7 @@
 #include "scene/main/node.h"
 
+#include "scene/resources/scene_replication_config.h"
+
 class SceneReplicator : public Object {
 	GDCLASS(SceneReplicator, Object);
 

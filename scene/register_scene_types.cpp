@@ -134,6 +134,7 @@
 #include "scene/main/viewport.h"
 #include "scene/main/window.h"
 #include "scene/multiplayer/multiplayer_spawner.h"
+#include "scene/multiplayer/multiplayer_synchronizer.h"
 #include "scene/multiplayer/scene_tree_replicator.h"
 #include "scene/resources/audio_stream_sample.h"
 #include "scene/resources/bit_map.h"
@@ -304,6 +305,7 @@ void register_scene_types() {
 	GDREGISTER_CLASS(ViewportTexture);
 	GDREGISTER_CLASS(HTTPRequest);
 	GDREGISTER_CLASS(MultiplayerSpawner);
+	GDREGISTER_CLASS(MultiplayerSynchronizer);
 	GDREGISTER_CLASS(Timer);
 	GDREGISTER_CLASS(CanvasLayer);
 	GDREGISTER_CLASS(CanvasModulate);

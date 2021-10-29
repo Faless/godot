@@ -17,8 +17,12 @@ Error SceneTreeReplicatorInterface::_send_spawn_despawn(MultiplayerSpawner *p_sp
 	ERR_FAIL_COND_V(!p_spawner, ERR_BUG);
 	ERR_FAIL_COND_V(!multiplayer, ERR_BUG);
 	ERR_FAIL_COND_V(!p_node, ERR_BUG);
+	const String scene_path = p_node->get_scene_file_path();
+	ERR_FAIL_COND_V(scene_path.is_empty(), ERR_BUG);
+	ResourceUID::ID scene_id = ResourceLoader::get_resource_uid(scene_path);
+	ERR_FAIL_COND_V(scene_id == ResourceUID::INVALID_ID, ERR_BUG);
+
 	PackedByteArray packet;
-	int ofs = 0;
 
 	// Prepare simplified path
 	//PackedByteArray state = multiplayer->get_replicator()->encode_state(p_scene_id, node, true);
@@ -34,9 +38,10 @@ Error SceneTreeReplicatorInterface::_send_spawn_despawn(MultiplayerSpawner *p_sp
 	// Encode name and parent ID.
 	CharString cname = p_node->get_name().operator String().utf8();
 	int nlen = encode_cstring(cname.get_data(), nullptr);
-	packet.resize(4 + 4 + nlen + state.size());
+	packet.resize(8 + 4 + 4 + nlen + state.size());
+	int ofs = 0;
 	uint8_t *ptr = packet.ptrw();
-	ofs = 0;
+	ofs += encode_uint64(scene_id, &ptr[ofs]);
 	ofs += encode_uint32(path_id, &ptr[ofs]);
 	ofs += encode_uint32(nlen, &ptr[ofs]);
 	ofs += encode_cstring(cname.get_data(), &ptr[ofs]);
@@ -51,8 +56,10 @@ Error SceneTreeReplicatorInterface::_send_spawn_despawn(MultiplayerSpawner *p_sp
 }
 
 Error SceneTreeReplicatorInterface::_spawn_despawn_receive(int p_from, const uint8_t *p_buffer, int p_buffer_len, bool p_spawn) {
-	ERR_FAIL_COND_V_MSG(p_buffer_len < 9, ERR_INVALID_DATA, "Invalid spawn packet received");
-	int ofs = 0;
+	ERR_FAIL_COND_V_MSG(p_buffer_len < 17, ERR_INVALID_DATA, "Invalid spawn packet received");
+	int ofs = 1; // The spawn/despawn command.
+	ResourceUID::ID scene_id = decode_uint64(&p_buffer[ofs]);
+	ofs += 8;
 	uint32_t node_target = decode_uint32(&p_buffer[ofs]);
 	ofs += 4;
 	Node *parent = multiplayer->get_cached_node(p_from, node_target);
@@ -76,9 +83,9 @@ Error SceneTreeReplicatorInterface::_spawn_despawn_receive(int p_from, const uin
 		memcpy(state.ptrw(), p_buffer, state_len);
 	}
 	if (p_spawn) {
-		return spawner->remote_spawn(p_from, name, state);
+		return spawner->remote_spawn(p_from, scene_id, name, state);
 	} else {
-		return spawner->remote_despawn(p_from, name, state);
+		return spawner->remote_despawn(p_from, scene_id, name, state);
 	}
 }
 

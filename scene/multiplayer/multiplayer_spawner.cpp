@@ -194,10 +194,22 @@ Error MultiplayerSpawner::spawn(Node *p_node, int p_peer) {
 	return err;
 }
 
-Error MultiplayerSpawner::remote_spawn(int p_from, const String &p_name, const PackedByteArray &p_state) {
+Error MultiplayerSpawner::remote_spawn(int p_from, const ResourceUID::ID &p_scene_id, const String &p_name, const PackedByteArray &p_state) {
+	ERR_FAIL_COND_V(!spawnable_ids.has(p_scene_id), ERR_UNAUTHORIZED);
+	ERR_FAIL_COND_V(p_from != get_multiplayer_authority(), ERR_UNAUTHORIZED);
+	ERR_FAIL_COND_V(!has_node(spawn_path), ERR_UNCONFIGURED);
+	String scene_path = ResourceUID::get_singleton()->get_id_path(p_scene_id);
+	RES res = ResourceLoader::load(scene_path);
+	ERR_FAIL_COND_V_MSG(!res.is_valid(), ERR_CANT_OPEN, "Unable to load scene to spawn at path: " + scene_path);
+	PackedScene *scene = Object::cast_to<PackedScene>(res.ptr());
+	ERR_FAIL_COND_V(!scene, ERR_CANT_OPEN);
+	Node *node = scene->instantiate();
+	ERR_FAIL_COND_V(!node, ERR_CANT_CREATE);
+	// TODO apply state.
+	get_node(spawn_path)->_add_child_nocheck(node, p_name);
 	return OK;
 }
 
-Error MultiplayerSpawner::remote_despawn(int p_from, const String &p_name, const PackedByteArray &p_state) {
+Error MultiplayerSpawner::remote_despawn(int p_from, const ResourceUID::ID &p_scene_id, const String &p_name, const PackedByteArray &p_state) {
 	return OK;
 }

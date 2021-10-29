@@ -193,3 +193,11 @@ Error MultiplayerSpawner::spawn(Node *p_node, int p_peer) {
 	}
 	return err;
 }
+
+Error MultiplayerSpawner::remote_spawn(int p_from, const String &p_name, const PackedByteArray &p_state) {
+	return OK;
+}
+
+Error MultiplayerSpawner::remote_despawn(int p_from, const String &p_name, const PackedByteArray &p_state) {
+	return OK;
+}

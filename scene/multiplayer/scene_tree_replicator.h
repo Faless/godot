@@ -11,7 +11,8 @@ class SceneTreeReplicatorInterface : public MultiplayerReplicationInterface {
 private:
 	Map<int, ObjectID> tracked_objects;
 
-	Error _send_spawn(MultiplayerSpawner *spawner, Node *p_node, int p_peer);
+	Error _send_spawn_despawn(MultiplayerSpawner *spawner, Node *p_node, int p_peer, bool p_spawn);
+	Error _spawn_despawn_receive(int p_from, const uint8_t *p_buffer, int p_buffer_len, bool p_spawn);
 
 protected:
 	static MultiplayerReplicationInterface *_create();

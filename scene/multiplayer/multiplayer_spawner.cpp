@@ -69,15 +69,10 @@ Error MultiplayerSpawner::spawn(Node *p_node, int p_peer) {
 		return ERR_INVALID_PARAMETER;
 	}
 	Node *parent = get_node(spawn_path);
+	parent->add_child(p_node);
 	spawning = p_node;
 	Error err = get_multiplayer()->spawn(this, p_peer);
 	spawning = nullptr;
-	if (err == OK) {
-		parent->add_child(p_node);
-	} else {
-		// TODO not nice!
-		memdelete(p_node);
-	}
 	return err;
 }
 

@@ -185,7 +185,7 @@ void MultiplayerAPI::_process_packet(int p_from, const uint8_t *p_packet, int p_
 		} break;
 		case NETWORK_COMMAND_SPAWN: {
 			if (replicator) {
-				replicator->on_spawn_receive(p_from, p_packet, p_packet_len - 1);
+				replicator->on_spawn_receive(p_from, p_packet, p_packet_len);
 			}
 		} break;
 		case NETWORK_COMMAND_DESPAWN: {

@@ -1,5 +1,7 @@
 #include "multiplayer_synchronizer.h"
 
+#include "core/config/engine.h"
+
 void MultiplayerSynchronizer::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("sync"), &MultiplayerSynchronizer::sync);
 
@@ -17,9 +19,21 @@ void MultiplayerSynchronizer::_bind_methods() {
 }
 
 void MultiplayerSynchronizer::_notification(int p_what) {
+#ifdef TOOLS_ENABLED
+	if (Engine::get_singleton()->is_editor_hint()) {
+		return;
+	}
+#endif
+	if (root_path.is_empty()) {
+		return;
+	}
 	if (p_what == NOTIFICATION_ENTER_TREE) {
-		if (!root_path.is_empty() && has_node(root_path)) {
+		if (has_node(root_path)) {
 			get_multiplayer()->spawn(this);
+		}
+	} else if (p_what == NOTIFICATION_EXIT_TREE) {
+		if (has_node(root_path)) {
+			get_multiplayer()->despawn(this);
 		}
 	}
 }

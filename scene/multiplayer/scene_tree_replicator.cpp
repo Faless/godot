@@ -159,7 +159,6 @@ Error SceneTreeReplicatorInterface::on_despawn_send(Object *p_obj, int p_peer) {
 		// TODO
 		MultiplayerSpawner *spawner = Object::cast_to<MultiplayerSpawner>(p_obj);
 		ERR_FAIL_COND_V(!spawner, ERR_INVALID_PARAMETER);
-		Node *node = spawner->get_currently_spawning();
 		return OK;
 		//return _send_spawn_despawn(spawner, node, p_peer, false);
 	} else if (p_obj->is_class_ptr(MultiplayerSynchronizer::get_class_ptr_static())) {

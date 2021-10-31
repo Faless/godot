@@ -82,7 +82,7 @@ Error MultiplayerSpawner::local_spawn() {
 	return OK;
 }
 
-Error MultiplayerSpawner::remote_spawn(int p_from, const ResourceUID::ID &p_scene_id, const String &p_name, const PackedByteArray &p_state) {
+Error MultiplayerSpawner::remote_spawn(int p_from, const ResourceUID::ID &p_scene_id, const String &p_name, const PackedByteArray &p_state, ObjectID &r_id) {
 	ERR_FAIL_COND_V(!spawnable_ids.has(p_scene_id), ERR_UNAUTHORIZED);
 	ERR_FAIL_COND_V(p_from != get_multiplayer_authority(), ERR_UNAUTHORIZED);
 	ERR_FAIL_COND_V(!has_node(spawn_path), ERR_UNCONFIGURED);
@@ -95,6 +95,7 @@ Error MultiplayerSpawner::remote_spawn(int p_from, const ResourceUID::ID &p_scen
 	ERR_FAIL_COND_V(!node, ERR_CANT_CREATE);
 	// TODO apply state.
 	get_node(spawn_path)->_add_child_nocheck(node, p_name);
+	r_id = node->get_instance_id();
 	return OK;
 }
 

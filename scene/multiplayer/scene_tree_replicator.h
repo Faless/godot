@@ -9,8 +9,36 @@ class SceneTreeReplicatorInterface : public MultiplayerReplicationInterface {
 	GDCLASS(SceneTreeReplicatorInterface, MultiplayerReplicationInterface);
 
 private:
+	class NetID {
+		uint32_t peer_id = 0;
+		uint32_t net_id = 0;
+
+	public:
+		uint32_t get_id() const { return net_id; }
+		uint32_t get_peer() const { return peer_id; }
+
+		bool operator==(const NetID &p_other) const {
+			return net_id == p_other.net_id && peer_id == p_other.peer_id;
+		}
+
+		operator uint64_t() const {
+			return (uint64_t)peer_id << 32 || net_id;
+		}
+
+		NetID() {}
+		NetID(uint32_t p_net_id) {
+			net_id = p_net_id;
+		}
+
+		NetID(uint32_t p_net_id, uint32_t p_peer_id) {
+			net_id = p_net_id;
+			peer_id = p_peer_id;
+		}
+	};
+
 	struct TrackedObject {
 		ObjectID id;
+		NetID net_id;
 		ObjectID spawner;
 		ObjectID synchronizer;
 		bool pending = true;
@@ -19,22 +47,31 @@ private:
 			return id == p_other;
 		}
 
-		TrackedObject() {}
-
-		TrackedObject(const Node *p_node, const Node *p_spawner) {
-			id = p_node->get_instance_id();
-			spawner = p_node->get_instance_id();
+		Node *get_node() const {
+			return id.is_valid() ? Object::cast_to<Node>(ObjectDB::get_instance(id)) : nullptr;
 		}
 
-		TrackedObject(const Node *p_node, const Node *p_spawner, const Node *p_synchronizer) :
-				TrackedObject(p_node, p_spawner) {
-			synchronizer = p_synchronizer->get_instance_id();
+		MultiplayerSpawner *get_spawner() const {
+			return spawner.is_valid() ? Object::cast_to<MultiplayerSpawner>(ObjectDB::get_instance(spawner)) : nullptr;
+		}
+
+		TrackedObject() {}
+
+		TrackedObject(const ObjectID &p_id, const NetID &p_net_id) {
+			id = p_id;
+			net_id = p_net_id;
+		}
+
+		TrackedObject(const ObjectID &p_id) {
+			id = p_id;
 		}
 	};
 
+	uint32_t last_net_id = 0;
+	HashMap<NetID, ObjectID> remote_objects;
 	HashMap<ObjectID, TrackedObject> tracked_objects;
 
-	Error _send_spawn_despawn(MultiplayerSpawner *spawner, Node *p_node, int p_peer, bool p_spawn);
+	Error _send_spawn_despawn(const TrackedObject &p_tracked, int p_peer, bool p_spawn);
 	Error _spawn_despawn_receive(int p_from, const uint8_t *p_buffer, int p_buffer_len, bool p_spawn);
 
 protected:

@@ -8,6 +8,7 @@ class MultiplayerSynchronizer : public Node {
 private:
 	bool auto_sync = true;
 	Ref<SceneReplicationConfig> replication_config;
+	NodePath root_path;
 
 protected:
 	static void _bind_methods();
@@ -21,6 +22,9 @@ public:
 
 	void set_replication_config(Ref<SceneReplicationConfig> p_config);
 	Ref<SceneReplicationConfig> get_replication_config();
+
+	void set_root_path(const NodePath &p_path);
+	NodePath get_root_path() const;
 
 	MultiplayerSynchronizer() {}
 };

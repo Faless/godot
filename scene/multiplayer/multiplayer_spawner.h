@@ -30,6 +30,8 @@ public:
 
 	Error spawn(Node *p_node, int p_peer);
 
+	Error local_spawn();
+
 	Error remote_despawn(int p_from, const ResourceUID::ID &p_scene_id, const String &p_name, const PackedByteArray &p_state);
 	Error remote_spawn(int p_from, const ResourceUID::ID &p_scene_id, const String &p_name, const PackedByteArray &p_state);
 	MultiplayerSpawner() {}

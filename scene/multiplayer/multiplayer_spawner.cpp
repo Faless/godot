@@ -68,12 +68,18 @@ Error MultiplayerSpawner::spawn(Node *p_node, int p_peer) {
 	if (!spawnable_ids.has(id)) {
 		return ERR_INVALID_PARAMETER;
 	}
-	Node *parent = get_node(spawn_path);
-	parent->add_child(p_node);
 	spawning = p_node;
 	Error err = get_multiplayer()->spawn(this, p_peer);
 	spawning = nullptr;
 	return err;
+}
+
+Error MultiplayerSpawner::local_spawn() {
+	ERR_FAIL_COND_V(!spawning, ERR_BUG);
+	ERR_FAIL_COND_V(spawn_path.is_empty() || !has_node(spawn_path), ERR_BUG);
+	Node *parent = get_node(spawn_path);
+	parent->add_child(spawning);
+	return OK;
 }
 
 Error MultiplayerSpawner::remote_spawn(int p_from, const ResourceUID::ID &p_scene_id, const String &p_name, const PackedByteArray &p_state) {

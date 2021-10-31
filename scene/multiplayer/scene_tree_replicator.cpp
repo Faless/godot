@@ -4,6 +4,7 @@
 #include "core/multiplayer/multiplayer_api.h"
 #include "scene/main/node.h"
 #include "scene/multiplayer/multiplayer_spawner.h"
+#include "scene/multiplayer/multiplayer_synchronizer.h"
 
 MultiplayerReplicationInterface *SceneTreeReplicatorInterface::_create() {
 	return memnew(SceneTreeReplicatorInterface);
@@ -90,11 +91,42 @@ Error SceneTreeReplicatorInterface::_spawn_despawn_receive(int p_from, const uin
 }
 
 Error SceneTreeReplicatorInterface::on_spawn_send(Object *p_obj, int p_peer) {
-	Node *node = Object::cast_to<Node>(p_obj);
-	ERR_FAIL_COND_V(!node, ERR_INVALID_PARAMETER);
-	MultiplayerSpawner *spawner = Object::cast_to<MultiplayerSpawner>(p_obj);
-	ERR_FAIL_COND_V(!spawner, ERR_INVALID_PARAMETER);
-	return _send_spawn_despawn(spawner, spawner->get_currently_spawning(), p_peer, true);
+	if (p_obj->is_class_ptr(MultiplayerSpawner::get_class_ptr_static())) {
+		MultiplayerSpawner *spawner = Object::cast_to<MultiplayerSpawner>(p_obj);
+		ERR_FAIL_COND_V(!spawner, ERR_BUG);
+		ERR_FAIL_COND_V(!spawner->get_currently_spawning(), ERR_INVALID_PARAMETER);
+		Node *node = spawner->get_currently_spawning();
+		ObjectID oid = node->get_instance_id();
+		tracked_objects[oid] = TrackedObject(spawner, node);
+		Error err = spawner->local_spawn();
+		ERR_FAIL_COND_V(err != OK, err);
+		ERR_FAIL_COND_V(!tracked_objects.has(oid), ERR_BUG);
+		TrackedObject &tracked = tracked_objects[oid];
+		if (tracked.pending) {
+			tracked.pending = false;
+			return _send_spawn_despawn(spawner, spawner->get_currently_spawning(), p_peer, true);
+		}
+		return OK;
+	} else if (p_obj->is_class_ptr(MultiplayerSynchronizer::get_class_ptr_static())) {
+		MultiplayerSynchronizer *synchronizer = Object::cast_to<MultiplayerSynchronizer>(p_obj);
+		ERR_FAIL_COND_V(!synchronizer, ERR_BUG);
+		const NodePath path = synchronizer->get_root_path();
+		ERR_FAIL_COND_V(path.is_empty() || !synchronizer->has_node(path), ERR_UNCONFIGURED);
+		Node *node = synchronizer->get_node(path);
+		ObjectID oid = node->get_instance_id();
+		if (tracked_objects.has(oid)) {
+			TrackedObject &tracked = tracked_objects[oid];
+			if (tracked.pending) {
+				WARN_PRINT("You got this!");
+				// TODO should send with initial state if possible.
+				//tracked.pending = false;
+				//return _send_spawn_despawn(spawner, spawner->get_currently_spawning(), p_peer, true);
+			}
+		}
+		return OK;
+	} else {
+		return ERR_INVALID_PARAMETER;
+	}
 }
 
 Error SceneTreeReplicatorInterface::on_spawn_receive(int p_from, const uint8_t *p_buffer, int p_buffer_len) {

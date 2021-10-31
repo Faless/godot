@@ -99,12 +99,13 @@ Error MultiplayerSpawner::remote_spawn(int p_from, const ResourceUID::ID &p_scen
 	return OK;
 }
 
-Error MultiplayerSpawner::remote_despawn(int p_from, const ResourceUID::ID &p_scene_id, const String &p_name, const PackedByteArray &p_state) {
-	ERR_FAIL_COND_V(!spawnable_ids.has(p_scene_id), ERR_UNAUTHORIZED);
+Error MultiplayerSpawner::remote_despawn(int p_from, Node *p_node) {
 	ERR_FAIL_COND_V(p_from != get_multiplayer_authority(), ERR_UNAUTHORIZED);
-	NodePath path = NodePath(String(spawn_path) + "/" + p_name);
+	NodePath path = NodePath(String(spawn_path));
 	ERR_FAIL_COND_V(!has_node(path), ERR_UNCONFIGURED);
-	// TODO confirm this was remotely spawned!
-	get_node(path)->queue_delete();
+	Node *parent = get_node(path);
+	ERR_FAIL_COND_V(!p_node || p_node->get_parent() != parent, ERR_INVALID_DATA);
+	// TODO better confirm this was remotely spawned!
+	p_node->queue_delete();
 	return OK;
 }

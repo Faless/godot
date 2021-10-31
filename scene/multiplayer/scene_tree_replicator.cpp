@@ -14,7 +14,7 @@ void SceneTreeReplicatorInterface::make_default() {
 	MultiplayerAPI::create_default_replication_interface = _create;
 }
 
-Error SceneTreeReplicatorInterface::_send_spawn_despawn(const TrackedObject &p_tracked, int p_peer, bool p_spawn) {
+Error SceneTreeReplicatorInterface::_send_spawn(const TrackedObject &p_tracked, int p_peer) {
 	ERR_FAIL_COND_V(!multiplayer, ERR_BUG);
 	Node *node = p_tracked.get_node();
 	MultiplayerSpawner *spawner = p_tracked.get_spawner();
@@ -52,14 +52,20 @@ Error SceneTreeReplicatorInterface::_send_spawn_despawn(const TrackedObject &p_t
 	if (state.size()) {
 		memcpy(&ptr[ofs], state.ptr(), state.size());
 	}
-	if (p_spawn) {
-		return send_spawn(packet, p_peer);
-	} else {
-		return send_despawn(packet, p_peer);
-	}
+	return send_spawn(packet, p_peer);
 }
 
-Error SceneTreeReplicatorInterface::_spawn_despawn_receive(int p_from, const uint8_t *p_buffer, int p_buffer_len, bool p_spawn) {
+Error SceneTreeReplicatorInterface::_send_despawn(const TrackedObject &p_tracked, int p_peer) {
+	ERR_FAIL_COND_V(!multiplayer, ERR_BUG);
+	PackedByteArray packet;
+	packet.resize(4);
+	int ofs = 0;
+	uint8_t *ptr = packet.ptrw();
+	ofs += encode_uint32(p_tracked.net_id.get_id(), &ptr[ofs]);
+	return send_despawn(packet, p_peer);
+}
+
+Error SceneTreeReplicatorInterface::_spawn_receive(int p_from, const uint8_t *p_buffer, int p_buffer_len) {
 	ERR_FAIL_COND_V_MSG(p_buffer_len < 21, ERR_INVALID_DATA, "Invalid spawn packet received");
 	int ofs = 1; // The spawn/despawn command.
 	ResourceUID::ID scene_id = decode_uint64(&p_buffer[ofs]);
@@ -88,22 +94,32 @@ Error SceneTreeReplicatorInterface::_spawn_despawn_receive(int p_from, const uin
 		state.resize(state_len);
 		memcpy(state.ptrw(), p_buffer, state_len);
 	}
-	if (p_spawn) {
-		ObjectID oid;
-		Error err = spawner->remote_spawn(p_from, scene_id, name, state, oid);
-		if (err == OK) {
-			remote_objects[NetID(net_id, p_from)] = oid;
-		}
-		return err;
-	} else {
-		NetID nid(net_id, p_from);
-		if (!remote_objects.has(nid)) {
-			return ERR_INVALID_DATA;
-		}
-		// TODO, really, validate name!
-		remote_objects.erase(nid);
-		return spawner->remote_despawn(p_from, scene_id, name, state);
+	ObjectID oid;
+	Error err = spawner->remote_spawn(p_from, scene_id, name, state, oid);
+	if (err == OK) {
+		TrackedObject tobj(TrackedObject(oid, net_id));
+		tobj.spawner = spawner->get_instance_id();
+		remote_objects[NetID(net_id, p_from)] = tobj;
 	}
+	return err;
+}
+
+Error SceneTreeReplicatorInterface::_despawn_receive(int p_from, const uint8_t *p_buffer, int p_buffer_len) {
+	ERR_FAIL_COND_V_MSG(p_buffer_len < 5, ERR_INVALID_DATA, "Invalid spawn packet received");
+	int ofs = 1; // The spawn/despawn command.
+	uint32_t net_id = decode_uint32(&p_buffer[ofs]);
+	ofs += 4;
+	NetID nid(net_id, p_from);
+	if (!remote_objects.has(nid)) {
+		return ERR_INVALID_DATA;
+	}
+	const TrackedObject &tracked = remote_objects[nid];
+	Node *node = tracked.get_node();
+	MultiplayerSpawner *spawner = tracked.get_spawner();
+	ERR_FAIL_COND_V(!node || !spawner, ERR_INVALID_DATA);
+	Error err = spawner->remote_despawn(p_from, node);
+	remote_objects.erase(nid);
+	return err;
 }
 
 Error SceneTreeReplicatorInterface::on_spawn_send(Object *p_obj, int p_peer) {
@@ -124,7 +140,7 @@ Error SceneTreeReplicatorInterface::on_spawn_send(Object *p_obj, int p_peer) {
 		TrackedObject &tracked = tracked_objects[oid];
 		if (tracked.pending) {
 			tracked.pending = false;
-			return _send_spawn_despawn(tracked, p_peer, true);
+			return _send_spawn(tracked, p_peer);
 		}
 		return OK;
 	} else if (p_obj->is_class_ptr(MultiplayerSynchronizer::get_class_ptr_static())) {
@@ -151,7 +167,7 @@ Error SceneTreeReplicatorInterface::on_spawn_send(Object *p_obj, int p_peer) {
 }
 
 Error SceneTreeReplicatorInterface::on_spawn_receive(int p_from, const uint8_t *p_buffer, int p_buffer_len) {
-	return _spawn_despawn_receive(p_from, p_buffer, p_buffer_len, true);
+	return _spawn_receive(p_from, p_buffer, p_buffer_len);
 }
 
 Error SceneTreeReplicatorInterface::on_despawn_send(Object *p_obj, int p_peer) {
@@ -171,7 +187,7 @@ Error SceneTreeReplicatorInterface::on_despawn_send(Object *p_obj, int p_peer) {
 }
 
 Error SceneTreeReplicatorInterface::on_despawn_receive(int p_from, const uint8_t *p_buffer, int p_buffer_len) {
-	return _spawn_despawn_receive(p_from, p_buffer, p_buffer_len, false);
+	return _despawn_receive(p_from, p_buffer, p_buffer_len);
 }
 
 Error SceneTreeReplicatorInterface::on_sync_send(Object *p_obj, int p_peer) {

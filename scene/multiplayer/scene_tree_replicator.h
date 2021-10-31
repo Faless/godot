@@ -68,11 +68,13 @@ private:
 	};
 
 	uint32_t last_net_id = 0;
-	HashMap<NetID, ObjectID> remote_objects;
+	HashMap<NetID, TrackedObject> remote_objects;
 	HashMap<ObjectID, TrackedObject> tracked_objects;
 
-	Error _send_spawn_despawn(const TrackedObject &p_tracked, int p_peer, bool p_spawn);
-	Error _spawn_despawn_receive(int p_from, const uint8_t *p_buffer, int p_buffer_len, bool p_spawn);
+	Error _send_spawn(const TrackedObject &p_tracked, int p_peer);
+	Error _send_despawn(const TrackedObject &p_tracked, int p_peer);
+	Error _spawn_receive(int p_from, const uint8_t *p_buffer, int p_buffer_len);
+	Error _despawn_receive(int p_from, const uint8_t *p_buffer, int p_buffer_len);
 
 protected:
 	static MultiplayerReplicationInterface *_create();

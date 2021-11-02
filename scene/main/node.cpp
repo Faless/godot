@@ -32,6 +32,7 @@
 
 #include "core/core_string_names.h"
 #include "core/io/resource_loader.h"
+#include "core/multiplayer/multiplayer_api.h"
 #include "core/object/message_queue.h"
 #include "core/string/print_string.h"
 #include "instance_placeholder.h"

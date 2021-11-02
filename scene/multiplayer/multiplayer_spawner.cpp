@@ -1,7 +1,7 @@
 #include "multiplayer_spawner.h"
 
 #include "core/io/marshalls.h"
-#include "core/multiplayer/multiplayer_replicator.h"
+#include "core/multiplayer/multiplayer_api.h"
 #include "scene/main/window.h"
 
 void MultiplayerSpawner::_bind_methods() {

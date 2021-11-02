@@ -1,6 +1,7 @@
 #include "multiplayer_synchronizer.h"
 
 #include "core/config/engine.h"
+#include "core/multiplayer/multiplayer_api.h"
 
 void MultiplayerSynchronizer::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("sync"), &MultiplayerSynchronizer::sync);

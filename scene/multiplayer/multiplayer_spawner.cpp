@@ -83,45 +83,18 @@ void MultiplayerSpawner::track(Node *p_node) {
 	}
 }
 
-#if 0
 Error MultiplayerSpawner::remote_spawn(Node *p_node, const String &p_name) {
 	ERR_FAIL_COND_V(spawn_path.is_empty() || !has_node(spawn_path), ERR_UNCONFIGURED);
 	Node *parent = get_node(spawn_path);
 	ERR_FAIL_COND_V(parent->has_node(p_name), ERR_INVALID_DATA);
-	get_node(spawn_path)->_add_child_nocheck(node, p_name);
-	remote_nodes.insert(node->get_instance_id());
-	return OK;
-}
-#endif
-
-Error MultiplayerSpawner::remote_spawn(int p_from, const ResourceUID::ID &p_scene_id, const String &p_name, const PackedByteArray &p_state, ObjectID &r_id) {
-	ERR_FAIL_COND_V(!spawnable_ids.has(p_scene_id), ERR_UNAUTHORIZED);
-	ERR_FAIL_COND_V(p_from != get_multiplayer_authority(), ERR_UNAUTHORIZED);
-	ERR_FAIL_COND_V(!has_node(spawn_path), ERR_UNCONFIGURED);
-	String scene_path = ResourceUID::get_singleton()->get_id_path(p_scene_id);
-	RES res = ResourceLoader::load(scene_path);
-	ERR_FAIL_COND_V_MSG(!res.is_valid(), ERR_CANT_OPEN, "Unable to load scene to spawn at path: " + scene_path);
-	PackedScene *scene = Object::cast_to<PackedScene>(res.ptr());
-	ERR_FAIL_COND_V(!scene, ERR_CANT_OPEN);
-	Node *parent = get_node(spawn_path);
-	ERR_FAIL_COND_V(parent->has_node(p_name), ERR_INVALID_DATA);
-	Node *node = scene->instantiate();
-	ERR_FAIL_COND_V(!node, ERR_CANT_CREATE);
-	remote_nodes.insert(node->get_instance_id());
-	// TODO apply state.
-	_connect_node(node);
-	get_node(spawn_path)->_add_child_nocheck(node, p_name);
-	r_id = node->get_instance_id();
+	_connect_node(p_node);
+	get_node(spawn_path)->_add_child_nocheck(p_node, p_name);
+	remote_nodes.insert(p_node->get_instance_id());
 	return OK;
 }
 
-Error MultiplayerSpawner::remote_despawn(int p_from, Node *p_node) {
-	ERR_FAIL_COND_V(p_from != get_multiplayer_authority(), ERR_UNAUTHORIZED);
+Error MultiplayerSpawner::remote_despawn(Node *p_node) {
 	ERR_FAIL_COND_V(!remote_nodes.has(p_node->get_instance_id()), ERR_UNAUTHORIZED);
-	NodePath path = NodePath(String(spawn_path));
-	ERR_FAIL_COND_V(!has_node(path), ERR_UNCONFIGURED);
-	Node *parent = get_node(path);
-	ERR_FAIL_COND_V(!p_node || p_node->get_parent() != parent, ERR_INVALID_DATA);
 	p_node->queue_delete();
 	return OK;
 }

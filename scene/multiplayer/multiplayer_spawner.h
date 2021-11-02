@@ -27,6 +27,7 @@ protected:
 	void _notification(int p_what);
 
 public:
+	bool can_spawn(const ResourceUID::ID &p_id) const { return spawnable_ids.has(p_id); }
 	TypedArray<PackedScene> get_spawnable_scenes();
 	void set_spawnable_scenes(TypedArray<PackedScene> p_scenes);
 	NodePath get_spawn_path() const;
@@ -37,8 +38,9 @@ public:
 	Error spawn(Node *p_node, int p_peer);
 	void track(Node *p_node);
 
-	Error remote_despawn(int p_from, Node *p_node);
-	Error remote_spawn(int p_from, const ResourceUID::ID &p_scene_id, const String &p_name, const PackedByteArray &p_state, ObjectID &r_id);
+	Error remote_spawn(Node *p_node, const String &p_name);
+	Error remote_despawn(Node *p_node);
+
 	MultiplayerSpawner() {}
 };
 

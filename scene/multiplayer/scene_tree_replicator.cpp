@@ -141,6 +141,8 @@ Error SceneTreeReplicatorInterface::_spawn_receive(int p_from, const uint8_t *p_
 	Node *parent = multiplayer->get_cached_node(p_from, node_target);
 	MultiplayerSpawner *spawner = Object::cast_to<MultiplayerSpawner>(parent);
 	ERR_FAIL_COND_V(!spawner, ERR_DOES_NOT_EXIST);
+	ERR_FAIL_COND_V(!spawner->can_spawn(scene_id), ERR_UNAUTHORIZED);
+	ERR_FAIL_COND_V(p_from != spawner->get_multiplayer_authority(), ERR_UNAUTHORIZED);
 
 	uint32_t name_len = decode_uint32(&p_buffer[ofs]);
 	ofs += 4;
@@ -158,12 +160,22 @@ Error SceneTreeReplicatorInterface::_spawn_receive(int p_from, const uint8_t *p_
 		state.resize(state_len);
 		memcpy(state.ptrw(), p_buffer, state_len);
 	}
-	ObjectID oid;
-	Error err = spawner->remote_spawn(p_from, scene_id, name, state, oid);
+
+	// Spawn the scene.
+	String scene_path = ResourceUID::get_singleton()->get_id_path(scene_id);
+	RES res = ResourceLoader::load(scene_path);
+	ERR_FAIL_COND_V_MSG(!res.is_valid(), ERR_CANT_OPEN, "Unable to load scene to spawn at path: " + scene_path);
+	PackedScene *scene = Object::cast_to<PackedScene>(res.ptr());
+	ERR_FAIL_COND_V(!scene, ERR_CANT_OPEN);
+	Node *node = scene->instantiate();
+
+	Error err = spawner->remote_spawn(node, name);
 	if (err == OK) {
-		TrackedObject tobj(TrackedObject(oid, net_id));
+		TrackedObject tobj(TrackedObject(node->get_instance_id(), net_id));
 		tobj.spawner = spawner->get_instance_id();
 		remote_objects[NetID(net_id, p_from)] = tobj;
+	} else {
+		memdelete(node);
 	}
 	return err;
 }
@@ -179,7 +191,8 @@ Error SceneTreeReplicatorInterface::_despawn_receive(int p_from, const uint8_t *
 	Node *node = tracked.get_node();
 	MultiplayerSpawner *spawner = tracked.get_spawner();
 	ERR_FAIL_COND_V(!node || !spawner, ERR_INVALID_DATA);
-	Error err = spawner->remote_despawn(p_from, node);
+	ERR_FAIL_COND_V(p_from != spawner->get_multiplayer_authority(), ERR_UNAUTHORIZED);
+	Error err = spawner->remote_despawn(node);
 	remote_objects.erase(nid);
 	return err;
 }

@@ -35,8 +35,7 @@ public:
 	Node *get_currently_spawning();
 
 	Error spawn(Node *p_node, int p_peer);
-
-	Error local_spawn();
+	void track(Node *p_node);
 
 	Error remote_despawn(int p_from, Node *p_node);
 	Error remote_spawn(int p_from, const ResourceUID::ID &p_scene_id, const String &p_name, const PackedByteArray &p_state, ObjectID &r_id);

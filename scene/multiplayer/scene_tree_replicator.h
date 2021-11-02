@@ -25,6 +25,14 @@ private:
 			return (uint64_t)peer_id << 32 || net_id;
 		}
 
+		bool is_valid() const {
+			return net_id != 0;
+		}
+
+		bool is_null() const {
+			return net_id == 0;
+		}
+
 		NetID() {}
 		NetID(uint32_t p_net_id) {
 			net_id = p_net_id;
@@ -76,14 +84,17 @@ private:
 	Error _spawn_receive(int p_from, const uint8_t *p_buffer, int p_buffer_len);
 	Error _despawn_receive(int p_from, const uint8_t *p_buffer, int p_buffer_len);
 
+	Error track(const ObjectID &p_id, Object *p_config);
+	Error untrack(const ObjectID &p_id, Object *p_config);
+
 protected:
 	static MultiplayerReplicationInterface *_create();
 
 public:
 	static void make_default();
 
-	virtual Error on_replication_start(Object *p_obj) override;
-	virtual Error on_replication_stop(Object *p_obj) override;
+	virtual Error on_replication_start(Object *p_obj, Variant p_config) override;
+	virtual Error on_replication_stop(Object *p_obj, Variant p_config) override;
 
 	virtual Error on_spawn_send(Object *p_obj, int p_peer) override;
 	virtual Error on_spawn_receive(int p_from, const uint8_t *p_buffer, int p_buffer_len) override;

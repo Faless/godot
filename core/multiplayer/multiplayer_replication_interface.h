@@ -31,8 +31,8 @@ public:
 	virtual Error on_sync_send(Object *p_obj, int p_peer);
 	virtual Error on_sync_receive(int p_from, const uint8_t *p_buffer, int p_buffer_len);
 
-	virtual Error on_replication_start(Object *p_obj);
-	virtual Error on_replication_stop(Object *p_obj);
+	virtual Error on_replication_start(Object *p_obj, Variant p_config);
+	virtual Error on_replication_stop(Object *p_obj, Variant p_config);
 
 	// Send a spawn/despawn message to the given peer.
 	Error send_spawn(const PackedByteArray &p_data, int p_peer = 0);
@@ -50,8 +50,8 @@ public:
 	GDVIRTUAL2R(int, _on_sync_send, Object *, int);
 	GDVIRTUAL3R(int, _on_sync_receive, int, GDNativeConstPtr<const uint8_t>, int);
 
-	GDVIRTUAL1R(int, _on_replication_start, Object *);
-	GDVIRTUAL1R(int, _on_replication_stop, Object *);
+	GDVIRTUAL2R(int, _on_replication_start, Object *, Variant);
+	GDVIRTUAL2R(int, _on_replication_stop, Object *, Variant);
 
 	MultiplayerReplicationInterface() {}
 };

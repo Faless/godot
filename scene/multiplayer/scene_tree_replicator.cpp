@@ -14,42 +14,69 @@ void SceneTreeReplicatorInterface::make_default() {
 	MultiplayerAPI::create_default_replication_interface = _create;
 }
 
-Error SceneTreeReplicatorInterface::on_replication_start(Object *p_obj) {
-	if (p_obj->is_class_ptr(MultiplayerSpawner::get_class_ptr_static())) {
-		MultiplayerSpawner *spawner = Object::cast_to<MultiplayerSpawner>(p_obj);
-		ERR_FAIL_COND_V(!spawner, ERR_BUG);
-		return OK;
-	} else if (p_obj->is_class_ptr(MultiplayerSynchronizer::get_class_ptr_static())) {
-		MultiplayerSynchronizer *synchronizer = Object::cast_to<MultiplayerSynchronizer>(p_obj);
-		ERR_FAIL_COND_V(!synchronizer, ERR_BUG);
-		const NodePath path = synchronizer->get_root_path();
-		ERR_FAIL_COND_V(path.is_empty() || !synchronizer->has_node(path), ERR_UNCONFIGURED);
-		Node *node = synchronizer->get_node(path);
-		ObjectID oid = node->get_instance_id();
-		if (tracked_objects.has(oid)) {
-			TrackedObject &tracked = tracked_objects[oid];
-			tracked.synchronizer = synchronizer->get_instance_id();
-			if (tracked.pending) {
-				WARN_PRINT("You got this!");
-				// TODO should send with initial state if possible.
-				//tracked.pending = false;
-				//return _send_spawn_despawn(spawner, spawner->get_currently_spawning(), p_peer, true);
-			}
-		} else {
-			// TODO add to tracked objects as pending.
-		}
-		return OK;
+Error SceneTreeReplicatorInterface::on_replication_start(Object *p_obj, Variant p_config) {
+	ERR_FAIL_COND_V(p_config.get_type() != Variant::OBJECT, ERR_INVALID_PARAMETER);
+	Node *config = Object::cast_to<Node>(p_config.get_validated_object());
+	Node *node = Object::cast_to<Node>(p_obj);
+	ERR_FAIL_COND_V(!config, ERR_INVALID_PARAMETER);
+	ERR_FAIL_COND_V(!node, ERR_INVALID_PARAMETER);
+	ObjectID oid = node->get_instance_id();
+	if (config->is_class_ptr(MultiplayerSpawner::get_class_ptr_static())) {
+		return track(oid, config);
+	} else if (config->is_class_ptr(MultiplayerSynchronizer::get_class_ptr_static())) {
+		return track(oid, config);
 	}
 	return ERR_INVALID_PARAMETER;
 }
 
-Error SceneTreeReplicatorInterface::on_replication_stop(Object *p_obj) {
-	if (p_obj->is_class_ptr(MultiplayerSpawner::get_class_ptr_static())) {
-		return OK;
-	} else if (p_obj->is_class_ptr(MultiplayerSynchronizer::get_class_ptr_static())) {
-		return OK;
+Error SceneTreeReplicatorInterface::on_replication_stop(Object *p_obj, Variant p_config) {
+	ERR_FAIL_COND_V(p_config.get_type() != Variant::OBJECT, ERR_INVALID_PARAMETER);
+	Node *config = Object::cast_to<Node>(p_config.get_validated_object());
+	Node *node = Object::cast_to<Node>(p_obj);
+	ERR_FAIL_COND_V(!config, ERR_INVALID_PARAMETER);
+	ERR_FAIL_COND_V(!node, ERR_INVALID_PARAMETER);
+	ObjectID oid = node->get_instance_id();
+	ERR_FAIL_COND_V(!tracked_objects.has(oid), ERR_INVALID_PARAMETER);
+
+	if (config->is_class_ptr(MultiplayerSpawner::get_class_ptr_static())) {
+		return untrack(oid, config);
+	} else if (config->is_class_ptr(MultiplayerSynchronizer::get_class_ptr_static())) {
+		return untrack(oid, config);
 	}
 	return ERR_INVALID_PARAMETER;
+}
+
+Error SceneTreeReplicatorInterface::track(const ObjectID &p_id, Object *p_config) {
+	if (!tracked_objects.has(p_id)) {
+		tracked_objects[p_id] = TrackedObject(p_id);
+	}
+	TrackedObject &tobj = tracked_objects[p_id];
+	ObjectID cid = p_config->get_instance_id();
+	if (p_config->is_class_ptr(MultiplayerSpawner::get_class_ptr_static())) {
+		ERR_FAIL_COND_V(tobj.spawner.is_valid(), ERR_ALREADY_EXISTS);
+		tobj.spawner = cid;
+	} else if (p_config->is_class_ptr(MultiplayerSynchronizer::get_class_ptr_static())) {
+		ERR_FAIL_COND_V(tobj.synchronizer.is_valid(), ERR_ALREADY_EXISTS);
+		tobj.synchronizer = cid;
+	}
+	return OK;
+}
+
+Error SceneTreeReplicatorInterface::untrack(const ObjectID &p_id, Object *p_config) {
+	TrackedObject *tobj = tracked_objects.getptr(p_id);
+	ERR_FAIL_COND_V(!tobj, ERR_DOES_NOT_EXIST);
+	ObjectID cid = p_config->get_instance_id();
+	if (p_config->is_class_ptr(MultiplayerSpawner::get_class_ptr_static())) {
+		ERR_FAIL_COND_V(tobj->spawner != cid, ERR_INVALID_DATA);
+		tobj->spawner = ObjectID();
+	} else if (p_config->is_class_ptr(MultiplayerSynchronizer::get_class_ptr_static())) {
+		ERR_FAIL_COND_V(tobj->synchronizer != cid, ERR_INVALID_DATA);
+		tobj->synchronizer = ObjectID();
+	}
+	if (tobj->spawner.is_null() && tobj->synchronizer.is_null()) {
+		tracked_objects.erase(p_id);
+	}
+	return OK;
 }
 
 Error SceneTreeReplicatorInterface::_send_spawn(const TrackedObject &p_tracked, int p_peer) {
@@ -158,28 +185,16 @@ Error SceneTreeReplicatorInterface::_despawn_receive(int p_from, const uint8_t *
 }
 
 Error SceneTreeReplicatorInterface::on_spawn_send(Object *p_obj, int p_peer) {
-	if (p_obj->is_class_ptr(MultiplayerSpawner::get_class_ptr_static())) {
-		MultiplayerSpawner *spawner = Object::cast_to<MultiplayerSpawner>(p_obj);
-		ERR_FAIL_COND_V(!spawner, ERR_BUG);
-		ERR_FAIL_COND_V(!spawner->get_currently_spawning(), ERR_INVALID_PARAMETER);
-		Node *node = spawner->get_currently_spawning();
-		ObjectID oid = node->get_instance_id();
-		// TODO we should totally allow this in the future.
-		ERR_FAIL_COND_V(tracked_objects.has(oid), ERR_INVALID_PARAMETER);
-		TrackedObject tobj(oid, NetID(++last_net_id));
-		tobj.spawner = spawner->get_instance_id();
-		tracked_objects[oid] = tobj;
-		Error err = spawner->local_spawn();
-		ERR_FAIL_COND_V(err != OK, err);
-		ERR_FAIL_COND_V(!tracked_objects.has(oid), ERR_BUG);
-		TrackedObject &tracked = tracked_objects[oid];
-		if (tracked.pending) {
-			tracked.pending = false;
-			return _send_spawn(tracked, p_peer);
-		}
-		return OK;
+	Node *node = Object::cast_to<Node>(p_obj);
+	ERR_FAIL_COND_V(!node, ERR_INVALID_PARAMETER);
+	ObjectID oid = node->get_instance_id();
+	ERR_FAIL_COND_V(!tracked_objects.has(oid), ERR_INVALID_PARAMETER);
+	TrackedObject &tobj = tracked_objects[oid];
+	if (tobj.net_id.is_null()) {
+		tobj.net_id = NetID(++last_net_id);
+		tobj.pending = false;
 	}
-	return ERR_INVALID_PARAMETER;
+	return _send_spawn(tobj, p_peer);
 }
 
 Error SceneTreeReplicatorInterface::on_spawn_receive(int p_from, const uint8_t *p_buffer, int p_buffer_len) {

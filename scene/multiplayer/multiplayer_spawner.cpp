@@ -68,21 +68,31 @@ Error MultiplayerSpawner::spawn(Node *p_node, int p_peer) {
 	if (!spawnable_ids.has(id)) {
 		return ERR_INVALID_PARAMETER;
 	}
-	spawning = p_node;
-	Error err = get_multiplayer()->spawn(this, p_peer);
-	spawning = nullptr;
-	return err;
+	Node *parent = get_node(spawn_path);
+	track(p_node);
+	parent->add_child(p_node);
+	return get_multiplayer()->spawn(p_node, p_peer);
 }
 
-Error MultiplayerSpawner::local_spawn() {
-	ERR_FAIL_COND_V(!spawning, ERR_BUG);
-	ERR_FAIL_COND_V(spawn_path.is_empty() || !has_node(spawn_path), ERR_BUG);
+void MultiplayerSpawner::track(Node *p_node) {
+	ObjectID oid = p_node->get_instance_id();
+	if (!tracked_nodes.has(oid)) {
+		tracked_nodes.insert(oid);
+		_connect_node(p_node);
+		get_multiplayer()->replication_start(p_node, this);
+	}
+}
+
+#if 0
+Error MultiplayerSpawner::remote_spawn(Node *p_node, const String &p_name) {
+	ERR_FAIL_COND_V(spawn_path.is_empty() || !has_node(spawn_path), ERR_UNCONFIGURED);
 	Node *parent = get_node(spawn_path);
-	tracked_nodes.insert(spawning->get_instance_id());
-	_connect_node(spawning);
-	parent->add_child(spawning);
+	ERR_FAIL_COND_V(parent->has_node(p_name), ERR_INVALID_DATA);
+	get_node(spawn_path)->_add_child_nocheck(node, p_name);
+	remote_nodes.insert(node->get_instance_id());
 	return OK;
 }
+#endif
 
 Error MultiplayerSpawner::remote_spawn(int p_from, const ResourceUID::ID &p_scene_id, const String &p_name, const PackedByteArray &p_state, ObjectID &r_id) {
 	ERR_FAIL_COND_V(!spawnable_ids.has(p_scene_id), ERR_UNAUTHORIZED);
@@ -129,5 +139,6 @@ void MultiplayerSpawner::_node_exit(ObjectID p_id) {
 		ERR_FAIL_COND(!node);
 		get_multiplayer()->despawn(node);
 		tracked_nodes.erase(p_id);
+		get_multiplayer()->replication_stop(node, this);
 	}
 }

@@ -623,12 +623,12 @@ Error MultiplayerAPI::sync(Object *p_object, int p_peer) {
 	return replicator->on_sync_send(p_object, p_peer);
 }
 
-Error MultiplayerAPI::replication_start(Object *p_object) {
-	return replicator->on_replication_start(p_object);
+Error MultiplayerAPI::replication_start(Object *p_object, Variant p_config) {
+	return replicator->on_replication_start(p_object, p_config);
 }
 
-Error MultiplayerAPI::replication_stop(Object *p_object) {
-	return replicator->on_replication_stop(p_object);
+Error MultiplayerAPI::replication_stop(Object *p_object, Variant p_config) {
+	return replicator->on_replication_stop(p_object, p_config);
 }
 
 void MultiplayerAPI::_bind_methods() {

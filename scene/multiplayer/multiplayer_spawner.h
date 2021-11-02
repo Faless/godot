@@ -16,6 +16,12 @@ private:
 	Set<ResourceUID::ID> spawnable_ids;
 	NodePath spawn_path;
 
+	Set<ObjectID> tracked_nodes;
+	Set<ObjectID> remote_nodes;
+
+	void _connect_node(Node *p_node);
+	void _node_exit(ObjectID p_id);
+
 protected:
 	static void _bind_methods();
 	void _notification(int p_what);

@@ -94,7 +94,6 @@ Error SceneTreeReplicatorInterface::_send_spawn(const TrackedObject &p_tracked, 
 }
 
 Error SceneTreeReplicatorInterface::_send_despawn(const TrackedObject &p_tracked, int p_peer) {
-	ERR_FAIL_COND_V(!multiplayer, ERR_BUG);
 	PackedByteArray packet;
 	packet.resize(4);
 	int ofs = 0;
@@ -148,9 +147,7 @@ Error SceneTreeReplicatorInterface::_despawn_receive(int p_from, const uint8_t *
 	uint32_t net_id = decode_uint32(&p_buffer[ofs]);
 	ofs += 4;
 	NetID nid(net_id, p_from);
-	if (!remote_objects.has(nid)) {
-		return ERR_INVALID_DATA;
-	}
+	ERR_FAIL_COND_V(!remote_objects.has(nid), ERR_INVALID_DATA);
 	const TrackedObject &tracked = remote_objects[nid];
 	Node *node = tracked.get_node();
 	MultiplayerSpawner *spawner = tracked.get_spawner();
@@ -190,19 +187,11 @@ Error SceneTreeReplicatorInterface::on_spawn_receive(int p_from, const uint8_t *
 }
 
 Error SceneTreeReplicatorInterface::on_despawn_send(Object *p_obj, int p_peer) {
-	if (p_obj->is_class_ptr(MultiplayerSpawner::get_class_ptr_static())) {
-		// TODO
-		MultiplayerSpawner *spawner = Object::cast_to<MultiplayerSpawner>(p_obj);
-		ERR_FAIL_COND_V(!spawner, ERR_INVALID_PARAMETER);
-		return OK;
-		//return _send_spawn_despawn(spawner, node, p_peer, false);
-	} else if (p_obj->is_class_ptr(MultiplayerSynchronizer::get_class_ptr_static())) {
-		// TODO
-		//tracked.synchronizer = 0;
-		return OK;
-	} else {
-		return ERR_INVALID_PARAMETER;
-	}
+	ERR_FAIL_COND_V(!p_obj, ERR_INVALID_PARAMETER);
+	ObjectID oid = p_obj->get_instance_id();
+	ERR_FAIL_COND_V(!tracked_objects.has(oid), ERR_INVALID_PARAMETER);
+	TrackedObject &tracked = tracked_objects[oid];
+	return _send_despawn(tracked, p_peer);
 }
 
 Error SceneTreeReplicatorInterface::on_despawn_receive(int p_from, const uint8_t *p_buffer, int p_buffer_len) {

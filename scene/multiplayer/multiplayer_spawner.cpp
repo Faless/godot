@@ -78,6 +78,8 @@ Error MultiplayerSpawner::local_spawn() {
 	ERR_FAIL_COND_V(!spawning, ERR_BUG);
 	ERR_FAIL_COND_V(spawn_path.is_empty() || !has_node(spawn_path), ERR_BUG);
 	Node *parent = get_node(spawn_path);
+	tracked_nodes.insert(spawning->get_instance_id());
+	_connect_node(spawning);
 	parent->add_child(spawning);
 	return OK;
 }
@@ -91,9 +93,13 @@ Error MultiplayerSpawner::remote_spawn(int p_from, const ResourceUID::ID &p_scen
 	ERR_FAIL_COND_V_MSG(!res.is_valid(), ERR_CANT_OPEN, "Unable to load scene to spawn at path: " + scene_path);
 	PackedScene *scene = Object::cast_to<PackedScene>(res.ptr());
 	ERR_FAIL_COND_V(!scene, ERR_CANT_OPEN);
+	Node *parent = get_node(spawn_path);
+	ERR_FAIL_COND_V(parent->has_node(p_name), ERR_INVALID_DATA);
 	Node *node = scene->instantiate();
 	ERR_FAIL_COND_V(!node, ERR_CANT_CREATE);
+	remote_nodes.insert(node->get_instance_id());
 	// TODO apply state.
+	_connect_node(node);
 	get_node(spawn_path)->_add_child_nocheck(node, p_name);
 	r_id = node->get_instance_id();
 	return OK;
@@ -101,11 +107,27 @@ Error MultiplayerSpawner::remote_spawn(int p_from, const ResourceUID::ID &p_scen
 
 Error MultiplayerSpawner::remote_despawn(int p_from, Node *p_node) {
 	ERR_FAIL_COND_V(p_from != get_multiplayer_authority(), ERR_UNAUTHORIZED);
+	ERR_FAIL_COND_V(!remote_nodes.has(p_node->get_instance_id()), ERR_UNAUTHORIZED);
 	NodePath path = NodePath(String(spawn_path));
 	ERR_FAIL_COND_V(!has_node(path), ERR_UNCONFIGURED);
 	Node *parent = get_node(path);
 	ERR_FAIL_COND_V(!p_node || p_node->get_parent() != parent, ERR_INVALID_DATA);
-	// TODO better confirm this was remotely spawned!
 	p_node->queue_delete();
 	return OK;
+}
+
+void MultiplayerSpawner::_connect_node(Node *p_node) {
+	p_node->connect(SNAME("tree_exiting"), callable_mp(this, &MultiplayerSpawner::_node_exit), varray(p_node->get_instance_id()), CONNECT_ONESHOT);
+}
+
+void MultiplayerSpawner::_node_exit(ObjectID p_id) {
+	if (remote_nodes.has(p_id)) {
+		remote_nodes.erase(p_id);
+	}
+	if (tracked_nodes.has(p_id)) {
+		Node *node = Object::cast_to<Node>(ObjectDB::get_instance(p_id));
+		ERR_FAIL_COND(!node);
+		get_multiplayer()->despawn(node);
+		tracked_nodes.erase(p_id);
+	}
 }

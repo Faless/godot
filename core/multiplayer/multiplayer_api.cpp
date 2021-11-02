@@ -44,25 +44,6 @@
 
 MultiplayerReplicationInterface *(*MultiplayerAPI::create_default_replication_interface)() = nullptr;
 
-void MultiplayerAPI::set_replication_interface(MultiplayerReplicationInterface *p_interface) {
-	if (p_interface == replicator) {
-		return;
-	}
-	MultiplayerReplicationInterface *interface = p_interface;
-	if (!interface && create_default_replication_interface) {
-		interface = create_default_replication_interface();
-	}
-	if (replicator) {
-		replicator->set_multiplayer(nullptr);
-		replicator->unreference();
-	}
-	if (interface) {
-		interface->set_multiplayer(this);
-		interface->reference();
-	}
-	replicator = interface;
-}
-
 #ifdef DEBUG_ENABLED
 void MultiplayerAPI::profile_bandwidth(const String &p_inout, int p_size) {
 	if (EngineDebugger::is_profiling("multiplayer")) {
@@ -184,19 +165,13 @@ void MultiplayerAPI::_process_packet(int p_from, const uint8_t *p_packet, int p_
 			_process_raw(p_from, p_packet, p_packet_len);
 		} break;
 		case NETWORK_COMMAND_SPAWN: {
-			if (replicator) {
-				replicator->on_spawn_receive(p_from, p_packet, p_packet_len);
-			}
+			replicator->on_spawn_receive(p_from, p_packet, p_packet_len);
 		} break;
 		case NETWORK_COMMAND_DESPAWN: {
-			if (replicator) {
-				replicator->on_despawn_receive(p_from, p_packet, p_packet_len);
-			}
+			replicator->on_despawn_receive(p_from, p_packet, p_packet_len);
 		} break;
 		case NETWORK_COMMAND_SYNC: {
-			if (replicator) {
-				replicator->on_sync_receive(p_from, p_packet, p_packet_len);
-			}
+			replicator->on_sync_receive(p_from, p_packet, p_packet_len);
 		} break;
 	}
 }
@@ -637,18 +612,23 @@ void MultiplayerAPI::rpcp(Node *p_node, int p_peer_id, const StringName &p_metho
 }
 
 Error MultiplayerAPI::spawn(Object *p_object, int p_peer) {
-	ERR_FAIL_COND_V(!replicator, ERR_BUG);
 	return replicator->on_spawn_send(p_object, p_peer);
 }
 
 Error MultiplayerAPI::despawn(Object *p_object, int p_peer) {
-	ERR_FAIL_COND_V(!replicator, ERR_BUG);
 	return replicator->on_despawn_send(p_object, p_peer);
 }
 
 Error MultiplayerAPI::sync(Object *p_object, int p_peer) {
-	ERR_FAIL_COND_V(!replicator, ERR_BUG);
 	return replicator->on_sync_send(p_object, p_peer);
+}
+
+Error MultiplayerAPI::replication_start(Object *p_object) {
+	return replicator->on_replication_start(p_object);
+}
+
+Error MultiplayerAPI::replication_stop(Object *p_object) {
+	return replicator->on_replication_stop(p_object);
 }
 
 void MultiplayerAPI::_bind_methods() {
@@ -690,11 +670,10 @@ void MultiplayerAPI::_bind_methods() {
 
 MultiplayerAPI::MultiplayerAPI() {
 	if (create_default_replication_interface) {
-		replicator = create_default_replication_interface();
-		if (replicator) {
-			replicator->reference();
-			replicator->set_multiplayer(this);
-		}
+		replicator = Ref<MultiplayerReplicationInterface>(create_default_replication_interface());
+		replicator->set_multiplayer(this);
+	} else {
+		replicator.instantiate();
 	}
 	rpc_manager = memnew(RPCManager(this));
 	clear();
@@ -702,10 +681,5 @@ MultiplayerAPI::MultiplayerAPI() {
 
 MultiplayerAPI::~MultiplayerAPI() {
 	clear();
-	if (replicator) {
-		replicator->set_multiplayer(nullptr);
-		replicator->unreference();
-		replicator = nullptr;
-	}
 	memdelete(rpc_manager);
 }

@@ -82,6 +82,9 @@ protected:
 public:
 	static void make_default();
 
+	virtual Error on_replication_start(Object *p_obj) override;
+	virtual Error on_replication_stop(Object *p_obj) override;
+
 	virtual Error on_spawn_send(Object *p_obj, int p_peer) override;
 	virtual Error on_spawn_receive(int p_from, const uint8_t *p_buffer, int p_buffer_len) override;
 	virtual Error on_despawn_send(Object *p_obj, int p_peer) override;
@@ -92,9 +95,4 @@ public:
 	SceneTreeReplicatorInterface();
 };
 
-class SceneTreeReplicator {
-public:
-	SceneTreeReplicator();
-	~SceneTreeReplicator();
-};
 #endif // SCENE_TREE_REPLICATOR_INTERFACE_H

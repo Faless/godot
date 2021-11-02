@@ -96,7 +96,7 @@ private:
 	Node *root_node = nullptr;
 	bool allow_object_decoding = false;
 
-	MultiplayerReplicationInterface *replicator = nullptr;
+	Ref<MultiplayerReplicationInterface> replicator;
 	RPCManager *rpc_manager = nullptr;
 
 protected:
@@ -110,7 +110,6 @@ protected:
 
 public:
 	static MultiplayerReplicationInterface *(*create_default_replication_interface)();
-	void set_replication_interface(MultiplayerReplicationInterface *p_interface);
 
 	void poll();
 	void clear();
@@ -130,6 +129,8 @@ public:
 	Error spawn(Object *p_object, int p_peer = 0);
 	Error despawn(Object *p_object, int p_peer = 0);
 	Error sync(Object *p_object, int p_peer = 0);
+	Error replication_start(Object *p_object);
+	Error replication_stop(Object *p_object);
 	// Called by replicator
 	bool send_confirm_path(Node *p_node, NodePath p_path, int p_target, int &p_id);
 	Node *get_cached_node(int p_from, uint32_t p_node_id);

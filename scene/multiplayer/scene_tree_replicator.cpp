@@ -14,6 +14,44 @@ void SceneTreeReplicatorInterface::make_default() {
 	MultiplayerAPI::create_default_replication_interface = _create;
 }
 
+Error SceneTreeReplicatorInterface::on_replication_start(Object *p_obj) {
+	if (p_obj->is_class_ptr(MultiplayerSpawner::get_class_ptr_static())) {
+		MultiplayerSpawner *spawner = Object::cast_to<MultiplayerSpawner>(p_obj);
+		ERR_FAIL_COND_V(!spawner, ERR_BUG);
+		return OK;
+	} else if (p_obj->is_class_ptr(MultiplayerSynchronizer::get_class_ptr_static())) {
+		MultiplayerSynchronizer *synchronizer = Object::cast_to<MultiplayerSynchronizer>(p_obj);
+		ERR_FAIL_COND_V(!synchronizer, ERR_BUG);
+		const NodePath path = synchronizer->get_root_path();
+		ERR_FAIL_COND_V(path.is_empty() || !synchronizer->has_node(path), ERR_UNCONFIGURED);
+		Node *node = synchronizer->get_node(path);
+		ObjectID oid = node->get_instance_id();
+		if (tracked_objects.has(oid)) {
+			TrackedObject &tracked = tracked_objects[oid];
+			tracked.synchronizer = synchronizer->get_instance_id();
+			if (tracked.pending) {
+				WARN_PRINT("You got this!");
+				// TODO should send with initial state if possible.
+				//tracked.pending = false;
+				//return _send_spawn_despawn(spawner, spawner->get_currently_spawning(), p_peer, true);
+			}
+		} else {
+			// TODO add to tracked objects as pending.
+		}
+		return OK;
+	}
+	return ERR_INVALID_PARAMETER;
+}
+
+Error SceneTreeReplicatorInterface::on_replication_stop(Object *p_obj) {
+	if (p_obj->is_class_ptr(MultiplayerSpawner::get_class_ptr_static())) {
+		return OK;
+	} else if (p_obj->is_class_ptr(MultiplayerSynchronizer::get_class_ptr_static())) {
+		return OK;
+	}
+	return ERR_INVALID_PARAMETER;
+}
+
 Error SceneTreeReplicatorInterface::_send_spawn(const TrackedObject &p_tracked, int p_peer) {
 	ERR_FAIL_COND_V(!multiplayer, ERR_BUG);
 	Node *node = p_tracked.get_node();
@@ -143,27 +181,8 @@ Error SceneTreeReplicatorInterface::on_spawn_send(Object *p_obj, int p_peer) {
 			return _send_spawn(tracked, p_peer);
 		}
 		return OK;
-	} else if (p_obj->is_class_ptr(MultiplayerSynchronizer::get_class_ptr_static())) {
-		MultiplayerSynchronizer *synchronizer = Object::cast_to<MultiplayerSynchronizer>(p_obj);
-		ERR_FAIL_COND_V(!synchronizer, ERR_BUG);
-		const NodePath path = synchronizer->get_root_path();
-		ERR_FAIL_COND_V(path.is_empty() || !synchronizer->has_node(path), ERR_UNCONFIGURED);
-		Node *node = synchronizer->get_node(path);
-		ObjectID oid = node->get_instance_id();
-		if (tracked_objects.has(oid)) {
-			TrackedObject &tracked = tracked_objects[oid];
-			tracked.synchronizer = synchronizer->get_instance_id();
-			if (tracked.pending) {
-				WARN_PRINT("You got this!");
-				// TODO should send with initial state if possible.
-				//tracked.pending = false;
-				//return _send_spawn_despawn(spawner, spawner->get_currently_spawning(), p_peer, true);
-			}
-		}
-		return OK;
-	} else {
-		return ERR_INVALID_PARAMETER;
 	}
+	return ERR_INVALID_PARAMETER;
 }
 
 Error SceneTreeReplicatorInterface::on_spawn_receive(int p_from, const uint8_t *p_buffer, int p_buffer_len) {
@@ -201,10 +220,4 @@ Error SceneTreeReplicatorInterface::on_sync_receive(int p_from, const uint8_t *p
 }
 
 SceneTreeReplicatorInterface::SceneTreeReplicatorInterface() {
-}
-
-SceneTreeReplicator::SceneTreeReplicator() {
-}
-
-SceneTreeReplicator::~SceneTreeReplicator() {
 }

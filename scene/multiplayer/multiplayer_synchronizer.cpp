@@ -30,11 +30,11 @@ void MultiplayerSynchronizer::_notification(int p_what) {
 	}
 	if (p_what == NOTIFICATION_ENTER_TREE) {
 		if (has_node(root_path)) {
-			get_multiplayer()->spawn(this);
+			get_multiplayer()->replication_start(this);
 		}
 	} else if (p_what == NOTIFICATION_EXIT_TREE) {
 		if (has_node(root_path)) {
-			get_multiplayer()->despawn(this);
+			get_multiplayer()->replication_stop(this);
 		}
 	}
 }

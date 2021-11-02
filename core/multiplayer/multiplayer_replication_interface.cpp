@@ -90,3 +90,21 @@ Error MultiplayerReplicationInterface::on_sync_receive(int p_from, const uint8_t
 	WARN_PRINT_ONCE("MultiplayerReplicationInterface::_on_sync_receive is unimplemented!");
 	return ERR_UNCONFIGURED;
 }
+
+Error MultiplayerReplicationInterface::on_replication_start(Object *p_obj) {
+	int ret = 0;
+	if (GDVIRTUAL_CALL(_on_replication_start, p_obj, ret)) {
+		return (Error)ret;
+	}
+	WARN_PRINT_ONCE("MultiplayerReplicationInterface::_on_replication_start is unimplemented!");
+	return ERR_UNCONFIGURED;
+}
+
+Error MultiplayerReplicationInterface::on_replication_stop(Object *p_obj) {
+	int ret = 0;
+	if (GDVIRTUAL_CALL(_on_replication_stop, p_obj, ret)) {
+		return (Error)ret;
+	}
+	WARN_PRINT_ONCE("MultiplayerReplicationInterface::_on_replication_stop is unimplemented!");
+	return ERR_UNCONFIGURED;
+}

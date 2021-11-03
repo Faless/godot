@@ -83,6 +83,8 @@ private:
 	uint32_t last_net_id = 0;
 	HashMap<NetID, TrackedObject> remote_objects;
 	HashMap<ObjectID, TrackedObject> tracked_objects;
+	ObjectID spawning;
+	PackedByteArray *spawning_state = nullptr;
 
 	Error _send_spawn(const TrackedObject &p_tracked, int p_peer);
 	Error _send_despawn(const TrackedObject &p_tracked, int p_peer);
@@ -91,6 +93,9 @@ private:
 
 	Error track(const ObjectID &p_id, Object *p_config);
 	Error untrack(const ObjectID &p_id, Object *p_config);
+
+	Error _apply_spawn_state(Object *p_obj, MultiplayerSynchronizer *p_synchronizer);
+	bool is_spawning(Object *p_obj) { return p_obj && spawning == p_obj->get_instance_id(); }
 
 protected:
 	static MultiplayerReplicationInterface *_create();

@@ -111,6 +111,9 @@ protected:
 public:
 	static MultiplayerReplicationInterface *(*create_default_replication_interface)();
 
+	static Error encode_and_compress_variant(const Variant &p_variant, uint8_t *p_buffer, int &r_len, bool p_allow_object_decoding);
+	static Error decode_and_decompress_variant(Variant &r_variant, const uint8_t *p_buffer, int p_len, int *r_len, bool p_allow_object_decoding);
+
 	void poll();
 	void clear();
 	void set_root_node(Node *p_node);
@@ -119,9 +122,6 @@ public:
 	Ref<MultiplayerPeer> get_multiplayer_peer() const;
 
 	Error send_bytes(Vector<uint8_t> p_data, int p_to = MultiplayerPeer::TARGET_PEER_BROADCAST, Multiplayer::TransferMode p_mode = Multiplayer::TRANSFER_MODE_RELIABLE, int p_channel = 0);
-
-	Error encode_and_compress_variant(const Variant &p_variant, uint8_t *p_buffer, int &r_len);
-	Error decode_and_decompress_variant(Variant &r_variant, const uint8_t *p_buffer, int p_len, int *r_len);
 
 	// Called by Node.rpc
 	void rpcp(Node *p_node, int p_peer_id, const StringName &p_method, const Variant **p_arg, int p_argcount);

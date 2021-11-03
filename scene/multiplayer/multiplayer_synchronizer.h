@@ -1,3 +1,6 @@
+#ifndef MULTIPLAYER_SYNCHRONIZER_H
+#define MULTIPLAYER_SYNCHRONIZER_H
+
 #include "scene/main/node.h"
 
 #include "scene/resources/scene_replication_config.h"
@@ -28,3 +31,5 @@ public:
 
 	MultiplayerSynchronizer() {}
 };
+
+#endif // MULTIPLAYER_SYNCHRONIZER_H

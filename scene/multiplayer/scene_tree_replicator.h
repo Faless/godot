@@ -4,6 +4,7 @@
 #include "core/multiplayer/multiplayer_replication_interface.h"
 
 #include "scene/multiplayer/multiplayer_spawner.h"
+#include "scene/multiplayer/multiplayer_synchronizer.h"
 
 class SceneTreeReplicatorInterface : public MultiplayerReplicationInterface {
 	GDCLASS(SceneTreeReplicatorInterface, MultiplayerReplicationInterface);
@@ -61,6 +62,10 @@ private:
 
 		MultiplayerSpawner *get_spawner() const {
 			return spawner.is_valid() ? Object::cast_to<MultiplayerSpawner>(ObjectDB::get_instance(spawner)) : nullptr;
+		}
+
+		MultiplayerSynchronizer *get_synchronizer() const {
+			return synchronizer.is_valid() ? Object::cast_to<MultiplayerSynchronizer>(ObjectDB::get_instance(synchronizer)) : nullptr;
 		}
 
 		TrackedObject() {}

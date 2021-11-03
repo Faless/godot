@@ -275,7 +275,7 @@ void RPCManager::_process_rpc(Node *p_node, const uint16_t p_rpc_method_id, int 
 			ERR_FAIL_COND_MSG(p_offset >= p_packet_len, "Invalid packet received. Size too small.");
 
 			int vlen;
-			Error err = multiplayer->decode_and_decompress_variant(args.write[i], &p_packet[p_offset], p_packet_len - p_offset, &vlen);
+			Error err = MultiplayerAPI::decode_and_decompress_variant(args.write[i], &p_packet[p_offset], p_packet_len - p_offset, &vlen, multiplayer->is_object_decoding_allowed());
 			ERR_FAIL_COND_MSG(err != OK, "Invalid packet received. Unable to decode RPC argument.");
 
 			argp.write[i] = &args[i];
@@ -396,10 +396,10 @@ void RPCManager::_send_rpc(Node *p_from, int p_to, uint16_t p_rpc_id, const Mult
 		ofs += 1;
 		for (int i = 0; i < p_argcount; i++) {
 			int len(0);
-			Error err = multiplayer->encode_and_compress_variant(*p_arg[i], nullptr, len);
+			Error err = MultiplayerAPI::encode_and_compress_variant(*p_arg[i], nullptr, len, multiplayer->is_object_decoding_allowed());
 			ERR_FAIL_COND_MSG(err != OK, "Unable to encode RPC argument. THIS IS LIKELY A BUG IN THE ENGINE!");
 			MAKE_ROOM(ofs + len);
-			multiplayer->encode_and_compress_variant(*p_arg[i], &(packet_cache.write[ofs]), len);
+			MultiplayerAPI::encode_and_compress_variant(*p_arg[i], &(packet_cache.write[ofs]), len, multiplayer->is_object_decoding_allowed());
 			ofs += len;
 		}
 	}

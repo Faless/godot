@@ -322,7 +322,7 @@ bool MultiplayerAPI::_send_confirm_path(Node *p_node, NodePath p_path, PathSentC
 #define ENCODE_16 1 << 5
 #define ENCODE_32 2 << 5
 #define ENCODE_64 3 << 5
-Error MultiplayerAPI::encode_and_compress_variant(const Variant &p_variant, uint8_t *r_buffer, int &r_len) {
+Error MultiplayerAPI::encode_and_compress_variant(const Variant &p_variant, uint8_t *r_buffer, int &r_len, bool p_allow_object_decoding) {
 	// Unreachable because `VARIANT_MAX` == 27 and `ENCODE_VARIANT_MASK` == 31
 	CRASH_COND(p_variant.get_type() > VARIANT_META_TYPE_MASK);
 
@@ -383,7 +383,7 @@ Error MultiplayerAPI::encode_and_compress_variant(const Variant &p_variant, uint
 		} break;
 		default:
 			// Any other case is not yet compressed.
-			Error err = encode_variant(p_variant, r_buffer, r_len, allow_object_decoding);
+			Error err = encode_variant(p_variant, r_buffer, r_len, p_allow_object_decoding);
 			if (err != OK) {
 				return err;
 			}
@@ -397,7 +397,7 @@ Error MultiplayerAPI::encode_and_compress_variant(const Variant &p_variant, uint
 	return OK;
 }
 
-Error MultiplayerAPI::decode_and_decompress_variant(Variant &r_variant, const uint8_t *p_buffer, int p_len, int *r_len) {
+Error MultiplayerAPI::decode_and_decompress_variant(Variant &r_variant, const uint8_t *p_buffer, int p_len, int *r_len, bool p_allow_object_decoding) {
 	const uint8_t *buf = p_buffer;
 	int len = p_len;
 
@@ -456,7 +456,7 @@ Error MultiplayerAPI::decode_and_decompress_variant(Variant &r_variant, const ui
 			}
 		} break;
 		default:
-			Error err = decode_variant(r_variant, p_buffer, p_len, r_len, allow_object_decoding);
+			Error err = decode_variant(r_variant, p_buffer, p_len, r_len, p_allow_object_decoding);
 			if (err != OK) {
 				return err;
 			}

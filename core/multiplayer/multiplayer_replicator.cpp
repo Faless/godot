@@ -402,7 +402,7 @@ Error MultiplayerReplicator::_encode_state(const List<Variant> &p_variants, uint
 			}
 			r_len += pba.size();
 		} else {
-			multiplayer->encode_and_compress_variant(v, p_buffer, size);
+			MultiplayerAPI::encode_and_compress_variant(v, p_buffer, size, multiplayer->is_object_decoding_allowed());
 			r_len += size;
 		}
 		return OK;
@@ -410,7 +410,7 @@ Error MultiplayerReplicator::_encode_state(const List<Variant> &p_variants, uint
 
 	// Regular encoding.
 	for (const Variant &v : p_variants) {
-		multiplayer->encode_and_compress_variant(v, p_buffer ? p_buffer + r_len : nullptr, size);
+		MultiplayerAPI::encode_and_compress_variant(v, p_buffer ? p_buffer + r_len : nullptr, size, multiplayer->is_object_decoding_allowed());
 		r_len += size;
 	}
 	return OK;
@@ -441,7 +441,7 @@ Error MultiplayerReplicator::_decode_state(const List<StringName> &p_properties,
 		ERR_FAIL_COND_V_MSG(r_len >= p_len, ERR_INVALID_DATA, "Invalid packet received. Size too small.");
 
 		int vlen;
-		Error err = multiplayer->decode_and_decompress_variant(args.write[i], &p_buffer[r_len], p_len - r_len, &vlen);
+		Error err = MultiplayerAPI::decode_and_decompress_variant(args.write[i], &p_buffer[r_len], p_len - r_len, &vlen, multiplayer->is_object_decoding_allowed());
 		ERR_FAIL_COND_V_MSG(err != OK, err, "Invalid packet received. Unable to decode state variable.");
 		r_len += vlen;
 	}

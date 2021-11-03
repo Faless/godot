@@ -38,6 +38,11 @@ private:
 protected:
 	static void _bind_methods();
 
+	static Object *_get_prop_target(Object *p_obj, const NodePath &p_prop);
+	static Error _get_state(const List<NodePath> &p_properties, Object *p_obj, List<Variant> &r_variant);
+	static Error _encode_state(const List<Variant> &p_variants, uint8_t *p_buffer, int &r_len, bool *r_raw = nullptr);
+	static Error _decode_state(const List<NodePath> &p_cfg, Object *p_obj, const uint8_t *p_buffer, int p_len, int &r_len, bool p_raw = false);
+
 public:
 	void add_property(const NodePath &p_path, bool p_spawn, bool p_sync);
 	void remove_property(const NodePath &p_path);
@@ -50,11 +55,8 @@ public:
 
 	SceneReplicationConfig() {}
 
-	//PackedByteArray encode_spawn_state(Object *p_object);
-	//Error decode_spawn_state(Object *p_object, PackedByteArray p_state);
-
-	//PackedByteArray encode_spawn_state(Object *p_object);
-	//Error decode_spawn_state(Object *p_object, PackedByteArray p_state);
+	PackedByteArray encode_spawn_state(Object *p_obj);
+	Error decode_spawn_state(Object *p_obj, const PackedByteArray &p_state);
 };
 
 #endif // SCENE_REPLICATION_CONFIG_H

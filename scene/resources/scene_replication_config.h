@@ -40,7 +40,6 @@ protected:
 
 	static Object *_get_prop_target(Object *p_obj, const NodePath &p_prop);
 	static Error _get_state(const List<NodePath> &p_properties, Object *p_obj, List<Variant> &r_variant);
-	static Error _encode_state(const List<Variant> &p_variants, uint8_t *p_buffer, int &r_len, bool *r_raw = nullptr);
 	static Error _decode_state(const List<NodePath> &p_cfg, Object *p_obj, const uint8_t *p_buffer, int p_len, int &r_len, bool p_raw = false);
 
 public:

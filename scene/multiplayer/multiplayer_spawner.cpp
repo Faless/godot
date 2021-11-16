@@ -15,16 +15,66 @@ void MultiplayerSpawner::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_spawn_path", "path"), &MultiplayerSpawner::set_spawn_path);
 	ADD_PROPERTY(PropertyInfo(Variant::NODE_PATH, "spawn_path", PROPERTY_HINT_NONE, ""), "set_spawn_path", "get_spawn_path");
 
+	ClassDB::bind_method(D_METHOD("set_auto_spawning", "enabled"), &MultiplayerSpawner::set_auto_spawning);
+	ClassDB::bind_method(D_METHOD("is_auto_spawning"), &MultiplayerSpawner::is_auto_spawning);
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "auto_spawn"), "set_auto_spawning", "is_auto_spawning");
+
 	ADD_SIGNAL(MethodInfo("despawned", PropertyInfo(Variant::INT, "scene_id"), PropertyInfo(Variant::OBJECT, "node", PROPERTY_HINT_RESOURCE_TYPE, "Node")));
 	ADD_SIGNAL(MethodInfo("spawned", PropertyInfo(Variant::INT, "scene_id"), PropertyInfo(Variant::OBJECT, "node", PROPERTY_HINT_RESOURCE_TYPE, "Node")));
 }
 
 void MultiplayerSpawner::_notification(int p_what) {
 	if (p_what == NOTIFICATION_ENTER_TREE) {
-		//get_multiplayer()->get_replicator()->register_spawner(get_path(), &_spawn_despawn_cb);
+		if (auto_spawn) {
+			get_tree()->connect("node_added", callable_mp(this, &MultiplayerSpawner::_node_added));
+		}
 	} else if (p_what == NOTIFICATION_EXIT_TREE) {
-		//get_multiplayer()->get_replicator()->deregister_spawner(get_path());
+		if (auto_spawn) {
+			get_tree()->disconnect("node_added", callable_mp(this, &MultiplayerSpawner::_node_added));
+		}
 	}
+}
+
+void MultiplayerSpawner::_node_added(Node *p_node) {
+	if (Engine::get_singleton()->is_editor_hint()) {
+		return;
+	}
+	const Ref<MultiplayerAPI> multiplayer = get_multiplayer();
+	if (!multiplayer->has_multiplayer_peer() || get_multiplayer_authority() != multiplayer->get_unique_id()) {
+		return;
+	}
+	if (spawn_path.is_empty() || !has_node(spawn_path)) {
+		return;
+	}
+	const Node *parent = get_node(spawn_path);
+	if (p_node->get_parent() != parent) {
+		return;
+	}
+	const String scene = p_node->get_scene_file_path();
+	if (scene.is_empty()) {
+		return;
+	}
+	ResourceUID::ID id = ResourceLoader::get_resource_uid(scene);
+	if (!spawnable_ids.has(id)) {
+		return;
+	}
+	track(p_node);
+	get_multiplayer()->spawn(p_node, 0);
+}
+
+void MultiplayerSpawner::set_auto_spawning(bool p_enabled) {
+	if (p_enabled != auto_spawn && is_inside_tree()) {
+		if (p_enabled) {
+			get_tree()->connect("node_added", callable_mp(this, &MultiplayerSpawner::_node_added));
+		} else {
+			get_tree()->disconnect("node_added", callable_mp(this, &MultiplayerSpawner::_node_added));
+		}
+	}
+	auto_spawn = p_enabled;
+}
+
+bool MultiplayerSpawner::is_auto_spawning() const {
+	return auto_spawn;
 }
 
 TypedArray<PackedScene> MultiplayerSpawner::get_spawnable_scenes() {
@@ -51,10 +101,6 @@ NodePath MultiplayerSpawner::get_spawn_path() const {
 
 void MultiplayerSpawner::set_spawn_path(const NodePath &p_path) {
 	spawn_path = p_path;
-}
-
-Node *MultiplayerSpawner::get_currently_spawning() {
-	return spawning;
 }
 
 Error MultiplayerSpawner::spawn(Node *p_node, int p_peer) {

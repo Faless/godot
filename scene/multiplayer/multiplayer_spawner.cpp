@@ -43,19 +43,19 @@ void MultiplayerSpawner::_node_added(Node *p_node) {
 	if (!multiplayer->has_multiplayer_peer() || get_multiplayer_authority() != multiplayer->get_unique_id()) {
 		return;
 	}
+	if (spawn_path.is_empty() || !has_node(spawn_path)) {
+		return;
+	}
+	const Node *parent = get_node(spawn_path);
+	if (p_node->get_parent() != parent) {
+		return;
+	}
 	const String scene = p_node->get_scene_file_path();
 	if (scene.is_empty()) {
 		return;
 	}
 	ResourceUID::ID id = ResourceLoader::get_resource_uid(scene);
 	if (!spawnable_ids.has(id)) {
-		return;
-	}
-	if (spawn_path.is_empty() || !has_node(spawn_path)) {
-		return;
-	}
-	const Node *parent = get_node(spawn_path);
-	if (p_node->get_parent() != parent) {
 		return;
 	}
 	track(p_node);

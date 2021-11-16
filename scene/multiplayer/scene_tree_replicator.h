@@ -50,7 +50,7 @@ private:
 		NetID net_id;
 		ObjectID spawner;
 		ObjectID synchronizer;
-		bool pending = true;
+		Variant args;
 
 		bool operator==(const ObjectID &p_other) {
 			return id == p_other;
@@ -66,6 +66,10 @@ private:
 
 		MultiplayerSynchronizer *get_synchronizer() const {
 			return synchronizer.is_valid() ? Object::cast_to<MultiplayerSynchronizer>(ObjectDB::get_instance(synchronizer)) : nullptr;
+		}
+
+		bool is_custom() const {
+			return args.get_type() == Variant::ARRAY;
 		}
 
 		TrackedObject() {}

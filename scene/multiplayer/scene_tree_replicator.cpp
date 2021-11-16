@@ -15,12 +15,18 @@ void SceneTreeReplicatorInterface::make_default() {
 }
 
 Error SceneTreeReplicatorInterface::on_replication_start(Object *p_obj, Variant p_config) {
-	ERR_FAIL_COND_V(p_config.get_type() != Variant::OBJECT, ERR_INVALID_PARAMETER);
-	Node *config = Object::cast_to<Node>(p_config.get_validated_object());
 	Node *node = Object::cast_to<Node>(p_obj);
-	ERR_FAIL_COND_V(!config, ERR_INVALID_PARAMETER);
 	ERR_FAIL_COND_V(!node, ERR_INVALID_PARAMETER);
 	ObjectID oid = node->get_instance_id();
+
+	if (p_config.get_type() == Variant::ARRAY) {
+		ERR_FAIL_COND_V(!tracked_objects.has(oid), ERR_INVALID_PARAMETER);
+		tracked_objects[oid].args = p_config;
+		return OK;
+	}
+	ERR_FAIL_COND_V(p_config.get_type() != Variant::OBJECT, ERR_INVALID_PARAMETER);
+	Node *config = Object::cast_to<Node>(p_config.get_validated_object());
+	ERR_FAIL_COND_V(!config, ERR_INVALID_PARAMETER);
 	if (config->is_class_ptr(MultiplayerSpawner::get_class_ptr_static())) {
 		return track(oid, config);
 	} else if (config->is_class_ptr(MultiplayerSynchronizer::get_class_ptr_static())) {
@@ -88,10 +94,19 @@ Error SceneTreeReplicatorInterface::_send_spawn(const TrackedObject &p_tracked, 
 	MultiplayerSpawner *spawner = p_tracked.get_spawner();
 	ERR_FAIL_COND_V(!spawner, ERR_BUG);
 	ERR_FAIL_COND_V(!node, ERR_BUG);
-	const String scene_path = node->get_scene_file_path();
-	ERR_FAIL_COND_V(scene_path.is_empty(), ERR_BUG);
-	ResourceUID::ID scene_id = ResourceLoader::get_resource_uid(scene_path);
-	ERR_FAIL_COND_V(scene_id == ResourceUID::INVALID_ID, ERR_BUG);
+
+	ResourceUID::ID scene_id = ResourceUID::INVALID_ID;
+	PackedByteArray args;
+	if (p_tracked.is_custom()) {
+		// Encode custom args
+		Array spawn_args = p_tracked.args;
+		args.resize(spawn_args.size());
+	} else {
+		const String scene_path = node->get_scene_file_path();
+		ERR_FAIL_COND_V(scene_path.is_empty(), ERR_BUG);
+		scene_id = ResourceLoader::get_resource_uid(scene_path);
+		ERR_FAIL_COND_V(scene_id == ResourceUID::INVALID_ID, ERR_BUG);
+	}
 
 	PackedByteArray packet;
 
@@ -224,7 +239,6 @@ Error SceneTreeReplicatorInterface::on_spawn_send(Object *p_obj, int p_peer) {
 	TrackedObject &tobj = tracked_objects[oid];
 	if (tobj.net_id.is_null()) {
 		tobj.net_id = NetID(++last_net_id);
-		tobj.pending = false;
 	}
 	return _send_spawn(tobj, p_peer);
 }

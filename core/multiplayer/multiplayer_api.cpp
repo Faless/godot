@@ -465,6 +465,67 @@ Error MultiplayerAPI::decode_and_decompress_variant(Variant &r_variant, const ui
 	return OK;
 }
 
+Error MultiplayerAPI::encode_and_compress_variants(const List<Variant> &p_variants, uint8_t *p_buffer, int &r_len, bool p_allow_object_decoding, bool *r_raw) {
+	r_len = 0;
+	int size = 0;
+
+	// Try raw encoding optimization.
+	if (r_raw && p_variants.size() == 1) {
+		*r_raw = false;
+		const Variant v = p_variants[0];
+		if (v.get_type() == Variant::PACKED_BYTE_ARRAY) {
+			*r_raw = true;
+			const PackedByteArray pba = v;
+			if (p_buffer) {
+				memcpy(p_buffer, pba.ptr(), pba.size());
+			}
+			r_len += pba.size();
+		} else {
+			encode_and_compress_variant(v, p_buffer, size, p_allow_object_decoding);
+			r_len += size;
+		}
+		return OK;
+	}
+
+	// Regular encoding.
+	for (const Variant &v : p_variants) {
+		encode_and_compress_variant(v, p_buffer ? p_buffer + r_len : nullptr, size, p_allow_object_decoding);
+		r_len += size;
+	}
+	return OK;
+}
+
+Error MultiplayerAPI::decode_and_decompress_variants(List<Variant> &r_variants, const uint8_t *p_buffer, int p_len, int &r_len, bool p_allow_object_decoding, bool p_raw) {
+	r_len = 0;
+	int argc = r_variants.size();
+	if (argc == 0 && p_raw) {
+		return OK;
+	}
+	ERR_FAIL_COND_V(p_raw && argc != 1, ERR_INVALID_DATA);
+	if (p_raw) {
+		r_len = p_len;
+		PackedByteArray pba;
+		pba.resize(p_len);
+		memcpy(pba.ptrw(), p_buffer, p_len);
+		r_variants[0] = pba;
+		return OK;
+	}
+
+	Vector<Variant> args;
+	Vector<const Variant *> argp;
+	args.resize(argc);
+
+	for (int i = 0; i < argc; i++) {
+		ERR_FAIL_COND_V_MSG(r_len >= p_len, ERR_INVALID_DATA, "Invalid packet received. Size too small.");
+
+		int vlen;
+		Error err = MultiplayerAPI::decode_and_decompress_variant(r_variants[i], &p_buffer[r_len], p_len - r_len, &vlen, p_allow_object_decoding);
+		ERR_FAIL_COND_V_MSG(err != OK, err, "Invalid packet received. Unable to decode state variable.");
+		r_len += vlen;
+	}
+	return OK;
+}
+
 void MultiplayerAPI::_add_peer(int p_id) {
 	connected_peers.insert(p_id);
 	path_get_cache.insert(p_id, PathGetCache());

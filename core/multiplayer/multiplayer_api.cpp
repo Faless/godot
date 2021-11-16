@@ -465,7 +465,7 @@ Error MultiplayerAPI::decode_and_decompress_variant(Variant &r_variant, const ui
 	return OK;
 }
 
-Error MultiplayerAPI::encode_and_compress_variants(const List<Variant> &p_variants, uint8_t *p_buffer, int &r_len, bool p_allow_object_decoding, bool *r_raw) {
+Error MultiplayerAPI::encode_and_compress_variants(const List<Variant> &p_variants, uint8_t *p_buffer, int &r_len, bool *r_raw, bool p_allow_object_decoding) {
 	r_len = 0;
 	int size = 0;
 
@@ -495,7 +495,7 @@ Error MultiplayerAPI::encode_and_compress_variants(const List<Variant> &p_varian
 	return OK;
 }
 
-Error MultiplayerAPI::decode_and_decompress_variants(List<Variant> &r_variants, const uint8_t *p_buffer, int p_len, int &r_len, bool p_allow_object_decoding, bool p_raw) {
+Error MultiplayerAPI::decode_and_decompress_variants(Vector<Variant> &r_variants, const uint8_t *p_buffer, int p_len, int &r_len, bool p_raw, bool p_allow_object_decoding) {
 	r_len = 0;
 	int argc = r_variants.size();
 	if (argc == 0 && p_raw) {
@@ -507,7 +507,7 @@ Error MultiplayerAPI::decode_and_decompress_variants(List<Variant> &r_variants, 
 		PackedByteArray pba;
 		pba.resize(p_len);
 		memcpy(pba.ptrw(), p_buffer, p_len);
-		r_variants[0] = pba;
+		r_variants.write[0] = pba;
 		return OK;
 	}
 
@@ -519,7 +519,7 @@ Error MultiplayerAPI::decode_and_decompress_variants(List<Variant> &r_variants, 
 		ERR_FAIL_COND_V_MSG(r_len >= p_len, ERR_INVALID_DATA, "Invalid packet received. Size too small.");
 
 		int vlen;
-		Error err = MultiplayerAPI::decode_and_decompress_variant(r_variants[i], &p_buffer[r_len], p_len - r_len, &vlen, p_allow_object_decoding);
+		Error err = MultiplayerAPI::decode_and_decompress_variant(r_variants.write[i], &p_buffer[r_len], p_len - r_len, &vlen, p_allow_object_decoding);
 		ERR_FAIL_COND_V_MSG(err != OK, err, "Invalid packet received. Unable to decode state variable.");
 		r_len += vlen;
 	}

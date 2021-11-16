@@ -12,15 +12,17 @@ Object *SceneReplicationConfig::_get_prop_target(Object *p_obj, const NodePath &
 	return node->get_node(p_path);
 }
 
-Error SceneReplicationConfig::_get_state(const List<NodePath> &p_properties, Object *p_obj, Vector<Variant> &r_variant) {
+Error SceneReplicationConfig::_get_state(const List<NodePath> &p_properties, Object *p_obj, Vector<Variant> &r_variant, Vector<const Variant *> &r_variant_ptrs) {
 	ERR_FAIL_COND_V_MSG(!p_obj, ERR_INVALID_PARAMETER, "Cannot encode null object");
 	r_variant.resize(p_properties.size());
+	r_variant_ptrs.resize(r_variant.size());
 	int i = 0;
 	for (const NodePath &prop : p_properties) {
 		bool valid = false;
 		const Object *obj = _get_prop_target(p_obj, prop);
 		ERR_FAIL_COND_V(!obj, FAILED);
 		r_variant.write[i] = obj->get(prop.get_concatenated_subnames(), &valid);
+		r_variant_ptrs.write[i] = &r_variant[i];
 		ERR_FAIL_COND_V_MSG(!valid, ERR_INVALID_DATA, vformat("Property '%s' not found.", prop));
 		i++;
 	}
@@ -39,11 +41,7 @@ PackedByteArray SceneReplicationConfig::encode_spawn_state(Object *p_obj) {
 			props.push_back(prop.name);
 		}
 	}
-	Error err = _get_state(props, p_obj, vars);
-	varp.resize(vars.size());
-	for (int i = 0; i < varp.size(); i++) {
-		varp.write[i] = &vars[i];
-	}
+	Error err = _get_state(props, p_obj, vars, varp);
 	ERR_FAIL_COND_V_MSG(err != OK, out, "Unable to retrieve object state.");
 	err = MultiplayerAPI::encode_and_compress_variants(varp.ptrw(), varp.size(), nullptr, len);
 	ERR_FAIL_COND_V_MSG(err != OK, out, "Unable to encode object state.");

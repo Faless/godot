@@ -39,7 +39,7 @@ protected:
 	static void _bind_methods();
 
 	static Object *_get_prop_target(Object *p_obj, const NodePath &p_prop);
-	static Error _get_state(const List<NodePath> &p_properties, Object *p_obj, Vector<Variant> &r_variant);
+	static Error _get_state(const List<NodePath> &p_properties, Object *p_obj, Vector<Variant> &r_variant, Vector<const Variant *> &r_variant_ptrs);
 	static Error _decode_state(const List<NodePath> &p_cfg, Object *p_obj, const uint8_t *p_buffer, int p_len, int &r_len, bool p_raw = false);
 
 public:

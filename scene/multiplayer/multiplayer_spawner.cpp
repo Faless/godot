@@ -43,13 +43,6 @@ void MultiplayerSpawner::_node_added(Node *p_node) {
 	if (!multiplayer->has_multiplayer_peer() || get_multiplayer_authority() != multiplayer->get_unique_id()) {
 		return;
 	}
-	if (spawn_path.is_empty() || !has_node(spawn_path)) {
-		return;
-	}
-	const Node *parent = get_node(spawn_path);
-	if (p_node->get_parent() != parent) {
-		return;
-	}
 	const String scene = p_node->get_scene_file_path();
 	if (scene.is_empty()) {
 		return;
@@ -58,8 +51,17 @@ void MultiplayerSpawner::_node_added(Node *p_node) {
 	if (!spawnable_ids.has(id)) {
 		return;
 	}
+	if (spawn_path.is_empty() || !has_node(spawn_path)) {
+		return;
+	}
+	const Node *parent = get_node(spawn_path);
+	if (p_node->get_parent() != parent) {
+		return;
+	}
 	track(p_node);
-	get_multiplayer()->spawn(p_node, 0);
+	// This is deferred, as we don't have enough information to spawn this node yet,
+	// since NOTIFICATION_ENTER_TREE has not been called on it (and it's children).
+	get_multiplayer()->call_deferred(SNAME("spawn"), p_node, 0);
 }
 
 void MultiplayerSpawner::set_auto_spawning(bool p_enabled) {

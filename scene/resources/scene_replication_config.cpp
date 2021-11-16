@@ -128,5 +128,5 @@ void SceneReplicationConfig::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_replication"), &SceneReplicationConfig::get_replication);
 	ClassDB::bind_method(D_METHOD("set_replication", "replication"), &SceneReplicationConfig::set_replication);
 
-	ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "replication", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NOEDITOR | PROPERTY_USAGE_INTERNAL), "set_replication", "get_replication");
+	ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "replication", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NO_EDITOR | PROPERTY_USAGE_INTERNAL), "set_replication", "get_replication");
 }

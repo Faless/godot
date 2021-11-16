@@ -469,6 +469,13 @@ Error MultiplayerAPI::encode_and_compress_variants(const Variant **p_variants, i
 	r_len = 0;
 	int size = 0;
 
+	if (p_count == 0) {
+		if (r_raw) {
+			*r_raw = true;
+		}
+		return OK;
+	}
+
 	// Try raw encoding optimization.
 	if (r_raw && p_count == 1) {
 		*r_raw = false;

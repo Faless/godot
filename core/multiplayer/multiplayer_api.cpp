@@ -465,14 +465,14 @@ Error MultiplayerAPI::decode_and_decompress_variant(Variant &r_variant, const ui
 	return OK;
 }
 
-Error MultiplayerAPI::encode_and_compress_variants(const List<Variant> &p_variants, uint8_t *p_buffer, int &r_len, bool *r_raw, bool p_allow_object_decoding) {
+Error MultiplayerAPI::encode_and_compress_variants(const Variant **p_variants, int p_count, uint8_t *p_buffer, int &r_len, bool *r_raw, bool p_allow_object_decoding) {
 	r_len = 0;
 	int size = 0;
 
 	// Try raw encoding optimization.
-	if (r_raw && p_variants.size() == 1) {
+	if (r_raw && p_count == 1) {
 		*r_raw = false;
-		const Variant v = p_variants[0];
+		const Variant &v = *(p_variants[0]);
 		if (v.get_type() == Variant::PACKED_BYTE_ARRAY) {
 			*r_raw = true;
 			const PackedByteArray pba = v;
@@ -488,7 +488,8 @@ Error MultiplayerAPI::encode_and_compress_variants(const List<Variant> &p_varian
 	}
 
 	// Regular encoding.
-	for (const Variant &v : p_variants) {
+	for (int i = 0; i < p_count; i++) {
+		const Variant &v = *(p_variants[i]);
 		encode_and_compress_variant(v, p_buffer ? p_buffer + r_len : nullptr, size, p_allow_object_decoding);
 		r_len += size;
 	}

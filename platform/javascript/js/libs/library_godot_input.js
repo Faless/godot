@@ -393,6 +393,9 @@ const GodotInput = {
 			const rect = canvas.getBoundingClientRect();
 			const pos = GodotInput.computePosition(evt, rect);
 			const modifiers = GodotInput.getModifiers(evt);
+			if (p_pressed && document.activeElement !== GodotConfig.canvas) {
+				GodotConfig.canvas.focus();
+			}
 			if (func(p_pressed, evt.button, pos[0], pos[1], modifiers)) {
 				evt.preventDefault();
 			}
@@ -409,6 +412,9 @@ const GodotInput = {
 		const func = GodotRuntime.get_func(callback);
 		const canvas = GodotConfig.canvas;
 		function touch_cb(type, evt) {
+			if (type === 0 && document.activeElement !== GodotConfig.canvas) {
+				GodotConfig.canvas.focus();
+			}
 			const rect = canvas.getBoundingClientRect();
 			const touches = evt.changedTouches;
 			for (let i = 0; i < touches.length; i++) {

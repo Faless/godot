@@ -34,6 +34,7 @@
 #include "core/crypto/crypto.h"
 #include "core/io/dir_access.h"
 #include "core/io/file_access.h"
+#include "core/math/random_number_generator.h"
 
 static constexpr uint32_t char_count = ('z' - 'a');
 static constexpr uint32_t base = char_count + ('9' - '0');
@@ -82,17 +83,30 @@ ResourceUID::ID ResourceUID::text_to_id(const String &p_text) const {
 	return ID(uid & 0x7FFFFFFFFFFFFFFF);
 }
 
-ResourceUID::ID ResourceUID::create_id() const {
+ResourceUID::ID ResourceUID::create_id() {
 	mutex.lock();
-	if (crypto.is_null()) {
-		crypto = Ref<Crypto>(Crypto::create());
+	if (source.is_null()) {
+		if (Crypto::is_available()) {
+			source = Ref<Crypto>(Crypto::create());
+		} else {
+			RandomNumberGenerator *rng = memnew(RandomNumberGenerator);
+			rng->randomize();
+			source = Ref<RandomNumberGenerator>(rng);
+		}
 	}
 	mutex.unlock();
 	while (true) {
-		PackedByteArray bytes = crypto->generate_random_bytes(8);
-		ERR_FAIL_COND_V(bytes.size() != 8, INVALID_ID);
-		const uint64_t *ptr64 = (const uint64_t *)bytes.ptr();
-		ID id = int64_t((*ptr64) & 0x7FFFFFFFFFFFFFFF);
+		ID id = INVALID_ID;
+		if (Crypto::is_available()) {
+			Ref<Crypto> crypto((Crypto *)source.ptr());
+			PackedByteArray bytes = crypto->generate_random_bytes(8);
+			ERR_FAIL_COND_V(bytes.size() != 8, INVALID_ID);
+			const uint64_t *ptr64 = (const uint64_t *)bytes.ptr();
+			id = int64_t((*ptr64) & 0x7FFFFFFFFFFFFFFF);
+		} else {
+			Ref<RandomNumberGenerator> rng((RandomNumberGenerator *)source.ptr());
+			id = int64_t(((uint64_t(rng->randi()) << 32) | rng->randi()) & 0x7FFFFFFFFFFFFFFF);
+		}
 		mutex.lock();
 		bool exists = unique_ids.has(id);
 		mutex.unlock();

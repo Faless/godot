@@ -92,6 +92,10 @@ Crypto *Crypto::create() {
 	ERR_FAIL_V_MSG(nullptr, "Crypto is not available when the mbedtls module is disabled.");
 }
 
+bool Crypto::is_available() {
+	return _create != nullptr;
+}
+
 void Crypto::load_default_certificates(String p_path) {
 	if (_load_default_certificates) {
 		_load_default_certificates(p_path);

@@ -94,6 +94,7 @@ protected:
 	static void (*_load_default_certificates)(String p_path);
 
 public:
+	static bool is_available();
 	static Crypto *create();
 	static void load_default_certificates(String p_path);
 

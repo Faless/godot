@@ -36,6 +36,7 @@
 
 void MultiplayerSpawner::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("spawn", "node", "peer"), &MultiplayerSpawner::spawn, DEFVAL(0));
+	ClassDB::bind_method(D_METHOD("spawn_custom", "data", "peer"), &MultiplayerSpawner::spawn_custom, DEFVAL(0));
 
 	ClassDB::bind_method(D_METHOD("get_spawnable_scenes"), &MultiplayerSpawner::get_spawnable_scenes);
 	ClassDB::bind_method(D_METHOD("set_spawnable_scenes", "scenes"), &MultiplayerSpawner::set_spawnable_scenes);
@@ -48,6 +49,8 @@ void MultiplayerSpawner::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_auto_spawning", "enabled"), &MultiplayerSpawner::set_auto_spawning);
 	ClassDB::bind_method(D_METHOD("is_auto_spawning"), &MultiplayerSpawner::is_auto_spawning);
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "auto_spawn"), "set_auto_spawning", "is_auto_spawning");
+
+	GDVIRTUAL_BIND(_spawn_custom, "data");
 
 	ADD_SIGNAL(MethodInfo("despawned", PropertyInfo(Variant::INT, "scene_id"), PropertyInfo(Variant::OBJECT, "node", PROPERTY_HINT_RESOURCE_TYPE, "Node")));
 	ADD_SIGNAL(MethodInfo("spawned", PropertyInfo(Variant::INT, "scene_id"), PropertyInfo(Variant::OBJECT, "node", PROPERTY_HINT_RESOURCE_TYPE, "Node")));
@@ -73,6 +76,9 @@ void MultiplayerSpawner::_node_added(Node *p_node) {
 	if (!multiplayer->has_multiplayer_peer() || get_multiplayer_authority() != multiplayer->get_unique_id()) {
 		return;
 	}
+	if (is_tracking(p_node)) {
+		return;
+	}
 	if (spawn_path.is_empty() || !has_node(spawn_path)) {
 		return;
 	}
@@ -88,6 +94,8 @@ void MultiplayerSpawner::_node_added(Node *p_node) {
 	if (!spawnable_ids.has(id)) {
 		return;
 	}
+	const String name = p_node->get_name();
+	ERR_FAIL_COND_MSG(name.validate_node_name() != name, vformat("Unable to auto-spawn node with reserved name: %s. Make sure to add your replicated scenes via 'add_child(node, true)' to produce valid names.", name));
 	track(p_node);
 	// This is deferred, as we don't have enough information to spawn this node yet,
 	// since NOTIFICATION_ENTER_TREE has not been called on it (and it's children).
@@ -148,8 +156,12 @@ Error MultiplayerSpawner::spawn(Node *p_node, int p_peer) {
 	}
 	Node *parent = get_node(spawn_path);
 	track(p_node);
-	parent->add_child(p_node);
+	parent->add_child(p_node, true);
 	return get_multiplayer()->spawn(p_node, p_peer);
+}
+
+bool MultiplayerSpawner::is_tracking(const Node *p_node) const {
+	return tracked_nodes.has(p_node->get_instance_id());
 }
 
 void MultiplayerSpawner::track(Node *p_node) {
@@ -166,7 +178,8 @@ Error MultiplayerSpawner::remote_spawn(Node *p_node, const String &p_name) {
 	Node *parent = get_node(spawn_path);
 	ERR_FAIL_COND_V(parent->has_node(p_name), ERR_INVALID_DATA);
 	_connect_node(p_node);
-	get_node(spawn_path)->_add_child_nocheck(p_node, p_name);
+	p_node->set_name(p_name);
+	get_node(spawn_path)->add_child(p_node);
 	remote_nodes.insert(p_node->get_instance_id());
 	return OK;
 }
@@ -192,4 +205,18 @@ void MultiplayerSpawner::_node_exit(ObjectID p_id) {
 		tracked_nodes.erase(p_id);
 		get_multiplayer()->replication_stop(node, this);
 	}
+}
+
+Node *MultiplayerSpawner::spawn_custom(const Variant &p_data, int p_peer) {
+	Object *obj = nullptr;
+	Node *node = nullptr;
+	if (GDVIRTUAL_CALL(_spawn_custom, p_data, obj)) {
+		node = Object::cast_to<Node>(obj);
+	}
+	ERR_FAIL_COND_V_MSG(!node, nullptr, "Custom spawn requires the '_spawn_custom' virtual method to be implemented via script. The method must return a valid Node.");
+	Node *parent = get_node(spawn_path);
+	track(node);
+	parent->add_child(node, true);
+	get_multiplayer()->spawn(node, p_peer);
+	return node;
 }

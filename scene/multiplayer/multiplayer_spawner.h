@@ -68,11 +68,16 @@ public:
 
 	Node *get_currently_spawning();
 
+	Node *spawn_custom(const Variant &p_data, int p_peer);
 	Error spawn(Node *p_node, int p_peer);
+	bool is_tracking(const Node *p_node) const;
 	void track(Node *p_node);
 
 	Error remote_spawn(Node *p_node, const String &p_name);
 	Error remote_despawn(Node *p_node);
+
+	GDVIRTUAL1RC(Object *, _spawn_custom, const Variant &);
+	GDVIRTUAL1RC(bool, _can_spawn_scene, const Variant &);
 
 	MultiplayerSpawner() {}
 };

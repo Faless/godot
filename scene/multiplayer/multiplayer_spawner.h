@@ -66,7 +66,7 @@ public:
 	bool is_auto_spawning() const;
 	void set_auto_spawning(bool p_enabled);
 
-	Node *get_currently_spawning();
+	bool can_spawn_scene(const String &p_path);
 
 	Node *spawn_custom(const Variant &p_data, int p_peer);
 	Error spawn(Node *p_node, int p_peer);
@@ -76,8 +76,8 @@ public:
 	Error remote_spawn(Node *p_node, const String &p_name);
 	Error remote_despawn(Node *p_node);
 
-	GDVIRTUAL1RC(Object *, _spawn_custom, const Variant &);
-	GDVIRTUAL1RC(bool, _can_spawn_scene, const Variant &);
+	GDVIRTUAL1R(Object *, _spawn_custom, const Variant &);
+	GDVIRTUAL1R(bool, _can_spawn_scene, const String &);
 
 	MultiplayerSpawner() {}
 };

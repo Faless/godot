@@ -51,6 +51,7 @@ void MultiplayerSpawner::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "auto_spawn"), "set_auto_spawning", "is_auto_spawning");
 
 	GDVIRTUAL_BIND(_spawn_custom, "data");
+	GDVIRTUAL_BIND(_can_spawn_scene, "scene");
 
 	ADD_SIGNAL(MethodInfo("despawned", PropertyInfo(Variant::INT, "scene_id"), PropertyInfo(Variant::OBJECT, "node", PROPERTY_HINT_RESOURCE_TYPE, "Node")));
 	ADD_SIGNAL(MethodInfo("spawned", PropertyInfo(Variant::INT, "scene_id"), PropertyInfo(Variant::OBJECT, "node", PROPERTY_HINT_RESOURCE_TYPE, "Node")));
@@ -86,12 +87,7 @@ void MultiplayerSpawner::_node_added(Node *p_node) {
 	if (p_node->get_parent() != parent) {
 		return;
 	}
-	const String scene = p_node->get_scene_file_path();
-	if (scene.is_empty()) {
-		return;
-	}
-	ResourceUID::ID id = ResourceLoader::get_resource_uid(scene);
-	if (!spawnable_ids.has(id)) {
+	if (!can_spawn_scene(p_node->get_scene_file_path())) {
 		return;
 	}
 	const String name = p_node->get_name();
@@ -204,6 +200,16 @@ void MultiplayerSpawner::_node_exit(ObjectID p_id) {
 		get_multiplayer()->despawn(node);
 		tracked_nodes.erase(p_id);
 		get_multiplayer()->replication_stop(node, this);
+	}
+}
+
+bool MultiplayerSpawner::can_spawn_scene(const String &p_scene) {
+	bool can_spawn = false;
+	if (GDVIRTUAL_CALL(_can_spawn_scene, p_scene, can_spawn)) {
+		return can_spawn;
+	} else {
+		ResourceUID::ID id = ResourceLoader::get_resource_uid(p_scene);
+		return spawnable_ids.has(id);
 	}
 }
 

@@ -30,9 +30,6 @@ Error SceneTreeReplicatorInterface::on_replication_start(Object *p_obj, Variant 
 	if (config->is_class_ptr(MultiplayerSpawner::get_class_ptr_static())) {
 		return track(oid, config);
 	} else if (config->is_class_ptr(MultiplayerSynchronizer::get_class_ptr_static())) {
-		if (is_spawning(p_obj)) {
-			_apply_spawn_state(p_obj, Object::cast_to<MultiplayerSynchronizer>(config));
-		}
 		return track(oid, config);
 	}
 	return ERR_INVALID_PARAMETER;
@@ -158,14 +155,15 @@ Error SceneTreeReplicatorInterface::_spawn_receive(int p_from, const uint8_t *p_
 	ofs += 8;
 	uint32_t node_target = decode_uint32(&p_buffer[ofs]);
 	ofs += 4;
-	uint32_t net_id = decode_uint32(&p_buffer[ofs]);
-	ofs += 4;
 	Node *parent = multiplayer->get_cached_node(p_from, node_target);
 	MultiplayerSpawner *spawner = Object::cast_to<MultiplayerSpawner>(parent);
 	ERR_FAIL_COND_V(!spawner, ERR_DOES_NOT_EXIST);
-	ERR_FAIL_COND_V(!spawner->can_spawn(scene_id), ERR_UNAUTHORIZED);
+	const String scene_path = ResourceUID::get_singleton()->get_id_path(scene_id);
+	ERR_FAIL_COND_V(!spawner->can_spawn_scene(scene_path), ERR_UNAUTHORIZED);
 	ERR_FAIL_COND_V(p_from != spawner->get_multiplayer_authority(), ERR_UNAUTHORIZED);
 
+	uint32_t net_id = decode_uint32(&p_buffer[ofs]);
+	ofs += 4;
 	uint32_t name_len = decode_uint32(&p_buffer[ofs]);
 	ofs += 4;
 	ERR_FAIL_COND_V_MSG(name_len > uint32_t(p_buffer_len - ofs), ERR_INVALID_DATA, vformat("Invalid spawn packet size: %d, wants: %d", p_buffer_len, ofs + name_len));
@@ -176,42 +174,35 @@ Error SceneTreeReplicatorInterface::_spawn_receive(int p_from, const uint8_t *p_
 	ERR_FAIL_COND_V_MSG(name.validate_node_name() != name, ERR_INVALID_DATA, vformat("Invalid node name received: '%s'. Make sure to add nodes via 'add_child(node, true)' remotely.", name));
 	ofs += name_len;
 
-	PackedByteArray state;
-	int state_len = p_buffer_len - ofs;
-	if (state_len) {
-		state.resize(state_len);
-		memcpy(state.ptrw(), &p_buffer[ofs], state_len);
+	// Try to spawn.
+	Node *node = spawner->remote_spawn(scene_path, name);
+	ERR_FAIL_COND_V(!node, FAILED);
+
+	ObjectID oid = node->get_instance_id();
+
+	// Apply initial state if a synchronizer is available.
+	if (tracked_objects.has(oid)) {
+		TrackedObject &tobj = tracked_objects[oid];
+		MultiplayerSynchronizer *synchronizer = tobj.get_synchronizer();
+		if (synchronizer) {
+			// Decode state only if we can use it.
+			PackedByteArray state;
+			int state_len = p_buffer_len - ofs;
+			if (state_len) {
+				state.resize(state_len);
+				memcpy(state.ptrw(), &p_buffer[ofs], state_len);
+			}
+			// Call anyway so we can detect bogus initial states.
+			synchronizer->get_replication_config()->decode_spawn_state(node, state);
+		}
 	}
 
-	// Spawn the scene.
-	String scene_path = ResourceUID::get_singleton()->get_id_path(scene_id);
-	RES res = ResourceLoader::load(scene_path);
-	ERR_FAIL_COND_V_MSG(!res.is_valid(), ERR_CANT_OPEN, "Unable to load scene to spawn at path: " + scene_path);
-	PackedScene *scene = Object::cast_to<PackedScene>(res.ptr());
-	ERR_FAIL_COND_V(!scene, ERR_CANT_OPEN);
-	Node *node = scene->instantiate();
+	// Track as remote.
+	TrackedObject rtobj(TrackedObject(oid, net_id));
+	rtobj.spawner = spawner->get_instance_id();
+	remote_objects[NetID(net_id, p_from)] = rtobj;
 
-	spawning_state = &state;
-	spawning = node->get_instance_id();
-	Error err = spawner->remote_spawn(node, name);
-	spawning_state = nullptr;
-	spawning = ObjectID();
-	if (err == OK) {
-		TrackedObject rtobj(TrackedObject(node->get_instance_id(), net_id));
-		rtobj.spawner = spawner->get_instance_id();
-		remote_objects[NetID(net_id, p_from)] = rtobj;
-	} else {
-		memdelete(node);
-	}
-	return err;
-}
-
-Error SceneTreeReplicatorInterface::_apply_spawn_state(Object *p_obj, MultiplayerSynchronizer *p_synchronizer) {
-	ERR_FAIL_COND_V(!p_obj || !p_synchronizer || !spawning_state || spawning.is_null(), ERR_BUG);
-	Error err = p_synchronizer->get_replication_config()->decode_spawn_state(p_obj, *spawning_state);
-	spawning_state = nullptr;
-	spawning = ObjectID();
-	return err;
+	return OK;
 }
 
 Error SceneTreeReplicatorInterface::_despawn_receive(int p_from, const uint8_t *p_buffer, int p_buffer_len) {

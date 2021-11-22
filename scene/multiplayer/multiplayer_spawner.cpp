@@ -169,15 +169,24 @@ void MultiplayerSpawner::track(Node *p_node) {
 	}
 }
 
-Error MultiplayerSpawner::remote_spawn(Node *p_node, const String &p_name) {
-	ERR_FAIL_COND_V(spawn_path.is_empty() || !has_node(spawn_path), ERR_UNCONFIGURED);
+Node *MultiplayerSpawner::remote_spawn(const String &p_scene_path, const String &p_name) {
+	ERR_FAIL_COND_V(!can_spawn_scene(p_scene_path), nullptr);
+	ERR_FAIL_COND_V(spawn_path.is_empty() || !has_node(spawn_path), nullptr);
 	Node *parent = get_node(spawn_path);
-	ERR_FAIL_COND_V(parent->has_node(p_name), ERR_INVALID_DATA);
-	_connect_node(p_node);
-	p_node->set_name(p_name);
-	get_node(spawn_path)->add_child(p_node);
-	remote_nodes.insert(p_node->get_instance_id());
-	return OK;
+	ERR_FAIL_COND_V(parent->has_node(p_name), nullptr);
+
+	RES res = ResourceLoader::load(p_scene_path);
+	ERR_FAIL_COND_V_MSG(!res.is_valid(), nullptr, "Unable to load scene to spawn at path: " + p_scene_path);
+	PackedScene *scene = Object::cast_to<PackedScene>(res.ptr());
+	ERR_FAIL_COND_V_MSG(!scene, nullptr, "Failed to cast resource to scene, probably a bug");
+
+	Node *node = scene->instantiate();
+	node->set_name(p_name);
+	track(node);
+
+	parent->add_child(node);
+	remote_nodes.insert(node->get_instance_id());
+	return node;
 }
 
 Error MultiplayerSpawner::remote_despawn(Node *p_node) {
@@ -191,12 +200,13 @@ void MultiplayerSpawner::_connect_node(Node *p_node) {
 }
 
 void MultiplayerSpawner::_node_exit(ObjectID p_id) {
+	Node *node = Object::cast_to<Node>(ObjectDB::get_instance(p_id));
+	ERR_FAIL_COND(!node);
 	if (remote_nodes.has(p_id)) {
 		remote_nodes.erase(p_id);
-	}
-	if (tracked_nodes.has(p_id)) {
-		Node *node = Object::cast_to<Node>(ObjectDB::get_instance(p_id));
-		ERR_FAIL_COND(!node);
+		tracked_nodes.erase(p_id);
+		get_multiplayer()->replication_stop(node, this);
+	} else if (tracked_nodes.has(p_id)) {
 		get_multiplayer()->despawn(node);
 		tracked_nodes.erase(p_id);
 		get_multiplayer()->replication_stop(node, this);

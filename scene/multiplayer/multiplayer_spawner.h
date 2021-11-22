@@ -58,7 +58,6 @@ protected:
 	void _node_added(Node *p_node);
 
 public:
-	bool can_spawn(const ResourceUID::ID &p_id) const { return spawnable_ids.has(p_id); }
 	TypedArray<PackedScene> get_spawnable_scenes();
 	void set_spawnable_scenes(TypedArray<PackedScene> p_scenes);
 	NodePath get_spawn_path() const;
@@ -73,7 +72,7 @@ public:
 	bool is_tracking(const Node *p_node) const;
 	void track(Node *p_node);
 
-	Error remote_spawn(Node *p_node, const String &p_name);
+	Node *remote_spawn(const String &p_scene_path, const String &p_name);
 	Error remote_despawn(Node *p_node);
 
 	GDVIRTUAL1R(Object *, _spawn_custom, const Variant &);

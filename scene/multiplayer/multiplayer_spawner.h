@@ -67,6 +67,7 @@ public:
 
 	bool can_spawn_scene(const String &p_path);
 
+	Node *spawn_scene(const ResourceUID::ID &p_scene, int p_peer);
 	Node *spawn_custom(const Variant &p_data, int p_peer);
 	Error spawn(Node *p_node, int p_peer);
 	bool is_tracking(const Node *p_node) const;

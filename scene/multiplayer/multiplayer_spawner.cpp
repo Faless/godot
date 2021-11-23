@@ -184,7 +184,6 @@ Node *MultiplayerSpawner::remote_spawn(const String &p_scene_path, const String 
 	node->set_name(p_name);
 	track(node);
 
-	parent->add_child(node);
 	remote_nodes.insert(node->get_instance_id());
 	return node;
 }

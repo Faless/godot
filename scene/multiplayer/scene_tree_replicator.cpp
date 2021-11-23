@@ -30,6 +30,9 @@ Error SceneTreeReplicatorInterface::on_replication_start(Object *p_obj, Variant 
 	if (config->is_class_ptr(MultiplayerSpawner::get_class_ptr_static())) {
 		return track(oid, config);
 	} else if (config->is_class_ptr(MultiplayerSynchronizer::get_class_ptr_static())) {
+		if (is_spawning(p_obj)) {
+			_apply_spawn_state(p_obj, Object::cast_to<MultiplayerSynchronizer>(config));
+		}
 		return track(oid, config);
 	}
 	return ERR_INVALID_PARAMETER;
@@ -180,22 +183,19 @@ Error SceneTreeReplicatorInterface::_spawn_receive(int p_from, const uint8_t *p_
 
 	ObjectID oid = node->get_instance_id();
 
-	// Apply initial state if a synchronizer is available.
-	if (tracked_objects.has(oid)) {
-		TrackedObject &tobj = tracked_objects[oid];
-		MultiplayerSynchronizer *synchronizer = tobj.get_synchronizer();
-		if (synchronizer) {
-			// Decode state only if we can use it.
-			PackedByteArray state;
-			int state_len = p_buffer_len - ofs;
-			if (state_len) {
-				state.resize(state_len);
-				memcpy(state.ptrw(), &p_buffer[ofs], state_len);
-			}
-			// Call anyway so we can detect bogus initial states.
-			synchronizer->get_replication_config()->decode_spawn_state(node, state);
-		}
+	// Make sure to apply the state during the enter tree notification if
+	// a synchronizer is available for that node.
+	PackedByteArray state;
+	int state_len = p_buffer_len - ofs;
+	if (state_len) {
+		state.resize(state_len);
+		memcpy(state.ptrw(), &p_buffer[ofs], state_len);
 	}
+	spawning = oid;
+	spawning_state = &state;
+	spawner->get_node(spawner->get_spawn_path())->add_child(node);
+	spawning = ObjectID();
+	spawning_state = nullptr;
 
 	// Track as remote.
 	TrackedObject rtobj(TrackedObject(oid, net_id));
@@ -203,6 +203,14 @@ Error SceneTreeReplicatorInterface::_spawn_receive(int p_from, const uint8_t *p_
 	remote_objects[NetID(net_id, p_from)] = rtobj;
 
 	return OK;
+}
+
+Error SceneTreeReplicatorInterface::_apply_spawn_state(Object *p_obj, MultiplayerSynchronizer *p_synchronizer) {
+	ERR_FAIL_COND_V(!p_obj || !p_synchronizer || !spawning_state || spawning.is_null(), ERR_BUG);
+	Error err = p_synchronizer->get_replication_config()->decode_spawn_state(p_obj, *spawning_state);
+	spawning_state = nullptr;
+	spawning = ObjectID();
+	return err;
 }
 
 Error SceneTreeReplicatorInterface::_despawn_receive(int p_from, const uint8_t *p_buffer, int p_buffer_len) {

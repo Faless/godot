@@ -98,6 +98,7 @@ private:
 	Error track(const ObjectID &p_id, Object *p_config);
 	Error untrack(const ObjectID &p_id, Object *p_config);
 
+	Error _apply_spawn_state(Object *p_obj, MultiplayerSynchronizer *p_synchronizer);
 	bool is_spawning(Object *p_obj) { return p_obj && spawning == p_obj->get_instance_id(); }
 
 protected:

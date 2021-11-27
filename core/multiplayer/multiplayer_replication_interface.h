@@ -24,11 +24,8 @@ protected:
 public:
 	void set_multiplayer(MultiplayerAPI *p_multiplayer);
 
-	virtual Error on_spawn_send(Object *p_obj, int p_peer);
 	virtual Error on_spawn_receive(int p_from, const uint8_t *p_buffer, int p_buffer_len);
-	virtual Error on_despawn_send(Object *p_obj, int p_peer);
 	virtual Error on_despawn_receive(int p_from, const uint8_t *p_buffer, int p_buffer_len);
-	virtual Error on_sync_send(Object *p_obj, int p_peer);
 	virtual Error on_sync_receive(int p_from, const uint8_t *p_buffer, int p_buffer_len);
 
 	virtual Error on_replication_start(Object *p_obj, Variant p_config);

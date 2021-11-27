@@ -101,6 +101,11 @@ private:
 	Error _apply_spawn_state(Object *p_obj, MultiplayerSynchronizer *p_synchronizer);
 	bool is_spawning(Object *p_obj) { return p_obj && spawning == p_obj->get_instance_id(); }
 
+	// TODO should be removed, handled in tick/flush.
+	Error on_spawn_send(Object *p_obj, int p_peer);
+	Error on_despawn_send(Object *p_obj, int p_peer);
+	Error on_sync_send(Object *p_obj, int p_peer);
+
 protected:
 	static MultiplayerReplicationInterface *_create();
 
@@ -110,11 +115,8 @@ public:
 	virtual Error on_replication_start(Object *p_obj, Variant p_config) override;
 	virtual Error on_replication_stop(Object *p_obj, Variant p_config) override;
 
-	virtual Error on_spawn_send(Object *p_obj, int p_peer) override;
 	virtual Error on_spawn_receive(int p_from, const uint8_t *p_buffer, int p_buffer_len) override;
-	virtual Error on_despawn_send(Object *p_obj, int p_peer) override;
 	virtual Error on_despawn_receive(int p_from, const uint8_t *p_buffer, int p_buffer_len) override;
-	virtual Error on_sync_send(Object *p_obj, int p_peer) override;
 	virtual Error on_sync_receive(int p_from, const uint8_t *p_buffer, int p_buffer_len) override;
 
 	SceneTreeReplicatorInterface();

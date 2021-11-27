@@ -35,8 +35,7 @@
 #include "scene/main/window.h"
 
 void MultiplayerSpawner::_bind_methods() {
-	ClassDB::bind_method(D_METHOD("spawn", "node", "peer"), &MultiplayerSpawner::spawn, DEFVAL(0));
-	ClassDB::bind_method(D_METHOD("spawn_custom", "data", "peer"), &MultiplayerSpawner::spawn_custom, DEFVAL(0));
+	ClassDB::bind_method(D_METHOD("spawn", "data"), &MultiplayerSpawner::spawn);
 
 	ClassDB::bind_method(D_METHOD("get_spawnable_scenes"), &MultiplayerSpawner::get_spawnable_scenes);
 	ClassDB::bind_method(D_METHOD("set_spawnable_scenes", "scenes"), &MultiplayerSpawner::set_spawnable_scenes);
@@ -93,9 +92,6 @@ void MultiplayerSpawner::_node_added(Node *p_node) {
 	const String name = p_node->get_name();
 	ERR_FAIL_COND_MSG(name.validate_node_name() != name, vformat("Unable to auto-spawn node with reserved name: %s. Make sure to add your replicated scenes via 'add_child(node, true)' to produce valid names.", name));
 	track(p_node);
-	// This is deferred, as we don't have enough information to spawn this node yet,
-	// since NOTIFICATION_ENTER_TREE has not been called on it (and it's children).
-	get_multiplayer()->call_deferred(SNAME("spawn"), p_node, 0);
 }
 
 void MultiplayerSpawner::set_auto_spawning(bool p_enabled) {
@@ -139,23 +135,6 @@ void MultiplayerSpawner::set_spawn_path(const NodePath &p_path) {
 	spawn_path = p_path;
 }
 
-Error MultiplayerSpawner::spawn(Node *p_node, int p_peer) {
-	ERR_FAIL_COND_V(!is_inside_tree(), ERR_UNCONFIGURED);
-	ERR_FAIL_COND_V(spawn_path.is_empty() || !has_node(spawn_path), ERR_UNCONFIGURED);
-	const String scene = p_node->get_scene_file_path();
-	if (scene.is_empty()) {
-		return ERR_INVALID_PARAMETER;
-	}
-	ResourceUID::ID id = ResourceLoader::get_resource_uid(scene);
-	if (!spawnable_ids.has(id)) {
-		return ERR_INVALID_PARAMETER;
-	}
-	Node *parent = get_node(spawn_path);
-	track(p_node);
-	parent->add_child(p_node, true);
-	return get_multiplayer()->spawn(p_node, p_peer);
-}
-
 bool MultiplayerSpawner::is_tracking(const Node *p_node) const {
 	return tracked_nodes.has(p_node->get_instance_id());
 }
@@ -184,14 +163,7 @@ Node *MultiplayerSpawner::remote_spawn(const String &p_scene_path, const String 
 	node->set_name(p_name);
 	track(node);
 
-	remote_nodes.insert(node->get_instance_id());
 	return node;
-}
-
-Error MultiplayerSpawner::remote_despawn(Node *p_node) {
-	ERR_FAIL_COND_V(!remote_nodes.has(p_node->get_instance_id()), ERR_UNAUTHORIZED);
-	p_node->queue_delete();
-	return OK;
 }
 
 void MultiplayerSpawner::_connect_node(Node *p_node) {
@@ -201,12 +173,7 @@ void MultiplayerSpawner::_connect_node(Node *p_node) {
 void MultiplayerSpawner::_node_exit(ObjectID p_id) {
 	Node *node = Object::cast_to<Node>(ObjectDB::get_instance(p_id));
 	ERR_FAIL_COND(!node);
-	if (remote_nodes.has(p_id)) {
-		remote_nodes.erase(p_id);
-		tracked_nodes.erase(p_id);
-		get_multiplayer()->replication_stop(node, this);
-	} else if (tracked_nodes.has(p_id)) {
-		get_multiplayer()->despawn(node);
+	if (tracked_nodes.has(p_id)) {
 		tracked_nodes.erase(p_id);
 		get_multiplayer()->replication_stop(node, this);
 	}
@@ -222,7 +189,7 @@ bool MultiplayerSpawner::can_spawn_scene(const String &p_scene) {
 	}
 }
 
-Node *MultiplayerSpawner::spawn_custom(const Variant &p_data, int p_peer) {
+Node *MultiplayerSpawner::spawn(const Variant &p_data) {
 	Object *obj = nullptr;
 	Node *node = nullptr;
 	if (GDVIRTUAL_CALL(_spawn_custom, p_data, obj)) {
@@ -232,6 +199,5 @@ Node *MultiplayerSpawner::spawn_custom(const Variant &p_data, int p_peer) {
 	Node *parent = get_node(spawn_path);
 	track(node);
 	parent->add_child(node, true);
-	get_multiplayer()->spawn(node, p_peer);
 	return node;
 }

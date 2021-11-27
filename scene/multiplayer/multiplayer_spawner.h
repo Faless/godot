@@ -46,7 +46,6 @@ private:
 	NodePath spawn_path;
 
 	Set<ObjectID> tracked_nodes;
-	Set<ObjectID> remote_nodes;
 	bool auto_spawn = false;
 
 	void _connect_node(Node *p_node);
@@ -67,14 +66,11 @@ public:
 
 	bool can_spawn_scene(const String &p_path);
 
-	Node *spawn_scene(const ResourceUID::ID &p_scene, int p_peer);
-	Node *spawn_custom(const Variant &p_data, int p_peer);
-	Error spawn(Node *p_node, int p_peer);
+	Node *spawn(const Variant &p_data);
 	bool is_tracking(const Node *p_node) const;
 	void track(Node *p_node);
 
 	Node *remote_spawn(const String &p_scene_path, const String &p_name);
-	Error remote_despawn(Node *p_node);
 
 	GDVIRTUAL1R(Object *, _spawn_custom, const Variant &);
 	GDVIRTUAL1R(bool, _can_spawn_scene, const String &);

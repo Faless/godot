@@ -680,18 +680,6 @@ void MultiplayerAPI::rpcp(Node *p_node, int p_peer_id, const StringName &p_metho
 	rpc_manager->rpcp(p_node, p_peer_id, p_method, p_arg, p_argcount);
 }
 
-Error MultiplayerAPI::spawn(Object *p_object, int p_peer) {
-	return replicator->on_spawn_send(p_object, p_peer);
-}
-
-Error MultiplayerAPI::despawn(Object *p_object, int p_peer) {
-	return replicator->on_despawn_send(p_object, p_peer);
-}
-
-Error MultiplayerAPI::sync(Object *p_object, int p_peer) {
-	return replicator->on_sync_send(p_object, p_peer);
-}
-
 Error MultiplayerAPI::replication_start(Object *p_object, Variant p_config) {
 	return replicator->on_replication_start(p_object, p_config);
 }
@@ -712,10 +700,6 @@ void MultiplayerAPI::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_remote_sender_id"), &MultiplayerAPI::get_remote_sender_id);
 	ClassDB::bind_method(D_METHOD("poll"), &MultiplayerAPI::poll);
 	ClassDB::bind_method(D_METHOD("clear"), &MultiplayerAPI::clear);
-
-	ClassDB::bind_method(D_METHOD("spawn", "object", "peer"), &MultiplayerAPI::spawn, DEFVAL(0));
-	ClassDB::bind_method(D_METHOD("despawn", "object", "peer"), &MultiplayerAPI::despawn, DEFVAL(0));
-	ClassDB::bind_method(D_METHOD("sync", "object", "peer"), &MultiplayerAPI::sync, DEFVAL(0));
 
 	ClassDB::bind_method(D_METHOD("get_peers"), &MultiplayerAPI::get_peer_ids);
 	ClassDB::bind_method(D_METHOD("set_refuse_new_connections", "refuse"), &MultiplayerAPI::set_refuse_new_connections);

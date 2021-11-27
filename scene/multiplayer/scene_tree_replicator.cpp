@@ -225,9 +225,9 @@ Error SceneTreeReplicatorInterface::_despawn_receive(int p_from, const uint8_t *
 	MultiplayerSpawner *spawner = tracked.get_spawner();
 	ERR_FAIL_COND_V(!node || !spawner, ERR_INVALID_DATA);
 	ERR_FAIL_COND_V(p_from != spawner->get_multiplayer_authority(), ERR_UNAUTHORIZED);
-	Error err = spawner->remote_despawn(node);
+	node->queue_delete();
 	remote_objects.erase(nid);
-	return err;
+	return OK;
 }
 
 Error SceneTreeReplicatorInterface::on_spawn_send(Object *p_obj, int p_peer) {

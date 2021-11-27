@@ -37,15 +37,6 @@ Error MultiplayerReplicationInterface::send_sync(const PackedByteArray &p_data, 
 	return _do_send(p_peer, p_data, Multiplayer::TRANSFER_MODE_UNRELIABLE, 0, (int)MultiplayerAPI::NETWORK_COMMAND_SYNC);
 }
 
-Error MultiplayerReplicationInterface::on_spawn_send(Object *p_obj, int p_peer) {
-	int ret = 0;
-	if (GDVIRTUAL_CALL(_on_spawn_send, p_obj, p_peer, ret)) {
-		return (Error)ret;
-	}
-	WARN_PRINT_ONCE("MultiplayerReplicationInterface::_on_spawn_send is unimplemented!");
-	return ERR_UNCONFIGURED;
-}
-
 Error MultiplayerReplicationInterface::on_spawn_receive(int p_from, const uint8_t *p_buffer, int p_buffer_len) {
 	int ret = 0;
 	if (GDVIRTUAL_CALL(_on_spawn_receive, p_from, p_buffer_len > 1 ? &p_buffer[1] : nullptr, p_buffer_len - 1, ret)) {
@@ -55,30 +46,12 @@ Error MultiplayerReplicationInterface::on_spawn_receive(int p_from, const uint8_
 	return ERR_UNCONFIGURED;
 }
 
-Error MultiplayerReplicationInterface::on_despawn_send(Object *p_obj, int p_peer) {
-	int ret = 0;
-	if (GDVIRTUAL_CALL(_on_despawn_send, p_obj, p_peer, ret)) {
-		return (Error)ret;
-	}
-	WARN_PRINT_ONCE("MultiplayerReplicationInterface::_on_despawn_send is unimplemented!");
-	return ERR_UNCONFIGURED;
-}
-
 Error MultiplayerReplicationInterface::on_despawn_receive(int p_from, const uint8_t *p_buffer, int p_buffer_len) {
 	int ret = 0;
 	if (GDVIRTUAL_CALL(_on_despawn_receive, p_from, p_buffer_len > 1 ? &p_buffer[1] : nullptr, p_buffer_len - 1, ret)) {
 		return (Error)ret;
 	}
 	WARN_PRINT_ONCE("MultiplayerReplicationInterface::_on_despawn_receive is unimplemented!");
-	return ERR_UNCONFIGURED;
-}
-
-Error MultiplayerReplicationInterface::on_sync_send(Object *p_obj, int p_peer) {
-	int ret = 0;
-	if (GDVIRTUAL_CALL(_on_sync_send, p_obj, p_peer, ret)) {
-		return (Error)ret;
-	}
-	WARN_PRINT_ONCE("MultiplayerReplicationInterface::_on_sync_send is unimplemented!");
 	return ERR_UNCONFIGURED;
 }
 

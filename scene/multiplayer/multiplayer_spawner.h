@@ -48,13 +48,13 @@ private:
 	Set<ObjectID> tracked_nodes;
 	bool auto_spawn = false;
 
-	void _connect_node(Node *p_node);
+	void _node_added(Node *p_node);
 	void _node_exit(ObjectID p_id);
+	void _node_ready(ObjectID p_id);
 
 protected:
 	static void _bind_methods();
 	void _notification(int p_what);
-	void _node_added(Node *p_node);
 
 public:
 	TypedArray<PackedScene> get_spawnable_scenes();

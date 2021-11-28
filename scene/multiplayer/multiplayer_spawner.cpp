@@ -143,13 +143,13 @@ void MultiplayerSpawner::track(Node *p_node) {
 	ObjectID oid = p_node->get_instance_id();
 	if (!tracked_nodes.has(oid)) {
 		tracked_nodes.insert(oid);
-		_connect_node(p_node);
-		get_multiplayer()->replication_start(p_node, this);
+		p_node->connect(SNAME("tree_exiting"), callable_mp(this, &MultiplayerSpawner::_node_exit), varray(p_node->get_instance_id()), CONNECT_ONESHOT);
+		p_node->connect(SNAME("ready"), callable_mp(this, &MultiplayerSpawner::_node_ready), varray(p_node->get_instance_id()), CONNECT_ONESHOT);
 	}
 }
 
-void MultiplayerSpawner::_connect_node(Node *p_node) {
-	p_node->connect(SNAME("tree_exiting"), callable_mp(this, &MultiplayerSpawner::_node_exit), varray(p_node->get_instance_id()), CONNECT_ONESHOT);
+void MultiplayerSpawner::_node_ready(ObjectID p_id) {
+	get_multiplayer()->replication_start(ObjectDB::get_instance(p_id), this);
 }
 
 void MultiplayerSpawner::_node_exit(ObjectID p_id) {

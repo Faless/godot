@@ -15,15 +15,6 @@ void SceneTreeReplicatorInterface::make_default() {
 }
 
 void SceneTreeReplicatorInterface::on_network_process() {
-	// Spawn the nodes that needs spawning.
-	const ObjectID *k = nullptr;
-	while ((k = tracked_objects.next(k))) {
-		TrackedObject &tobj = tracked_objects.get(*k);
-		if (tobj.spawn_pending) {
-			tobj.spawn_pending = false;
-			_send_spawn(tobj, 0);
-		}
-	}
 }
 
 bool SceneTreeReplicatorInterface::has_authority(const TrackedObject &p_tracked) const {
@@ -57,7 +48,7 @@ Error SceneTreeReplicatorInterface::on_replication_start(Object *p_obj, Variant 
 		tobj.spawner = cid;
 		if (has_authority(tobj)) {
 			tobj.net_id = NetID(++last_net_id);
-			tobj.spawn_pending = true;
+			_send_spawn(tobj, 0);
 		}
 		return OK;
 	} else if (config->is_class_ptr(MultiplayerSynchronizer::get_class_ptr_static())) {

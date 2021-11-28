@@ -61,10 +61,7 @@ private:
 
 	Error _send_spawn(const TrackedObject &p_tracked, int p_peer);
 	Error _send_despawn(const TrackedObject &p_tracked, int p_peer);
-	Error _spawn_receive(int p_from, const uint8_t *p_buffer, int p_buffer_len);
-	Error _despawn_receive(int p_from, const uint8_t *p_buffer, int p_buffer_len);
 
-	Error _apply_spawn_state(Object *p_obj, MultiplayerSynchronizer *p_synchronizer);
 	bool is_spawning(Object *p_obj) { return p_obj && spawning == p_obj->get_instance_id(); }
 	bool has_authority(const TrackedObject &p_tracked) const;
 

@@ -156,7 +156,7 @@ Error SceneTreeReplicatorInterface::_send_despawn(const TrackedObject &p_tracked
 	return send_despawn(packet, p_peer);
 }
 
-Error SceneTreeReplicatorInterface::_spawn_receive(int p_from, const uint8_t *p_buffer, int p_buffer_len) {
+Error SceneTreeReplicatorInterface::on_spawn_receive(int p_from, const uint8_t *p_buffer, int p_buffer_len) {
 	ERR_FAIL_COND_V_MSG(p_buffer_len < 21, ERR_INVALID_DATA, "Invalid spawn packet received");
 	int ofs = 1; // The spawn/despawn command.
 	ResourceUID::ID scene_id = decode_uint64(&p_buffer[ofs]);
@@ -217,15 +217,7 @@ Error SceneTreeReplicatorInterface::_spawn_receive(int p_from, const uint8_t *p_
 	return OK;
 }
 
-Error SceneTreeReplicatorInterface::_apply_spawn_state(Object *p_obj, MultiplayerSynchronizer *p_synchronizer) {
-	ERR_FAIL_COND_V(!p_obj || !p_synchronizer || !spawning_state || spawning.is_null(), ERR_BUG);
-	Error err = p_synchronizer->get_replication_config()->decode_spawn_state(p_obj, *spawning_state);
-	spawning_state = nullptr;
-	spawning = ObjectID();
-	return err;
-}
-
-Error SceneTreeReplicatorInterface::_despawn_receive(int p_from, const uint8_t *p_buffer, int p_buffer_len) {
+Error SceneTreeReplicatorInterface::on_despawn_receive(int p_from, const uint8_t *p_buffer, int p_buffer_len) {
 	ERR_FAIL_COND_V_MSG(p_buffer_len < 5, ERR_INVALID_DATA, "Invalid spawn packet received");
 	int ofs = 1; // The spawn/despawn command.
 	uint32_t net_id = decode_uint32(&p_buffer[ofs]);
@@ -240,14 +232,6 @@ Error SceneTreeReplicatorInterface::_despawn_receive(int p_from, const uint8_t *
 	node->queue_delete();
 	remote_objects.erase(nid);
 	return OK;
-}
-
-Error SceneTreeReplicatorInterface::on_spawn_receive(int p_from, const uint8_t *p_buffer, int p_buffer_len) {
-	return _spawn_receive(p_from, p_buffer, p_buffer_len);
-}
-
-Error SceneTreeReplicatorInterface::on_despawn_receive(int p_from, const uint8_t *p_buffer, int p_buffer_len) {
-	return _despawn_receive(p_from, p_buffer, p_buffer_len);
 }
 
 Error SceneTreeReplicatorInterface::on_sync_receive(int p_from, const uint8_t *p_buffer, int p_buffer_len) {

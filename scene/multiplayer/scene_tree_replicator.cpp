@@ -61,7 +61,7 @@ Error SceneTreeReplicatorInterface::on_replication_start(Object *p_obj, Variant 
 		return OK;
 	}
 	tracked_objects.erase(oid);
-	return ERR_INVALID_PARAMETER;
+	ERR_FAIL_V(ERR_INVALID_PARAMETER);
 }
 
 Error SceneTreeReplicatorInterface::on_replication_stop(Object *p_obj, Variant p_config) {
@@ -77,7 +77,7 @@ Error SceneTreeReplicatorInterface::on_replication_stop(Object *p_obj, Variant p
 	const ObjectID cid = config->get_instance_id();
 	if (config->is_class_ptr(MultiplayerSpawner::get_class_ptr_static())) {
 		ERR_FAIL_COND_V(tobj.spawner != cid, ERR_INVALID_PARAMETER);
-		if (tobj.is_authority()) {
+		if (tobj.is_authority() && !tobj.spawn_pending) {
 			_send_despawn(tobj, 0);
 		}
 		tobj.spawner = ObjectID();
@@ -186,9 +186,12 @@ Error SceneTreeReplicatorInterface::_spawn_receive(int p_from, const uint8_t *p_
 	ERR_FAIL_COND_V(!parent, ERR_UNCONFIGURED);
 	ERR_FAIL_COND_V(parent->has_node(name), ERR_INVALID_DATA);
 
-	Node *node = spawner->remote_spawn(scene_path);
-	ERR_FAIL_COND_V(!node, FAILED);
+	RES res = ResourceLoader::load(scene_path);
+	ERR_FAIL_COND_V_MSG(!res.is_valid(), ERR_DOES_NOT_EXIST, "Unable to load scene to spawn at path: " + scene_path);
+	PackedScene *scene = Object::cast_to<PackedScene>(res.ptr());
+	ERR_FAIL_COND_V_MSG(!scene, ERR_BUG, "Failed to cast resource to scene, probably a bug");
 
+	Node *node = scene->instantiate();
 	node->set_name(name);
 	ObjectID oid = node->get_instance_id();
 

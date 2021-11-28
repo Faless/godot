@@ -76,7 +76,7 @@ void MultiplayerAPI::poll() {
 		Error err = multiplayer_peer->get_packet(&packet, len);
 		if (err != OK) {
 			ERR_PRINT("Error getting packet!");
-			break; // Something is wrong!
+			return; // Something is wrong!
 		}
 
 		remote_sender_id = sender;
@@ -84,7 +84,7 @@ void MultiplayerAPI::poll() {
 		remote_sender_id = 0;
 
 		if (!multiplayer_peer.is_valid()) {
-			break; // It's also possible that a packet or RPC caused a disconnection, so also check here.
+			return; // It's also possible that a packet or RPC caused a disconnection, so also check here.
 		}
 	}
 	replicator->on_network_process();

@@ -148,20 +148,6 @@ void MultiplayerSpawner::track(Node *p_node) {
 	}
 }
 
-Node *MultiplayerSpawner::remote_spawn(const String &p_scene_path) {
-	ERR_FAIL_COND_V(!can_spawn_scene(p_scene_path), nullptr);
-
-	RES res = ResourceLoader::load(p_scene_path);
-	ERR_FAIL_COND_V_MSG(!res.is_valid(), nullptr, "Unable to load scene to spawn at path: " + p_scene_path);
-	PackedScene *scene = Object::cast_to<PackedScene>(res.ptr());
-	ERR_FAIL_COND_V_MSG(!scene, nullptr, "Failed to cast resource to scene, probably a bug");
-
-	Node *node = scene->instantiate();
-	track(node);
-
-	return node;
-}
-
 void MultiplayerSpawner::_connect_node(Node *p_node) {
 	p_node->connect(SNAME("tree_exiting"), callable_mp(this, &MultiplayerSpawner::_node_exit), varray(p_node->get_instance_id()), CONNECT_ONESHOT);
 }

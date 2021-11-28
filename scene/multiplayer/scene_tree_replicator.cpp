@@ -26,16 +26,24 @@ void SceneTreeReplicatorInterface::on_network_process() {
 	}
 }
 
+bool SceneTreeReplicatorInterface::has_authority(const TrackedObject &p_tracked) const {
+	MultiplayerSpawner *spawner = p_tracked.get_spawner();
+	ERR_FAIL_COND_V(!spawner || !spawner->is_inside_tree(), false);
+	return spawner->get_multiplayer()->has_multiplayer_peer() ? spawner->is_multiplayer_authority() : false;
+}
+
 Error SceneTreeReplicatorInterface::on_replication_start(Object *p_obj, Variant p_config) {
 	Node *node = Object::cast_to<Node>(p_obj);
 	ERR_FAIL_COND_V(!node, ERR_INVALID_PARAMETER);
 	ObjectID oid = node->get_instance_id();
 
+	// Handles custom spawns.
 	if (p_config.get_type() == Variant::ARRAY) {
 		ERR_FAIL_COND_V(!tracked_objects.has(oid), ERR_INVALID_PARAMETER);
 		tracked_objects[oid].args = p_config;
 		return OK;
 	}
+
 	ERR_FAIL_COND_V(p_config.get_type() != Variant::OBJECT, ERR_INVALID_PARAMETER);
 	Node *config = Object::cast_to<Node>(p_config.get_validated_object());
 	ERR_FAIL_COND_V(!config, ERR_INVALID_PARAMETER);
@@ -47,7 +55,7 @@ Error SceneTreeReplicatorInterface::on_replication_start(Object *p_obj, Variant 
 	if (config->is_class_ptr(MultiplayerSpawner::get_class_ptr_static())) {
 		ERR_FAIL_COND_V(tobj.spawner != ObjectID(), ERR_ALREADY_IN_USE);
 		tobj.spawner = cid;
-		if (tobj.is_authority()) {
+		if (has_authority(tobj)) {
 			tobj.net_id = NetID(++last_net_id);
 			tobj.spawn_pending = true;
 		}
@@ -56,7 +64,8 @@ Error SceneTreeReplicatorInterface::on_replication_start(Object *p_obj, Variant 
 		ERR_FAIL_COND_V(tobj.synchronizer != ObjectID(), ERR_ALREADY_IN_USE);
 		tobj.synchronizer = cid;
 		if (is_spawning(p_obj)) {
-			_apply_spawn_state(p_obj, (MultiplayerSynchronizer *)config);
+			// Apply spawn state for remotely spawned node before ready.
+			return ((MultiplayerSynchronizer *)config)->get_replication_config()->decode_spawn_state(p_obj, *spawning_state);
 		}
 		return OK;
 	}
@@ -77,7 +86,7 @@ Error SceneTreeReplicatorInterface::on_replication_stop(Object *p_obj, Variant p
 	const ObjectID cid = config->get_instance_id();
 	if (config->is_class_ptr(MultiplayerSpawner::get_class_ptr_static())) {
 		ERR_FAIL_COND_V(tobj.spawner != cid, ERR_INVALID_PARAMETER);
-		if (tobj.is_authority() && !tobj.spawn_pending) {
+		if (has_authority(tobj) && !tobj.spawn_pending) {
 			_send_despawn(tobj, 0);
 		}
 		tobj.spawner = ObjectID();

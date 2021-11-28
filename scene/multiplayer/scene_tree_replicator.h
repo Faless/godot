@@ -18,28 +18,12 @@ private:
 	public:
 		uint32_t get_id() const { return net_id; }
 		uint32_t get_peer() const { return peer_id; }
-
-		bool operator==(const NetID &p_other) const {
-			return net_id == p_other.net_id && peer_id == p_other.peer_id;
-		}
-
-		operator uint64_t() const {
-			return (uint64_t)peer_id << 32 || net_id;
-		}
-
-		bool is_valid() const {
-			return net_id != 0;
-		}
-
-		bool is_null() const {
-			return net_id == 0;
-		}
-
+		bool operator==(const NetID &p_other) const { return net_id == p_other.net_id && peer_id == p_other.peer_id; }
+		operator uint64_t() const { return (uint64_t)peer_id << 32 || net_id; }
+		bool is_valid() const { return net_id != 0; }
+		bool is_null() const { return net_id == 0; }
 		NetID() {}
-		NetID(uint32_t p_net_id) {
-			net_id = p_net_id;
-		}
-
+		NetID(uint32_t p_net_id) { net_id = p_net_id; }
 		NetID(uint32_t p_net_id, uint32_t p_peer_id) {
 			net_id = p_net_id;
 			peer_id = p_peer_id;
@@ -54,41 +38,18 @@ private:
 		Variant args;
 		bool spawn_pending = false;
 
-		bool operator==(const ObjectID &p_other) {
-			return id == p_other;
-		}
+		bool operator==(const ObjectID &p_other) { return id == p_other; }
 
-		Node *get_node() const {
-			return id.is_valid() ? Object::cast_to<Node>(ObjectDB::get_instance(id)) : nullptr;
-		}
-
-		MultiplayerSpawner *get_spawner() const {
-			return spawner.is_valid() ? Object::cast_to<MultiplayerSpawner>(ObjectDB::get_instance(spawner)) : nullptr;
-		}
-
-		MultiplayerSynchronizer *get_synchronizer() const {
-			return synchronizer.is_valid() ? Object::cast_to<MultiplayerSynchronizer>(ObjectDB::get_instance(synchronizer)) : nullptr;
-		}
-
-		bool is_authority() const {
-			MultiplayerSpawner *spawner = get_spawner();
-			ERR_FAIL_COND_V(!spawner || !spawner->is_inside_tree(), false);
-			return spawner->get_multiplayer()->has_multiplayer_peer() ? spawner->is_multiplayer_authority() : false;
-		}
-
-		bool is_custom() const {
-			return args.get_type() == Variant::ARRAY;
-		}
+		Node *get_node() const { return id.is_valid() ? Object::cast_to<Node>(ObjectDB::get_instance(id)) : nullptr; }
+		MultiplayerSpawner *get_spawner() const { return spawner.is_valid() ? Object::cast_to<MultiplayerSpawner>(ObjectDB::get_instance(spawner)) : nullptr; }
+		MultiplayerSynchronizer *get_synchronizer() const { return synchronizer.is_valid() ? Object::cast_to<MultiplayerSynchronizer>(ObjectDB::get_instance(synchronizer)) : nullptr; }
+		bool is_custom() const { return args.get_type() == Variant::ARRAY; }
 
 		TrackedObject() {}
-
+		TrackedObject(const ObjectID &p_id) { id = p_id; }
 		TrackedObject(const ObjectID &p_id, const NetID &p_net_id) {
 			id = p_id;
 			net_id = p_net_id;
-		}
-
-		TrackedObject(const ObjectID &p_id) {
-			id = p_id;
 		}
 	};
 
@@ -105,6 +66,7 @@ private:
 
 	Error _apply_spawn_state(Object *p_obj, MultiplayerSynchronizer *p_synchronizer);
 	bool is_spawning(Object *p_obj) { return p_obj && spawning == p_obj->get_instance_id(); }
+	bool has_authority(const TrackedObject &p_tracked) const;
 
 protected:
 	static MultiplayerReplicationInterface *_create();

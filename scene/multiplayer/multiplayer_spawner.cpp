@@ -33,6 +33,7 @@
 #include "core/io/marshalls.h"
 #include "core/multiplayer/multiplayer_api.h"
 #include "scene/main/window.h"
+#include "scene/scene_string_names.h"
 
 void MultiplayerSpawner::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("spawn", "data"), &MultiplayerSpawner::spawn);
@@ -69,9 +70,11 @@ void MultiplayerSpawner::_notification(int p_what) {
 }
 
 void MultiplayerSpawner::_node_added(Node *p_node) {
+#ifdef TOOLS_ENABLED
 	if (Engine::get_singleton()->is_editor_hint()) {
 		return;
 	}
+#endif
 	const Ref<MultiplayerAPI> multiplayer = get_multiplayer();
 	if (!multiplayer->has_multiplayer_peer() || get_multiplayer_authority() != multiplayer->get_unique_id()) {
 		return;
@@ -143,8 +146,8 @@ void MultiplayerSpawner::track(Node *p_node) {
 	ObjectID oid = p_node->get_instance_id();
 	if (!tracked_nodes.has(oid)) {
 		tracked_nodes.insert(oid);
-		p_node->connect(SNAME("tree_exiting"), callable_mp(this, &MultiplayerSpawner::_node_exit), varray(p_node->get_instance_id()), CONNECT_ONESHOT);
-		p_node->connect(SNAME("ready"), callable_mp(this, &MultiplayerSpawner::_node_ready), varray(p_node->get_instance_id()), CONNECT_ONESHOT);
+		p_node->connect(SceneStringNames::get_singleton()->tree_exiting, callable_mp(this, &MultiplayerSpawner::_node_exit), varray(p_node->get_instance_id()), CONNECT_ONESHOT);
+		p_node->connect(SceneStringNames::get_singleton()->ready, callable_mp(this, &MultiplayerSpawner::_node_ready), varray(p_node->get_instance_id()), CONNECT_ONESHOT);
 	}
 }
 

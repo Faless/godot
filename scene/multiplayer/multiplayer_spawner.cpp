@@ -75,8 +75,7 @@ void MultiplayerSpawner::_node_added(Node *p_node) {
 		return;
 	}
 #endif
-	const Ref<MultiplayerAPI> multiplayer = get_multiplayer();
-	if (!multiplayer->has_multiplayer_peer() || get_multiplayer_authority() != multiplayer->get_unique_id()) {
+	if (!multiplayer->has_multiplayer_peer() || !is_multiplayer_authority()) {
 		return;
 	}
 	if (is_tracking(p_node)) {
@@ -175,6 +174,8 @@ bool MultiplayerSpawner::can_spawn_scene(const String &p_scene) {
 }
 
 Node *MultiplayerSpawner::spawn(const Variant &p_data) {
+	ERR_FAIL_COND_V(!multiplayer->has_multiplayer_peer() || !is_multiplayer_authority(), nullptr);
+
 	Object *obj = nullptr;
 	Node *node = nullptr;
 	if (GDVIRTUAL_CALL(_spawn_custom, p_data, obj)) {

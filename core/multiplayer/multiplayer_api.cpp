@@ -87,6 +87,7 @@ void MultiplayerAPI::poll() {
 			break; // It's also possible that a packet or RPC caused a disconnection, so also check here.
 		}
 	}
+	replicator->on_network_process();
 }
 
 void MultiplayerAPI::clear() {

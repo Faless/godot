@@ -3,6 +3,7 @@
 
 #include "core/multiplayer/multiplayer_replication_interface.h"
 
+#include "core/multiplayer/multiplayer_api.h"
 #include "scene/multiplayer/multiplayer_spawner.h"
 #include "scene/multiplayer/multiplayer_synchronizer.h"
 
@@ -51,6 +52,7 @@ private:
 		ObjectID spawner;
 		ObjectID synchronizer;
 		Variant args;
+		bool spawn_pending = false;
 
 		bool operator==(const ObjectID &p_other) {
 			return id == p_other;
@@ -66,6 +68,12 @@ private:
 
 		MultiplayerSynchronizer *get_synchronizer() const {
 			return synchronizer.is_valid() ? Object::cast_to<MultiplayerSynchronizer>(ObjectDB::get_instance(synchronizer)) : nullptr;
+		}
+
+		bool is_authority() const {
+			MultiplayerSpawner *spawner = get_spawner();
+			ERR_FAIL_COND_V(!spawner || !spawner->is_inside_tree(), false);
+			return spawner->get_multiplayer()->has_multiplayer_peer() ? spawner->is_multiplayer_authority() : false;
 		}
 
 		bool is_custom() const {
@@ -95,16 +103,8 @@ private:
 	Error _spawn_receive(int p_from, const uint8_t *p_buffer, int p_buffer_len);
 	Error _despawn_receive(int p_from, const uint8_t *p_buffer, int p_buffer_len);
 
-	Error track(const ObjectID &p_id, Object *p_config);
-	Error untrack(const ObjectID &p_id, Object *p_config);
-
 	Error _apply_spawn_state(Object *p_obj, MultiplayerSynchronizer *p_synchronizer);
 	bool is_spawning(Object *p_obj) { return p_obj && spawning == p_obj->get_instance_id(); }
-
-	// TODO should be removed, handled in tick/flush.
-	Error on_spawn_send(Object *p_obj, int p_peer);
-	Error on_despawn_send(Object *p_obj, int p_peer);
-	Error on_sync_send(Object *p_obj, int p_peer);
 
 protected:
 	static MultiplayerReplicationInterface *_create();
@@ -114,6 +114,7 @@ public:
 
 	virtual Error on_replication_start(Object *p_obj, Variant p_config) override;
 	virtual Error on_replication_stop(Object *p_obj, Variant p_config) override;
+	virtual void on_network_process() override;
 
 	virtual Error on_spawn_receive(int p_from, const uint8_t *p_buffer, int p_buffer_len) override;
 	virtual Error on_despawn_receive(int p_from, const uint8_t *p_buffer, int p_buffer_len) override;

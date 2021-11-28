@@ -31,6 +31,8 @@ public:
 	virtual Error on_replication_start(Object *p_obj, Variant p_config);
 	virtual Error on_replication_stop(Object *p_obj, Variant p_config);
 
+	virtual void on_network_process() {}
+
 	// Send a spawn/despawn message to the given peer.
 	Error send_spawn(const PackedByteArray &p_data, int p_peer = 0);
 	Error send_despawn(const PackedByteArray &p_data, int p_peer = 0);

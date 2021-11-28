@@ -174,18 +174,25 @@ const Variant MultiplayerSpawner::get_spawn_argument(const ObjectID &p_id) const
 	return tracked_nodes[p_id];
 }
 
-Node *MultiplayerSpawner::spawn(const Variant &p_data) {
-	ERR_FAIL_COND_V(!get_multiplayer()->has_multiplayer_peer() || !is_multiplayer_authority(), nullptr);
-	ERR_FAIL_COND_V_MSG(p_data.get_type() == Variant::NIL, nullptr, "Custom spawn requires a non-null parameter.");
-
+Node *MultiplayerSpawner::instantiate_custom(const Variant &p_data) {
 	Object *obj = nullptr;
 	Node *node = nullptr;
 	if (GDVIRTUAL_CALL(_spawn_custom, p_data, obj)) {
 		node = Object::cast_to<Node>(obj);
 	}
-	ERR_FAIL_COND_V_MSG(!node, nullptr, "Custom spawn requires the '_spawn_custom' virtual method to be implemented via script. The method must return a valid Node.");
+	return node;
+}
+
+Node *MultiplayerSpawner::spawn(const Variant &p_data) {
+	ERR_FAIL_COND_V(!get_multiplayer()->has_multiplayer_peer() || !is_multiplayer_authority(), nullptr);
+	ERR_FAIL_COND_V_MSG(p_data.get_type() == Variant::NIL, nullptr, "Custom spawn requires a non-null parameter.");
+	ERR_FAIL_COND_V_MSG(!GDVIRTUAL_IS_OVERRIDDEN(_spawn_custom), nullptr, "Custom spawn requires the '_spawn_custom' virtual method to be implemented via script.");
+
+	Node *node = instantiate_custom(p_data);
+	ERR_FAIL_COND_V_MSG(!node, nullptr, "The '_spawn_custom' implementation must return a valid Node.");
+
 	Node *parent = get_node(spawn_path);
-	parent->add_child(node, true);
 	_track(node, p_data);
+	parent->add_child(node, true);
 	return node;
 }

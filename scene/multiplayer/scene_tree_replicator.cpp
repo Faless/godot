@@ -104,7 +104,7 @@ Error SceneTreeReplicatorInterface::_send_spawn(const TrackedObject &p_tracked, 
 	int spawn_arg_size = 0;
 	if (spawn_arg.get_type() != Variant::NIL) {
 		Error err = MultiplayerAPI::encode_and_compress_variant(spawn_arg, nullptr, spawn_arg_size, false);
-		ERR_FAIL_COND_V(!err, err);
+		ERR_FAIL_COND_V(err, err);
 	} else {
 		const String scene_path = node->get_scene_file_path();
 		ERR_FAIL_COND_V(scene_path.is_empty(), ERR_BUG);
@@ -145,6 +145,7 @@ Error SceneTreeReplicatorInterface::_send_spawn(const TrackedObject &p_tracked, 
 		ofs += encode_uint32(spawn_arg_size, &ptr[ofs]);
 		Error err = MultiplayerAPI::encode_and_compress_variant(spawn_arg, &ptr[ofs], spawn_arg_size, false);
 		ERR_FAIL_COND_V(err, err);
+		ofs += spawn_arg_size;
 	}
 	// Write state.
 	if (state.size()) {
@@ -172,8 +173,6 @@ Error SceneTreeReplicatorInterface::on_spawn_receive(int p_from, const uint8_t *
 	ofs += 4;
 	MultiplayerSpawner *spawner = Object::cast_to<MultiplayerSpawner>(multiplayer->get_cached_node(p_from, node_target));
 	ERR_FAIL_COND_V(!spawner, ERR_DOES_NOT_EXIST);
-	const String scene_path = ResourceUID::get_singleton()->get_id_path(scene_id);
-	ERR_FAIL_COND_V(!spawner->can_spawn_scene(scene_path), ERR_UNAUTHORIZED);
 	ERR_FAIL_COND_V(p_from != spawner->get_multiplayer_authority(), ERR_UNAUTHORIZED);
 
 	uint32_t net_id = decode_uint32(&p_buffer[ofs]);
@@ -193,13 +192,31 @@ Error SceneTreeReplicatorInterface::on_spawn_receive(int p_from, const uint8_t *
 	ERR_FAIL_COND_V(!parent, ERR_UNCONFIGURED);
 	ERR_FAIL_COND_V(parent->has_node(name), ERR_INVALID_DATA);
 
-	RES res = ResourceLoader::load(scene_path);
-	ERR_FAIL_COND_V_MSG(!res.is_valid(), ERR_DOES_NOT_EXIST, "Unable to load scene to spawn at path: " + scene_path);
-	PackedScene *scene = Object::cast_to<PackedScene>(res.ptr());
-	ERR_FAIL_COND_V_MSG(!scene, ERR_BUG, "Failed to cast resource to scene, probably a bug");
-
-	Node *node = scene->instantiate();
+	Node *node = nullptr;
+	if (scene_id == ResourceUID::INVALID_ID) {
+		// Custom spawn.
+		ERR_FAIL_COND_V(p_buffer_len - ofs < 4, ERR_INVALID_DATA);
+		uint32_t arg_size = decode_uint32(&p_buffer[ofs]);
+		ofs += 4;
+		ERR_FAIL_COND_V(arg_size > uint32_t(p_buffer_len - ofs), ERR_INVALID_DATA);
+		Variant v;
+		Error err = MultiplayerAPI::decode_and_decompress_variant(v, &p_buffer[ofs], arg_size, nullptr, false);
+		ERR_FAIL_COND_V(err != OK, err);
+		ofs += arg_size;
+		node = spawner->instantiate_custom(v);
+	} else {
+		// Scene based spawn.
+		const String scene_path = ResourceUID::get_singleton()->get_id_path(scene_id);
+		ERR_FAIL_COND_V(!spawner->can_spawn_scene(scene_path), ERR_UNAUTHORIZED);
+		RES res = ResourceLoader::load(scene_path);
+		ERR_FAIL_COND_V_MSG(!res.is_valid(), ERR_DOES_NOT_EXIST, "Unable to load scene to spawn at path: " + scene_path);
+		PackedScene *scene = Object::cast_to<PackedScene>(res.ptr());
+		ERR_FAIL_COND_V_MSG(!scene, ERR_BUG, "Failed to cast resource to scene, probably a bug");
+		node = scene->instantiate();
+	}
+	ERR_FAIL_COND_V(!node, ERR_UNAUTHORIZED);
 	node->set_name(name);
+
 	ObjectID oid = node->get_instance_id();
 
 	// Make sure to apply the state during the enter tree notification if

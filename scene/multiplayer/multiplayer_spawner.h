@@ -68,6 +68,7 @@ public:
 	const Variant get_spawn_argument(const ObjectID &p_id) const;
 	bool can_spawn_scene(const String &p_path);
 	Node *spawn(const Variant &p_data);
+	Node *instantiate_custom(const Variant &p_data);
 
 	GDVIRTUAL1R(Object *, _spawn_custom, const Variant &);
 	GDVIRTUAL1R(bool, _can_spawn_scene, const String &);

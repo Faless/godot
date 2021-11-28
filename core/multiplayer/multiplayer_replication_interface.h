@@ -20,6 +20,7 @@ private:
 protected:
 	// TODO should be private?
 	MultiplayerAPI *multiplayer = nullptr;
+	Error send_raw(const uint8_t *p_buffer, int p_size, int p_peer, Multiplayer::TransferMode p_mode, int p_channel);
 
 public:
 	void set_multiplayer(MultiplayerAPI *p_multiplayer);

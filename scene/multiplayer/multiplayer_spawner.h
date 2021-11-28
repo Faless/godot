@@ -45,9 +45,10 @@ private:
 	Set<ResourceUID::ID> spawnable_ids;
 	NodePath spawn_path;
 
-	Set<ObjectID> tracked_nodes;
+	HashMap<ObjectID, Variant> tracked_nodes;
 	bool auto_spawn = false;
 
+	void _track(Node *p_node, const Variant &p_argument);
 	void _node_added(Node *p_node);
 	void _node_exit(ObjectID p_id);
 	void _node_ready(ObjectID p_id);
@@ -64,16 +65,9 @@ public:
 	bool is_auto_spawning() const;
 	void set_auto_spawning(bool p_enabled);
 
+	const Variant get_spawn_argument(const ObjectID &p_id) const;
 	bool can_spawn_scene(const String &p_path);
-
 	Node *spawn(const Variant &p_data);
-
-	Node *get_spawn_node();
-
-	bool is_tracking(const Node *p_node) const;
-	void track(Node *p_node);
-
-	Node *remote_spawn(const String &p_scene_path);
 
 	GDVIRTUAL1R(Object *, _spawn_custom, const Variant &);
 	GDVIRTUAL1R(bool, _can_spawn_scene, const String &);

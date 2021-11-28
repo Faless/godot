@@ -25,24 +25,17 @@ bool SceneTreeReplicatorInterface::has_authority(const TrackedObject &p_tracked)
 
 Error SceneTreeReplicatorInterface::on_replication_start(Object *p_obj, Variant p_config) {
 	Node *node = Object::cast_to<Node>(p_obj);
-	ERR_FAIL_COND_V(!node, ERR_INVALID_PARAMETER);
-	ObjectID oid = node->get_instance_id();
-
-	// Handles custom spawns.
-	if (p_config.get_type() == Variant::ARRAY) {
-		ERR_FAIL_COND_V(!tracked_objects.has(oid), ERR_INVALID_PARAMETER);
-		tracked_objects[oid].args = p_config;
-		return OK;
-	}
-
-	ERR_FAIL_COND_V(p_config.get_type() != Variant::OBJECT, ERR_INVALID_PARAMETER);
+	ERR_FAIL_COND_V(!node || p_config.get_type() != Variant::OBJECT, ERR_INVALID_PARAMETER);
 	Node *config = Object::cast_to<Node>(p_config.get_validated_object());
 	ERR_FAIL_COND_V(!config, ERR_INVALID_PARAMETER);
-	ObjectID cid = config->get_instance_id();
+
+	ObjectID oid = node->get_instance_id();
 	if (!tracked_objects.has(oid)) {
 		tracked_objects[oid] = TrackedObject(oid);
 	}
 	TrackedObject &tobj = tracked_objects[oid];
+
+	ObjectID cid = config->get_instance_id();
 	if (config->is_class_ptr(MultiplayerSpawner::get_class_ptr_static())) {
 		ERR_FAIL_COND_V(tobj.spawner != ObjectID(), ERR_ALREADY_IN_USE);
 		tobj.spawner = cid;
@@ -93,6 +86,10 @@ Error SceneTreeReplicatorInterface::on_replication_stop(Object *p_obj, Variant p
 	return OK;
 }
 
+#define MAKE_ROOM(m_amount)             \
+	if (packet_cache.size() < m_amount) \
+		packet_cache.resize(m_amount);
+
 Error SceneTreeReplicatorInterface::_send_spawn(const TrackedObject &p_tracked, int p_peer) {
 	ERR_FAIL_COND_V(!multiplayer, ERR_BUG);
 	Node *node = p_tracked.get_node();
@@ -101,21 +98,22 @@ Error SceneTreeReplicatorInterface::_send_spawn(const TrackedObject &p_tracked, 
 	ERR_FAIL_COND_V(!node, ERR_BUG);
 
 	ResourceUID::ID scene_id = ResourceUID::INVALID_ID;
-	PackedByteArray args;
-	if (p_tracked.is_custom()) {
-		// Encode custom args
-		Array spawn_args = p_tracked.args;
-		args.resize(spawn_args.size());
+
+	// Prepare custom arg and scene_id
+	Variant spawn_arg = spawner->get_spawn_argument(p_tracked.id);
+	int spawn_arg_size = 0;
+	if (spawn_arg.get_type() != Variant::NIL) {
+		Error err = MultiplayerAPI::encode_and_compress_variant(spawn_arg, nullptr, spawn_arg_size, false);
+		ERR_FAIL_COND_V(!err, err);
 	} else {
 		const String scene_path = node->get_scene_file_path();
 		ERR_FAIL_COND_V(scene_path.is_empty(), ERR_BUG);
 		scene_id = ResourceLoader::get_resource_uid(scene_path);
 		ERR_FAIL_COND_V(scene_id == ResourceUID::INVALID_ID, ERR_BUG);
 	}
+	bool is_custom = scene_id == ResourceUID::INVALID_ID;
 
-	PackedByteArray packet;
-
-	// Prepare spawn state.
+	// Prepare spawn state. TODO should do better
 	PackedByteArray state;
 	MultiplayerSynchronizer *synchronizer = p_tracked.get_synchronizer();
 	if (synchronizer) {
@@ -133,18 +131,27 @@ Error SceneTreeReplicatorInterface::_send_spawn(const TrackedObject &p_tracked, 
 	// Encode name and parent ID.
 	CharString cname = node->get_name().operator String().utf8();
 	int nlen = encode_cstring(cname.get_data(), nullptr);
-	packet.resize(8 + 4 + 4 + 4 + nlen + state.size());
-	int ofs = 0;
-	uint8_t *ptr = packet.ptrw();
+	MAKE_ROOM(1 + 8 + 4 + 4 + 4 + nlen + (is_custom ? 4 + spawn_arg_size : 0) + state.size());
+	uint8_t *ptr = packet_cache.ptrw();
+	ptr[0] = (uint8_t)MultiplayerAPI::NETWORK_COMMAND_SPAWN;
+	int ofs = 1;
 	ofs += encode_uint64(scene_id, &ptr[ofs]);
 	ofs += encode_uint32(path_id, &ptr[ofs]);
 	ofs += encode_uint32(p_tracked.net_id.get_id(), &ptr[ofs]);
 	ofs += encode_uint32(nlen, &ptr[ofs]);
 	ofs += encode_cstring(cname.get_data(), &ptr[ofs]);
+	// Write args
+	if (is_custom) {
+		ofs += encode_uint32(spawn_arg_size, &ptr[ofs]);
+		Error err = MultiplayerAPI::encode_and_compress_variant(spawn_arg, &ptr[ofs], spawn_arg_size, false);
+		ERR_FAIL_COND_V(err, err);
+	}
+	// Write state.
 	if (state.size()) {
 		memcpy(&ptr[ofs], state.ptr(), state.size());
 	}
-	return send_spawn(packet, p_peer);
+	ofs += state.size();
+	return send_raw(ptr, ofs, p_peer, Multiplayer::TRANSFER_MODE_RELIABLE, 0);
 }
 
 Error SceneTreeReplicatorInterface::_send_despawn(const TrackedObject &p_tracked, int p_peer) {

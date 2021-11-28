@@ -78,7 +78,7 @@ void MultiplayerSpawner::_node_added(Node *p_node) {
 	if (!get_multiplayer()->has_multiplayer_peer() || !is_multiplayer_authority()) {
 		return;
 	}
-	if (is_tracking(p_node)) {
+	if (tracked_nodes.has(p_node->get_instance_id())) {
 		return;
 	}
 	if (spawn_path.is_empty() || !has_node(spawn_path)) {
@@ -93,7 +93,7 @@ void MultiplayerSpawner::_node_added(Node *p_node) {
 	}
 	const String name = p_node->get_name();
 	ERR_FAIL_COND_MSG(name.validate_node_name() != name, vformat("Unable to auto-spawn node with reserved name: %s. Make sure to add your replicated scenes via 'add_child(node, true)' to produce valid names.", name));
-	track(p_node);
+	_track(p_node, Variant());
 }
 
 void MultiplayerSpawner::set_auto_spawning(bool p_enabled) {
@@ -137,14 +137,10 @@ void MultiplayerSpawner::set_spawn_path(const NodePath &p_path) {
 	spawn_path = p_path;
 }
 
-bool MultiplayerSpawner::is_tracking(const Node *p_node) const {
-	return tracked_nodes.has(p_node->get_instance_id());
-}
-
-void MultiplayerSpawner::track(Node *p_node) {
+void MultiplayerSpawner::_track(Node *p_node, const Variant &p_argument) {
 	ObjectID oid = p_node->get_instance_id();
 	if (!tracked_nodes.has(oid)) {
-		tracked_nodes.insert(oid);
+		tracked_nodes[oid] = p_argument.duplicate(true);
 		p_node->connect(SceneStringNames::get_singleton()->tree_exiting, callable_mp(this, &MultiplayerSpawner::_node_exit), varray(p_node->get_instance_id()), CONNECT_ONESHOT);
 		p_node->connect(SceneStringNames::get_singleton()->ready, callable_mp(this, &MultiplayerSpawner::_node_ready), varray(p_node->get_instance_id()), CONNECT_ONESHOT);
 	}
@@ -173,8 +169,14 @@ bool MultiplayerSpawner::can_spawn_scene(const String &p_scene) {
 	}
 }
 
+const Variant MultiplayerSpawner::get_spawn_argument(const ObjectID &p_id) const {
+	ERR_FAIL_COND_V(!tracked_nodes.has(p_id), Variant());
+	return tracked_nodes[p_id];
+}
+
 Node *MultiplayerSpawner::spawn(const Variant &p_data) {
 	ERR_FAIL_COND_V(!get_multiplayer()->has_multiplayer_peer() || !is_multiplayer_authority(), nullptr);
+	ERR_FAIL_COND_V_MSG(p_data.get_type() == Variant::NIL, nullptr, "Custom spawn requires a non-null parameter.");
 
 	Object *obj = nullptr;
 	Node *node = nullptr;
@@ -184,6 +186,6 @@ Node *MultiplayerSpawner::spawn(const Variant &p_data) {
 	ERR_FAIL_COND_V_MSG(!node, nullptr, "Custom spawn requires the '_spawn_custom' virtual method to be implemented via script. The method must return a valid Node.");
 	Node *parent = get_node(spawn_path);
 	parent->add_child(node, true);
-	track(node);
+	_track(node, p_data);
 	return node;
 }

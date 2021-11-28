@@ -6,9 +6,18 @@ void MultiplayerReplicationInterface::set_multiplayer(MultiplayerAPI *p_multipla
 	multiplayer = p_multiplayer;
 }
 
-Error MultiplayerReplicationInterface::_do_send(int p_peer, const PackedByteArray &p_data, Multiplayer::TransferMode p_mode, int p_channel, int p_cmd) {
+Error MultiplayerReplicationInterface::send_raw(const uint8_t *p_buffer, int p_size, int p_peer, Multiplayer::TransferMode p_mode, int p_channel) {
+	ERR_FAIL_COND_V(!p_buffer || p_size < 1, ERR_INVALID_PARAMETER);
 	ERR_FAIL_COND_V(!multiplayer, ERR_UNCONFIGURED);
 	ERR_FAIL_COND_V(!multiplayer->has_multiplayer_peer(), ERR_UNCONFIGURED);
+	Ref<MultiplayerPeer> peer = multiplayer->get_multiplayer_peer();
+	peer->set_target_peer(p_peer);
+	peer->set_transfer_channel(p_channel);
+	peer->set_transfer_mode(p_mode);
+	return peer->put_packet(p_buffer, p_size);
+}
+
+Error MultiplayerReplicationInterface::_do_send(int p_peer, const PackedByteArray &p_data, Multiplayer::TransferMode p_mode, int p_channel, int p_cmd) {
 	int size = p_data.size();
 	if (packet_cache.size() < 1 + size) {
 		packet_cache.resize(1 + size);
@@ -18,11 +27,7 @@ Error MultiplayerReplicationInterface::_do_send(int p_peer, const PackedByteArra
 	if (size) {
 		memcpy(&ptr[1], p_data.ptr(), size);
 	}
-	Ref<MultiplayerPeer> peer = multiplayer->get_multiplayer_peer();
-	peer->set_target_peer(p_peer);
-	peer->set_transfer_channel(p_channel);
-	peer->set_transfer_mode(p_mode);
-	return peer->put_packet(ptr, 1 + size);
+	return send_raw(ptr, 1 + size, p_peer, p_mode, p_channel);
 }
 
 Error MultiplayerReplicationInterface::send_spawn(const PackedByteArray &p_data, int p_peer) {

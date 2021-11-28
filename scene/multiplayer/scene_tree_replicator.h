@@ -35,7 +35,6 @@ private:
 		NetID net_id;
 		ObjectID spawner;
 		ObjectID synchronizer;
-		Variant args;
 		bool spawn_pending = false;
 
 		bool operator==(const ObjectID &p_other) { return id == p_other; }
@@ -43,8 +42,6 @@ private:
 		Node *get_node() const { return id.is_valid() ? Object::cast_to<Node>(ObjectDB::get_instance(id)) : nullptr; }
 		MultiplayerSpawner *get_spawner() const { return spawner.is_valid() ? Object::cast_to<MultiplayerSpawner>(ObjectDB::get_instance(spawner)) : nullptr; }
 		MultiplayerSynchronizer *get_synchronizer() const { return synchronizer.is_valid() ? Object::cast_to<MultiplayerSynchronizer>(ObjectDB::get_instance(synchronizer)) : nullptr; }
-		bool is_custom() const { return args.get_type() == Variant::ARRAY; }
-
 		TrackedObject() {}
 		TrackedObject(const ObjectID &p_id) { id = p_id; }
 		TrackedObject(const ObjectID &p_id, const NetID &p_net_id) {
@@ -58,6 +55,7 @@ private:
 	HashMap<ObjectID, TrackedObject> tracked_objects;
 	ObjectID spawning;
 	PackedByteArray *spawning_state = nullptr;
+	PackedByteArray packet_cache;
 
 	Error _send_spawn(const TrackedObject &p_tracked, int p_peer);
 	Error _send_despawn(const TrackedObject &p_tracked, int p_peer);

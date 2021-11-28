@@ -179,7 +179,7 @@ Node *MultiplayerSpawner::spawn(const Variant &p_data) {
 	}
 	ERR_FAIL_COND_V_MSG(!node, nullptr, "Custom spawn requires the '_spawn_custom' virtual method to be implemented via script. The method must return a valid Node.");
 	Node *parent = get_node(spawn_path);
-	track(node);
 	parent->add_child(node, true);
+	track(node);
 	return node;
 }

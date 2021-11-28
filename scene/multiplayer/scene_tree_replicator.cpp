@@ -16,7 +16,7 @@ void SceneTreeReplicatorInterface::make_default() {
 
 void SceneTreeReplicatorInterface::on_network_process() {
 	// Spawn the nodes that needs spawning.
-	const ObjectID *k = tracked_objects.next(nullptr);
+	const ObjectID *k = nullptr;
 	while ((k = tracked_objects.next(k))) {
 		TrackedObject &tobj = tracked_objects.get(*k);
 		if (tobj.spawn_pending) {

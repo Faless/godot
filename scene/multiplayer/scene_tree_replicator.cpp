@@ -156,12 +156,12 @@ Error SceneTreeReplicatorInterface::_send_spawn(const TrackedObject &p_tracked, 
 }
 
 Error SceneTreeReplicatorInterface::_send_despawn(const TrackedObject &p_tracked, int p_peer) {
-	PackedByteArray packet;
-	packet.resize(4);
-	int ofs = 0;
-	uint8_t *ptr = packet.ptrw();
+	MAKE_ROOM(5);
+	uint8_t *ptr = packet_cache.ptrw();
+	ptr[0] = (uint8_t)MultiplayerAPI::NETWORK_COMMAND_DESPAWN;
+	int ofs = 1;
 	ofs += encode_uint32(p_tracked.net_id.get_id(), &ptr[ofs]);
-	return send_despawn(packet, p_peer);
+	return send_raw(ptr, ofs, p_peer, Multiplayer::TRANSFER_MODE_RELIABLE, 0);
 }
 
 Error SceneTreeReplicatorInterface::on_spawn_receive(int p_from, const uint8_t *p_buffer, int p_buffer_len) {

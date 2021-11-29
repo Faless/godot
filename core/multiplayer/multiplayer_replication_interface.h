@@ -25,6 +25,8 @@ protected:
 public:
 	void set_multiplayer(MultiplayerAPI *p_multiplayer);
 
+	virtual void on_start() {}
+
 	virtual Error on_spawn_receive(int p_from, const uint8_t *p_buffer, int p_buffer_len);
 	virtual Error on_despawn_receive(int p_from, const uint8_t *p_buffer, int p_buffer_len);
 	virtual Error on_sync_receive(int p_from, const uint8_t *p_buffer, int p_buffer_len);
@@ -43,11 +45,8 @@ public:
 
 	/* GDExtension */
 	// TODO optimized send/receive with pointers.
-	GDVIRTUAL2R(int, _on_spawn_send, Object *, int);
 	GDVIRTUAL3R(int, _on_spawn_receive, int, GDNativeConstPtr<const uint8_t>, int);
-	GDVIRTUAL2R(int, _on_despawn_send, Object *, int);
 	GDVIRTUAL3R(int, _on_despawn_receive, int, GDNativeConstPtr<const uint8_t>, int);
-	GDVIRTUAL2R(int, _on_sync_send, Object *, int);
 	GDVIRTUAL3R(int, _on_sync_receive, int, GDNativeConstPtr<const uint8_t>, int);
 
 	GDVIRTUAL2R(int, _on_replication_start, Object *, Variant);

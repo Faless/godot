@@ -15,9 +15,6 @@ void SceneTreeReplicatorInterface::make_default() {
 	MultiplayerAPI::create_default_replication_interface = _create;
 }
 
-void SceneTreeReplicatorInterface::on_network_process() {
-}
-
 SceneTreeReplicatorInterface::TrackedObject &SceneTreeReplicatorInterface::_track(const ObjectID &p_id) {
 	if (!tracked_objects.has(p_id)) {
 		tracked_objects[p_id] = TrackedObject(p_id);
@@ -28,13 +25,74 @@ SceneTreeReplicatorInterface::TrackedObject &SceneTreeReplicatorInterface::_trac
 }
 
 void SceneTreeReplicatorInterface::_untrack(const ObjectID &p_id) {
-	tracked_objects.erase(p_id);
+	if (tracked_objects.has(p_id)) {
+		const NetID &nid = tracked_objects[p_id].net_id;
+		if (peers_info.has(nid.get_peer())) {
+			peers_info[nid.get_peer()].recv_nodes.erase(nid);
+		}
+		tracked_objects.erase(p_id);
+	}
 }
 
 bool SceneTreeReplicatorInterface::has_authority(const TrackedObject &p_tracked) const {
 	MultiplayerSpawner *spawner = p_tracked.get_spawner();
 	ERR_FAIL_COND_V(!spawner || !spawner->is_inside_tree(), false);
 	return spawner->get_multiplayer()->has_multiplayer_peer() ? spawner->is_multiplayer_authority() : false;
+}
+
+void SceneTreeReplicatorInterface::on_start() {
+	multiplayer->connect(SNAME("connected_to_server"), callable_mp(this, &SceneTreeReplicatorInterface::_connected));
+	multiplayer->connect(SNAME("connection_failed"), callable_mp(this, &SceneTreeReplicatorInterface::_disconnected));
+	multiplayer->connect(SNAME("server_disconnected"), callable_mp(this, &SceneTreeReplicatorInterface::_disconnected));
+	multiplayer->connect(SNAME("peer_connected"), callable_mp(this, &SceneTreeReplicatorInterface::_peer_connected));
+	multiplayer->connect(SNAME("peer_disconnected"), callable_mp(this, &SceneTreeReplicatorInterface::_peer_disconnected));
+}
+
+const SceneTreeReplicatorInterface::TrackedObject *SceneTreeReplicatorInterface::get_remote(const NetID &p_id) {
+	ERR_FAIL_COND_V(!peers_info.has(p_id.get_peer()), nullptr);
+	const PeerInfo &info = peers_info[p_id.get_peer()];
+	ERR_FAIL_COND_V(!info.recv_nodes.has(p_id), nullptr);
+	const ObjectID &oid = info.recv_nodes[p_id];
+	return tracked_objects.getptr(oid);
+}
+
+void SceneTreeReplicatorInterface::_free_remotes(PeerInfo *p_info) {
+	ERR_FAIL_COND(!p_info);
+	HashMap<NetID, ObjectID> &remotes = p_info->recv_nodes;
+	const NetID *k = nullptr;
+	while ((k = remotes.next(k))) {
+		const ObjectID oid = remotes.get(*k);
+		ERR_CONTINUE(!tracked_objects.has(oid));
+		tracked_objects[oid].get_node()->queue_delete();
+	}
+}
+
+void SceneTreeReplicatorInterface::_peer_connected(int p_id) {
+	peers_info[p_id] = PeerInfo();
+	// TODO send locally managed objects.
+}
+
+void SceneTreeReplicatorInterface::_peer_disconnected(int p_id) {
+	ERR_FAIL_COND(!peers_info.has(p_id));
+	_free_remotes(peers_info.getptr(p_id));
+	peers_info.erase(p_id);
+}
+
+void SceneTreeReplicatorInterface::_connected() {
+}
+
+void SceneTreeReplicatorInterface::_disconnected() {
+	const int *k = nullptr;
+	while ((k = peers_info.next(k))) {
+		_free_remotes(peers_info.getptr(*k));
+	}
+	peers_info.clear();
+	// TODO this is a bit mixed up between spawner and synchronizer
+	// we can't delete here without losing informations.
+	//tracked_objects.clear();
+}
+
+void SceneTreeReplicatorInterface::on_network_process() {
 }
 
 Error SceneTreeReplicatorInterface::on_replication_start(Object *p_obj, Variant p_config) {
@@ -258,7 +316,7 @@ Error SceneTreeReplicatorInterface::on_spawn_receive(int p_from, const uint8_t *
 	tobj.spawn_state_size = 0;
 
 	// Also track as a remote.
-	remote_objects[nid] = oid;
+	peers_info[p_from].recv_nodes[nid] = oid;
 	return OK;
 }
 
@@ -268,16 +326,13 @@ Error SceneTreeReplicatorInterface::on_despawn_receive(int p_from, const uint8_t
 	uint32_t net_id = decode_uint32(&p_buffer[ofs]);
 	ofs += 4;
 	NetID nid(net_id, p_from);
-	ERR_FAIL_COND_V(!remote_objects.has(nid), ERR_INVALID_DATA);
-	const ObjectID &oid = remote_objects[nid];
-	ERR_FAIL_COND_V(!is_tracked(oid), ERR_BUG);
-	const TrackedObject &tracked = tracked_objects[oid];
-	Node *node = tracked.get_node();
-	MultiplayerSpawner *spawner = tracked.get_spawner();
+	const TrackedObject *tracked = get_remote(nid);
+	ERR_FAIL_COND_V(!tracked, ERR_INVALID_DATA);
+	Node *node = tracked->get_node();
+	MultiplayerSpawner *spawner = tracked->get_spawner();
 	ERR_FAIL_COND_V(!node || !spawner, ERR_INVALID_DATA);
 	ERR_FAIL_COND_V(p_from != spawner->get_multiplayer_authority(), ERR_UNAUTHORIZED);
 	node->queue_delete();
-	remote_objects.erase(nid);
 	return OK;
 }
 

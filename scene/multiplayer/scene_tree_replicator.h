@@ -51,25 +51,41 @@ private:
 		}
 	};
 
-	uint32_t last_net_id = 0;
-	HashMap<NetID, ObjectID> remote_objects;
-	HashMap<ObjectID, TrackedObject> tracked_objects;
+	struct PeerInfo {
+		Set<ObjectID> sent_nodes;
+		HashMap<NetID, ObjectID> recv_nodes;
+	};
+
 	PackedByteArray packet_cache;
+
+	uint32_t last_net_id = 0;
+	HashMap<ObjectID, TrackedObject> tracked_objects;
+	HashMap<int, PeerInfo> peers_info;
 
 	Error _send_spawn(const TrackedObject &p_tracked, int p_peer);
 	Error _send_despawn(const TrackedObject &p_tracked, int p_peer);
 
 	TrackedObject &_track(const ObjectID &p_id);
 	void _untrack(const ObjectID &p_id);
-
 	bool is_tracked(const ObjectID &p_id) const { return tracked_objects.has(p_id); }
+
 	bool has_authority(const TrackedObject &p_tracked) const;
+	bool has_remote(const NetID &p_id) const;
+	const TrackedObject *get_remote(const NetID &p_id);
+
+	void _free_remotes(PeerInfo *p_info);
+	void _peer_connected(int p_id);
+	void _peer_disconnected(int p_id);
+	void _connected();
+	void _disconnected();
 
 protected:
 	static MultiplayerReplicationInterface *_create();
 
 public:
 	static void make_default();
+
+	virtual void on_start() override;
 
 	virtual Error on_replication_start(Object *p_obj, Variant p_config) override;
 	virtual Error on_replication_stop(Object *p_obj, Variant p_config) override;

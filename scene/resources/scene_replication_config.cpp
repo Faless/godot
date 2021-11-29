@@ -64,15 +64,9 @@ PackedByteArray SceneReplicationConfig::encode_spawn_state(Object *p_obj) {
 	PackedByteArray out;
 	Vector<Variant> vars;
 	Vector<const Variant *> varp;
-	List<NodePath> props;
-	int len = 0;
-	for (const ReplicationProperty &prop : properties) {
-		if (prop.spawn) {
-			props.push_back(prop.name);
-		}
-	}
-	Error err = _get_state(props, p_obj, vars, varp);
+	Error err = _get_state(spawn_props, p_obj, vars, varp);
 	ERR_FAIL_COND_V_MSG(err != OK, out, "Unable to retrieve object state.");
+	int len;
 	err = MultiplayerAPI::encode_and_compress_variants(varp.ptrw(), varp.size(), nullptr, len);
 	ERR_FAIL_COND_V_MSG(err != OK, out, "Unable to encode object state.");
 	out.resize(len);
@@ -83,21 +77,14 @@ PackedByteArray SceneReplicationConfig::encode_spawn_state(Object *p_obj) {
 Error SceneReplicationConfig::decode_spawn_state(Object *p_obj, const PackedByteArray &p_state) {
 	// TODO can do much better.
 	PackedByteArray out;
-	List<NodePath> props;
-	for (const ReplicationProperty &prop : properties) {
-		if (prop.spawn) {
-			props.push_back(prop.name);
-		}
-	}
-
-	int size;
 	Vector<Variant> vars;
-	vars.resize(props.size());
+	vars.resize(spawn_props.size());
+	int size;
 	Error err = MultiplayerAPI::decode_and_decompress_variants(vars, p_state.ptr(), p_state.size(), size);
 	ERR_FAIL_COND_V(err != OK, err);
 	ERR_FAIL_COND_V_MSG(p_state.size() != size, ERR_INVALID_DATA, "Buffer has trailing bytes.");
 	int i = 0;
-	for (const NodePath &prop : props) {
+	for (const NodePath &prop : spawn_props) {
 		Object *obj = _get_prop_target(p_obj, prop);
 		ERR_FAIL_COND_V(!obj, FAILED);
 		obj->set(prop.get_concatenated_subnames(), vars[i]);
@@ -119,12 +106,25 @@ void SceneReplicationConfig::set_property_spawn(const NodePath &p_path, bool p_e
 	List<ReplicationProperty>::Element *E = properties.find(p_path);
 	ERR_FAIL_COND(!E);
 	E->get().spawn = p_enabled;
+	spawn_props.clear();
+	for (const ReplicationProperty &prop : properties) {
+		if (prop.spawn) {
+			spawn_props.push_back(p_path);
+		}
+	}
 }
 
 void SceneReplicationConfig::set_property_sync(const NodePath &p_path, bool p_enabled) {
 	List<ReplicationProperty>::Element *E = properties.find(p_path);
 	ERR_FAIL_COND(!E);
 	E->get().sync = p_enabled;
+	sync_props.clear();
+	for (const ReplicationProperty &prop : properties) {
+		if (prop.sync) {
+			NodePath np = p_path;
+			sync_props.push_back(p_path);
+		}
+	}
 }
 
 TypedArray<Array> SceneReplicationConfig::get_replication() const {
@@ -145,7 +145,14 @@ void SceneReplicationConfig::set_replication(const TypedArray<Array> &p_replicat
 	for (int i = 0; i < p_replication.size(); i++) {
 		Array arr = p_replication[i];
 		ERR_CONTINUE(arr.size() != 3 || arr[0].get_type() != Variant::NODE_PATH || arr[1].get_type() != Variant::BOOL || arr[2].get_type() != Variant::BOOL);
-		properties.push_back(ReplicationProperty(arr[0], arr[1], arr[2]));
+		ReplicationProperty prop(arr[0], arr[1], arr[2]);
+		properties.push_back(prop);
+		if (prop.sync) {
+			sync_props.push_back(prop.name);
+		}
+		if (prop.spawn) {
+			sync_props.push_back(prop.name);
+		}
 	}
 }
 

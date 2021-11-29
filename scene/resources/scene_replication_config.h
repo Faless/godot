@@ -64,6 +64,8 @@ private:
 	};
 
 	List<ReplicationProperty> properties;
+	List<NodePath> spawn_props;
+	List<NodePath> sync_props;
 
 protected:
 	static void _bind_methods();

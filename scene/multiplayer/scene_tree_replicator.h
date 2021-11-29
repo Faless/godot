@@ -35,7 +35,8 @@ private:
 		NetID net_id;
 		ObjectID spawner;
 		ObjectID synchronizer;
-		bool spawn_pending = false;
+		const uint8_t *spawn_state = nullptr;
+		int spawn_state_size = 0;
 
 		bool operator==(const ObjectID &p_other) { return id == p_other; }
 
@@ -53,14 +54,11 @@ private:
 	uint32_t last_net_id = 0;
 	HashMap<NetID, TrackedObject> remote_objects;
 	HashMap<ObjectID, TrackedObject> tracked_objects;
-	ObjectID spawning;
-	PackedByteArray *spawning_state = nullptr;
 	PackedByteArray packet_cache;
 
 	Error _send_spawn(const TrackedObject &p_tracked, int p_peer);
 	Error _send_despawn(const TrackedObject &p_tracked, int p_peer);
 
-	bool is_spawning(Object *p_obj) { return p_obj && spawning == p_obj->get_instance_id(); }
 	bool has_authority(const TrackedObject &p_tracked) const;
 
 protected:

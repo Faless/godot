@@ -71,10 +71,11 @@ protected:
 	static void _bind_methods();
 
 	static Object *_get_prop_target(Object *p_obj, const NodePath &p_prop);
-	static Error _get_state(const List<NodePath> &p_properties, Object *p_obj, Vector<Variant> &r_variant, Vector<const Variant *> &r_variant_ptrs);
-	static Error _decode_state(const List<NodePath> &p_cfg, Object *p_obj, const uint8_t *p_buffer, int p_len, int &r_len, bool p_raw = false);
 
 public:
+	static Error get_state(const List<NodePath> &p_properties, Object *p_obj, Vector<Variant> &r_variant, Vector<const Variant *> &r_variant_ptrs);
+	static Error set_state(const List<NodePath> &p_properties, Object *p_obj, const Vector<Variant> &p_state);
+
 	void add_property(const NodePath &p_path, bool p_spawn, bool p_sync);
 	void remove_property(const NodePath &p_path);
 
@@ -84,10 +85,10 @@ public:
 	TypedArray<Array> get_replication() const;
 	void set_replication(const TypedArray<Array> &p_replication);
 
-	SceneReplicationConfig() {}
+	const List<NodePath> &get_spawn_properties() { return spawn_props; }
+	const List<NodePath> &get_sync_properties() { return sync_props; }
 
-	PackedByteArray encode_spawn_state(Object *p_obj);
-	Error decode_spawn_state(Object *p_obj, const PackedByteArray &p_state);
+	SceneReplicationConfig() {}
 };
 
 #endif // SCENE_REPLICATION_CONFIG_H

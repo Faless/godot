@@ -42,8 +42,8 @@ Object *SceneReplicationConfig::_get_prop_target(Object *p_obj, const NodePath &
 	return node->get_node(p_path);
 }
 
-Error SceneReplicationConfig::_get_state(const List<NodePath> &p_properties, Object *p_obj, Vector<Variant> &r_variant, Vector<const Variant *> &r_variant_ptrs) {
-	ERR_FAIL_COND_V_MSG(!p_obj, ERR_INVALID_PARAMETER, "Cannot encode null object");
+Error SceneReplicationConfig::get_state(const List<NodePath> &p_properties, Object *p_obj, Vector<Variant> &r_variant, Vector<const Variant *> &r_variant_ptrs) {
+	ERR_FAIL_COND_V(!p_obj, ERR_INVALID_PARAMETER);
 	r_variant.resize(p_properties.size());
 	r_variant_ptrs.resize(r_variant.size());
 	int i = 0;
@@ -59,35 +59,13 @@ Error SceneReplicationConfig::_get_state(const List<NodePath> &p_properties, Obj
 	return OK;
 }
 
-PackedByteArray SceneReplicationConfig::encode_spawn_state(Object *p_obj) {
-	// TODO can do much better.
-	PackedByteArray out;
-	Vector<Variant> vars;
-	Vector<const Variant *> varp;
-	Error err = _get_state(spawn_props, p_obj, vars, varp);
-	ERR_FAIL_COND_V_MSG(err != OK, out, "Unable to retrieve object state.");
-	int len;
-	err = MultiplayerAPI::encode_and_compress_variants(varp.ptrw(), varp.size(), nullptr, len);
-	ERR_FAIL_COND_V_MSG(err != OK, out, "Unable to encode object state.");
-	out.resize(len);
-	MultiplayerAPI::encode_and_compress_variants(varp.ptrw(), varp.size(), out.ptrw(), len);
-	return out;
-}
-
-Error SceneReplicationConfig::decode_spawn_state(Object *p_obj, const PackedByteArray &p_state) {
-	// TODO can do much better.
-	PackedByteArray out;
-	Vector<Variant> vars;
-	vars.resize(spawn_props.size());
-	int size;
-	Error err = MultiplayerAPI::decode_and_decompress_variants(vars, p_state.ptr(), p_state.size(), size);
-	ERR_FAIL_COND_V(err != OK, err);
-	ERR_FAIL_COND_V_MSG(p_state.size() != size, ERR_INVALID_DATA, "Buffer has trailing bytes.");
+Error SceneReplicationConfig::set_state(const List<NodePath> &p_properties, Object *p_obj, const Vector<Variant> &p_state) {
+	ERR_FAIL_COND_V(!p_obj, ERR_INVALID_PARAMETER);
 	int i = 0;
-	for (const NodePath &prop : spawn_props) {
+	for (const NodePath &prop : p_properties) {
 		Object *obj = _get_prop_target(p_obj, prop);
 		ERR_FAIL_COND_V(!obj, FAILED);
-		obj->set(prop.get_concatenated_subnames(), vars[i]);
+		obj->set(prop.get_concatenated_subnames(), p_state[i]);
 		i += 1;
 	}
 	return OK;

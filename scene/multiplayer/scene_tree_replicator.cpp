@@ -47,9 +47,17 @@ Error SceneTreeReplicatorInterface::on_replication_start(Object *p_obj, Variant 
 	} else if (config->is_class_ptr(MultiplayerSynchronizer::get_class_ptr_static())) {
 		ERR_FAIL_COND_V(tobj.synchronizer != ObjectID(), ERR_ALREADY_IN_USE);
 		tobj.synchronizer = cid;
-		if (is_spawning(p_obj)) {
+		if (tobj.spawn_state) {
 			// Apply spawn state for remotely spawned node before ready.
-			return ((MultiplayerSynchronizer *)config)->get_replication_config()->decode_spawn_state(p_obj, *spawning_state);
+			const List<NodePath> props = ((MultiplayerSynchronizer *)config)->get_replication_config()->get_spawn_properties();
+			Vector<Variant> vars;
+			vars.resize(props.size());
+			int consumed;
+			Error err = MultiplayerAPI::decode_and_decompress_variants(vars, tobj.spawn_state, tobj.spawn_state_size, consumed);
+			tobj.spawn_state = nullptr;
+			tobj.spawn_state_size = 0;
+			ERR_FAIL_COND_V(err, err);
+			return SceneReplicationConfig::set_state(props, p_obj, vars);
 		}
 		return OK;
 	}
@@ -70,7 +78,7 @@ Error SceneTreeReplicatorInterface::on_replication_stop(Object *p_obj, Variant p
 	const ObjectID cid = config->get_instance_id();
 	if (config->is_class_ptr(MultiplayerSpawner::get_class_ptr_static())) {
 		ERR_FAIL_COND_V(tobj.spawner != cid, ERR_INVALID_PARAMETER);
-		if (has_authority(tobj) && !tobj.spawn_pending) {
+		if (has_authority(tobj)) {
 			_send_despawn(tobj, 0);
 		}
 		tobj.spawner = ObjectID();
@@ -113,11 +121,17 @@ Error SceneTreeReplicatorInterface::_send_spawn(const TrackedObject &p_tracked, 
 	}
 	bool is_custom = scene_id == ResourceUID::INVALID_ID;
 
-	// Prepare spawn state. TODO should do better
-	PackedByteArray state;
+	// Prepare spawn state.
+	int state_size = 0;
+	Vector<Variant> state_vars;
+	Vector<const Variant *> state_varp;
 	MultiplayerSynchronizer *synchronizer = p_tracked.get_synchronizer();
-	if (synchronizer) {
-		state = synchronizer->get_replication_config()->encode_spawn_state(node);
+	if (synchronizer && synchronizer->get_replication_config().is_valid()) {
+		const List<NodePath> props = synchronizer->get_replication_config()->get_spawn_properties();
+		Error err = SceneReplicationConfig::get_state(props, node, state_vars, state_varp);
+		ERR_FAIL_COND_V_MSG(err != OK, err, "Unable to retrieve spawn state.");
+		err = MultiplayerAPI::encode_and_compress_variants(state_varp.ptrw(), state_varp.size(), nullptr, state_size);
+		ERR_FAIL_COND_V_MSG(err != OK, err, "Unable to encode spawn state.");
 	}
 
 	// Prepare simplified path.
@@ -131,7 +145,7 @@ Error SceneTreeReplicatorInterface::_send_spawn(const TrackedObject &p_tracked, 
 	// Encode name and parent ID.
 	CharString cname = node->get_name().operator String().utf8();
 	int nlen = encode_cstring(cname.get_data(), nullptr);
-	MAKE_ROOM(1 + 8 + 4 + 4 + 4 + nlen + (is_custom ? 4 + spawn_arg_size : 0) + state.size());
+	MAKE_ROOM(1 + 8 + 4 + 4 + 4 + nlen + (is_custom ? 4 + spawn_arg_size : 0) + state_size);
 	uint8_t *ptr = packet_cache.ptrw();
 	ptr[0] = (uint8_t)MultiplayerAPI::NETWORK_COMMAND_SPAWN;
 	int ofs = 1;
@@ -148,10 +162,11 @@ Error SceneTreeReplicatorInterface::_send_spawn(const TrackedObject &p_tracked, 
 		ofs += spawn_arg_size;
 	}
 	// Write state.
-	if (state.size()) {
-		memcpy(&ptr[ofs], state.ptr(), state.size());
+	if (state_size) {
+		Error err = MultiplayerAPI::encode_and_compress_variants(state_varp.ptrw(), state_varp.size(), &ptr[ofs], state_size);
+		ERR_FAIL_COND_V(err, err);
+		ofs += state_size;
 	}
-	ofs += state.size();
 	return send_raw(ptr, ofs, p_peer, Multiplayer::TRANSFER_MODE_RELIABLE, 0);
 }
 
@@ -219,21 +234,23 @@ Error SceneTreeReplicatorInterface::on_spawn_receive(int p_from, const uint8_t *
 
 	ObjectID oid = node->get_instance_id();
 
-	// Make sure to apply the state during the enter tree notification if
-	// a synchronizer is available for that node.
-	PackedByteArray state;
+	// Track object and store the temporary state buffer so that it can be
+	// applied by the synchronizer notification when entering tree.
+	TrackedObject tobj(oid);
 	int state_len = p_buffer_len - ofs;
 	if (state_len) {
-		state.resize(state_len);
-		memcpy(state.ptrw(), &p_buffer[ofs], state_len);
+		tobj.spawn_state = &p_buffer[ofs];
+		tobj.spawn_state_size = state_len;
 	}
-	spawning = oid;
-	spawning_state = &state;
-	parent->add_child(node);
-	spawning = ObjectID();
-	spawning_state = nullptr;
+	tobj.spawner = spawner->get_instance_id();
+	tracked_objects[oid] = tobj;
 
-	// Track as remote.
+	parent->add_child(node);
+
+	tobj.spawn_state = nullptr;
+	tobj.spawn_state_size = 0;
+
+	// Also track as a remote.
 	TrackedObject rtobj(TrackedObject(oid, net_id));
 	rtobj.spawner = spawner->get_instance_id();
 	remote_objects[NetID(net_id, p_from)] = rtobj;

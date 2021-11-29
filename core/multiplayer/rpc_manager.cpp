@@ -371,8 +371,10 @@ void RPCManager::_send_rpc(Node *p_from, int p_to, uint16_t p_rpc_id, const Mult
 		packet_cache.write[ofs] = p_argcount;
 		ofs += 1;
 	}
-	MultiplayerAPI::encode_and_compress_variants(p_arg, p_argcount, &packet_cache.write[ofs], len, &byte_only_or_no_args, multiplayer->is_object_decoding_allowed());
-	ofs += len;
+	if (len) {
+		MultiplayerAPI::encode_and_compress_variants(p_arg, p_argcount, &packet_cache.write[ofs], len, &byte_only_or_no_args, multiplayer->is_object_decoding_allowed());
+		ofs += len;
+	}
 
 	ERR_FAIL_COND(command_type > 7);
 	ERR_FAIL_COND(node_id_compression > 3);

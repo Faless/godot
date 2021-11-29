@@ -52,13 +52,17 @@ private:
 	};
 
 	uint32_t last_net_id = 0;
-	HashMap<NetID, TrackedObject> remote_objects;
+	HashMap<NetID, ObjectID> remote_objects;
 	HashMap<ObjectID, TrackedObject> tracked_objects;
 	PackedByteArray packet_cache;
 
 	Error _send_spawn(const TrackedObject &p_tracked, int p_peer);
 	Error _send_despawn(const TrackedObject &p_tracked, int p_peer);
 
+	TrackedObject &_track(const ObjectID &p_id);
+	void _untrack(const ObjectID &p_id);
+
+	bool is_tracked(const ObjectID &p_id) const { return tracked_objects.has(p_id); }
 	bool has_authority(const TrackedObject &p_tracked) const;
 
 protected:

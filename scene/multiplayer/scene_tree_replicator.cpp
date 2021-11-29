@@ -87,9 +87,11 @@ void SceneTreeReplicatorInterface::_disconnected() {
 		_free_remotes(peers_info.getptr(*k));
 	}
 	peers_info.clear();
-	// TODO this is a bit mixed up between spawner and synchronizer
-	// we can't delete here without losing informations.
-	//tracked_objects.clear();
+	// Tracked objects are cleared on deletion, here we only reset the ids so they can be later re-assigned.
+	const ObjectID *oid = nullptr;
+	while ((oid = tracked_objects.next(oid))) {
+		tracked_objects.getptr(*oid)->net_id = NetID();
+	}
 }
 
 void SceneTreeReplicatorInterface::on_network_process() {

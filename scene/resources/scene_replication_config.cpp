@@ -120,6 +120,8 @@ TypedArray<Array> SceneReplicationConfig::get_replication() const {
 
 void SceneReplicationConfig::set_replication(const TypedArray<Array> &p_replication) {
 	properties.clear();
+	sync_props.clear();
+	spawn_props.clear();
 	for (int i = 0; i < p_replication.size(); i++) {
 		Array arr = p_replication[i];
 		ERR_CONTINUE(arr.size() != 3 || arr[0].get_type() != Variant::NODE_PATH || arr[1].get_type() != Variant::BOOL || arr[2].get_type() != Variant::BOOL);
@@ -129,7 +131,7 @@ void SceneReplicationConfig::set_replication(const TypedArray<Array> &p_replicat
 			sync_props.push_back(prop.name);
 		}
 		if (prop.spawn) {
-			sync_props.push_back(prop.name);
+			spawn_props.push_back(prop.name);
 		}
 	}
 }

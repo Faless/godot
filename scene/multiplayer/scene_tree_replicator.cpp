@@ -69,7 +69,13 @@ void SceneTreeReplicatorInterface::_free_remotes(PeerInfo *p_info) {
 
 void SceneTreeReplicatorInterface::_peer_connected(int p_id) {
 	peers_info[p_id] = PeerInfo();
-	// TODO send locally managed objects.
+	for (const ObjectID &oid : spawned_objects) {
+		ERR_CONTINUE(!is_tracked(oid));
+		TrackedObject &tobj = _track(oid);
+		if (has_authority(tobj)) {
+			_send_spawn(tobj, p_id);
+		}
+	}
 }
 
 void SceneTreeReplicatorInterface::_peer_disconnected(int p_id) {
@@ -107,10 +113,9 @@ Error SceneTreeReplicatorInterface::on_spawn(Object *p_obj, Variant p_config) {
 	TrackedObject &tobj = _track(oid);
 	ERR_FAIL_COND_V(tobj.spawner != ObjectID(), ERR_ALREADY_IN_USE);
 	tobj.spawner = sid;
-	if (has_authority(tobj)) {
-		tobj.net_id = NetID(++last_net_id);
-		_send_spawn(tobj, 0);
-	}
+	spawned_objects.insert(oid);
+	tobj.net_id = NetID(++last_net_id);
+	_send_spawn(tobj, 0);
 	return OK;
 }
 
@@ -123,9 +128,8 @@ Error SceneTreeReplicatorInterface::on_despawn(Object *p_obj, Variant p_config) 
 	ERR_FAIL_COND_V(!is_tracked(oid), ERR_INVALID_PARAMETER);
 	TrackedObject &tobj = _track(oid);
 	ERR_FAIL_COND_V(tobj.spawner != sid, ERR_INVALID_PARAMETER);
-	if (has_authority(tobj)) {
-		_send_despawn(tobj, 0);
-	}
+	spawned_objects.erase(oid);
+	_send_despawn(tobj, 0);
 	tobj.spawner = ObjectID();
 	return OK;
 }

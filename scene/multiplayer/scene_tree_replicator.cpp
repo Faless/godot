@@ -40,14 +40,6 @@ bool SceneTreeReplicatorInterface::has_authority(const TrackedObject &p_tracked)
 	return spawner->get_multiplayer()->has_multiplayer_peer() ? spawner->is_multiplayer_authority() : false;
 }
 
-void SceneTreeReplicatorInterface::on_start() {
-	multiplayer->connect(SNAME("connected_to_server"), callable_mp(this, &SceneTreeReplicatorInterface::_connected));
-	multiplayer->connect(SNAME("connection_failed"), callable_mp(this, &SceneTreeReplicatorInterface::_disconnected));
-	multiplayer->connect(SNAME("server_disconnected"), callable_mp(this, &SceneTreeReplicatorInterface::_disconnected));
-	multiplayer->connect(SNAME("peer_connected"), callable_mp(this, &SceneTreeReplicatorInterface::_peer_connected));
-	multiplayer->connect(SNAME("peer_disconnected"), callable_mp(this, &SceneTreeReplicatorInterface::_peer_disconnected));
-}
-
 const SceneTreeReplicatorInterface::TrackedObject *SceneTreeReplicatorInterface::get_remote(const NetID &p_id) {
 	ERR_FAIL_COND_V(!peers_info.has(p_id.get_peer()), nullptr);
 	const PeerInfo &info = peers_info[p_id.get_peer()];
@@ -67,27 +59,24 @@ void SceneTreeReplicatorInterface::_free_remotes(PeerInfo *p_info) {
 	}
 }
 
-void SceneTreeReplicatorInterface::_peer_connected(int p_id) {
-	peers_info[p_id] = PeerInfo();
-	for (const ObjectID &oid : spawned_objects) {
-		ERR_CONTINUE(!is_tracked(oid));
-		TrackedObject &tobj = _track(oid);
-		if (has_authority(tobj)) {
-			_send_spawn(tobj, p_id);
+void SceneTreeReplicatorInterface::on_peer_change(int p_id, bool p_connected) {
+	if (p_connected) {
+		peers_info[p_id] = PeerInfo();
+		for (const ObjectID &oid : spawned_objects) {
+			ERR_CONTINUE(!is_tracked(oid));
+			TrackedObject &tobj = _track(oid);
+			if (has_authority(tobj)) {
+				_send_spawn(tobj, p_id);
+			}
 		}
+	} else {
+		ERR_FAIL_COND(!peers_info.has(p_id));
+		_free_remotes(peers_info.getptr(p_id));
+		peers_info.erase(p_id);
 	}
 }
 
-void SceneTreeReplicatorInterface::_peer_disconnected(int p_id) {
-	ERR_FAIL_COND(!peers_info.has(p_id));
-	_free_remotes(peers_info.getptr(p_id));
-	peers_info.erase(p_id);
-}
-
-void SceneTreeReplicatorInterface::_connected() {
-}
-
-void SceneTreeReplicatorInterface::_disconnected() {
+void SceneTreeReplicatorInterface::on_reset() {
 	const int *k = nullptr;
 	while ((k = peers_info.next(k))) {
 		_free_remotes(peers_info.getptr(*k));

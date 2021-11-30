@@ -4,7 +4,6 @@
 
 void MultiplayerReplicationInterface::set_multiplayer(MultiplayerAPI *p_multiplayer) {
 	multiplayer = p_multiplayer;
-	on_start();
 }
 
 Error MultiplayerReplicationInterface::send_raw(const uint8_t *p_buffer, int p_size, int p_peer, Multiplayer::TransferMode p_mode, int p_channel) {

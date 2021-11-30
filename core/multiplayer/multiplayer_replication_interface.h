@@ -25,7 +25,8 @@ protected:
 public:
 	void set_multiplayer(MultiplayerAPI *p_multiplayer);
 
-	virtual void on_start() {}
+	virtual void on_peer_change(int p_id, bool p_connected) {}
+	virtual void on_reset() {}
 
 	virtual Error on_spawn_receive(int p_from, const uint8_t *p_buffer, int p_buffer_len);
 	virtual Error on_despawn_receive(int p_from, const uint8_t *p_buffer, int p_buffer_len);

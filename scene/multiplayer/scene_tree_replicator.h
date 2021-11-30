@@ -75,9 +75,6 @@ private:
 	const TrackedObject *get_remote(const NetID &p_id);
 
 	void _free_remotes(PeerInfo *p_info);
-	void _peer_connected(int p_id);
-	void _peer_disconnected(int p_id);
-	void _connected();
 	void _disconnected();
 
 protected:
@@ -86,7 +83,8 @@ protected:
 public:
 	static void make_default();
 
-	virtual void on_start() override;
+	virtual void on_reset() override;
+	virtual void on_peer_change(int p_id, bool p_connected) override;
 
 	virtual Error on_spawn(Object *p_obj, Variant p_config) override;
 	virtual Error on_despawn(Object *p_obj, Variant p_config) override;

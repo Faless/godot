@@ -132,6 +132,7 @@ void MultiplayerAPI::set_multiplayer_peer(const Ref<MultiplayerPeer> &p_peer) {
 		multiplayer_peer->connect("connection_failed", callable_mp(this, &MultiplayerAPI::_connection_failed));
 		multiplayer_peer->connect("server_disconnected", callable_mp(this, &MultiplayerAPI::_server_disconnected));
 	}
+	replicator->on_reset();
 }
 
 Ref<MultiplayerPeer> MultiplayerAPI::get_multiplayer_peer() const {
@@ -538,11 +539,12 @@ Error MultiplayerAPI::decode_and_decompress_variants(Vector<Variant> &r_variants
 void MultiplayerAPI::_add_peer(int p_id) {
 	connected_peers.insert(p_id);
 	path_get_cache.insert(p_id, PathGetCache());
+	replicator->on_peer_change(p_id, true);
 	emit_signal(SNAME("peer_connected"), p_id);
 }
 
 void MultiplayerAPI::_del_peer(int p_id) {
-	connected_peers.erase(p_id);
+	replicator->on_peer_change(p_id, false);
 	// Cleanup get cache.
 	path_get_cache.erase(p_id);
 	// Cleanup sent cache.
@@ -553,6 +555,7 @@ void MultiplayerAPI::_del_peer(int p_id) {
 		PathSentCache *psc = path_send_cache.getptr(E);
 		psc->confirmed_peers.erase(p_id);
 	}
+	connected_peers.erase(p_id);
 	emit_signal(SNAME("peer_disconnected"), p_id);
 }
 
@@ -565,6 +568,7 @@ void MultiplayerAPI::_connection_failed() {
 }
 
 void MultiplayerAPI::_server_disconnected() {
+	replicator->on_reset();
 	emit_signal(SNAME("server_disconnected"));
 }
 

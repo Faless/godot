@@ -63,7 +63,7 @@ private:
 	HashMap<int, PeerInfo> peers_info;
 	Set<ObjectID> spawned_objects;
 
-	Error _send_spawn(const TrackedObject &p_tracked, int p_peer);
+	Error _send_spawn(TrackedObject &p_tracked, int p_peer);
 	Error _send_despawn(const TrackedObject &p_tracked, int p_peer);
 
 	TrackedObject &_track(const ObjectID &p_id);

@@ -103,7 +103,6 @@ Error SceneTreeReplicatorInterface::on_spawn(Object *p_obj, Variant p_config) {
 	ERR_FAIL_COND_V(tobj.spawner != ObjectID(), ERR_ALREADY_IN_USE);
 	tobj.spawner = sid;
 	spawned_objects.insert(oid);
-	tobj.net_id = NetID(++last_net_id);
 	_send_spawn(tobj, 0);
 	return OK;
 }
@@ -166,13 +165,16 @@ Error SceneTreeReplicatorInterface::on_replication_stop(Object *p_obj, Variant p
 	if (packet_cache.size() < m_amount) \
 		packet_cache.resize(m_amount);
 
-Error SceneTreeReplicatorInterface::_send_spawn(const TrackedObject &p_tracked, int p_peer) {
+Error SceneTreeReplicatorInterface::_send_spawn(TrackedObject &p_tracked, int p_peer) {
 	ERR_FAIL_COND_V(!multiplayer, ERR_BUG);
 	Node *node = p_tracked.get_node();
 	MultiplayerSpawner *spawner = p_tracked.get_spawner();
 	ERR_FAIL_COND_V(!spawner, ERR_BUG);
 	ERR_FAIL_COND_V(!node, ERR_BUG);
 
+	if (p_tracked.net_id.is_null()) {
+		p_tracked.net_id = NetID(++last_net_id);
+	}
 	ResourceUID::ID scene_id = ResourceUID::INVALID_ID;
 
 	// Prepare custom arg and scene_id

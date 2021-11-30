@@ -97,67 +97,75 @@ void SceneTreeReplicatorInterface::_disconnected() {
 void SceneTreeReplicatorInterface::on_network_process() {
 }
 
+Error SceneTreeReplicatorInterface::on_spawn(Object *p_obj, Variant p_config) {
+	Node *node = Object::cast_to<Node>(p_obj);
+	ERR_FAIL_COND_V(!node || p_config.get_type() != Variant::OBJECT, ERR_INVALID_PARAMETER);
+	MultiplayerSpawner *spawner = Object::cast_to<MultiplayerSpawner>(p_config.get_validated_object());
+	ERR_FAIL_COND_V(!spawner, ERR_INVALID_PARAMETER);
+	const ObjectID oid = node->get_instance_id();
+	const ObjectID sid = spawner->get_instance_id();
+	TrackedObject &tobj = _track(oid);
+	ERR_FAIL_COND_V(tobj.spawner != ObjectID(), ERR_ALREADY_IN_USE);
+	tobj.spawner = sid;
+	if (has_authority(tobj)) {
+		tobj.net_id = NetID(++last_net_id);
+		_send_spawn(tobj, 0);
+	}
+	return OK;
+}
+
+Error SceneTreeReplicatorInterface::on_despawn(Object *p_obj, Variant p_config) {
+	ERR_FAIL_COND_V(p_config.get_type() != Variant::OBJECT, ERR_INVALID_PARAMETER);
+	MultiplayerSpawner *spawner = Object::cast_to<MultiplayerSpawner>(p_config.get_validated_object());
+	ERR_FAIL_COND_V(!p_obj || !spawner, ERR_INVALID_PARAMETER);
+	const ObjectID oid = p_obj->get_instance_id();
+	const ObjectID sid = spawner->get_instance_id();
+	ERR_FAIL_COND_V(!is_tracked(oid), ERR_INVALID_PARAMETER);
+	TrackedObject &tobj = _track(oid);
+	ERR_FAIL_COND_V(tobj.spawner != sid, ERR_INVALID_PARAMETER);
+	if (has_authority(tobj)) {
+		_send_despawn(tobj, 0);
+	}
+	tobj.spawner = ObjectID();
+	return OK;
+}
+
 Error SceneTreeReplicatorInterface::on_replication_start(Object *p_obj, Variant p_config) {
 	Node *node = Object::cast_to<Node>(p_obj);
 	ERR_FAIL_COND_V(!node || p_config.get_type() != Variant::OBJECT, ERR_INVALID_PARAMETER);
-	Node *config = Object::cast_to<Node>(p_config.get_validated_object());
-	ERR_FAIL_COND_V(!config, ERR_INVALID_PARAMETER);
+	MultiplayerSynchronizer *sync = Object::cast_to<MultiplayerSynchronizer>(p_config.get_validated_object());
+	ERR_FAIL_COND_V(!sync, ERR_INVALID_PARAMETER);
 
-	ObjectID oid = node->get_instance_id();
-	ObjectID cid = config->get_instance_id();
-	if (config->is_class_ptr(MultiplayerSpawner::get_class_ptr_static())) {
-		TrackedObject &tobj = _track(oid);
-		ERR_FAIL_COND_V(tobj.spawner != ObjectID(), ERR_ALREADY_IN_USE);
-		tobj.spawner = cid;
-		if (has_authority(tobj)) {
-			tobj.net_id = NetID(++last_net_id);
-			_send_spawn(tobj, 0);
-		}
-		return OK;
-	} else if (config->is_class_ptr(MultiplayerSynchronizer::get_class_ptr_static())) {
-		TrackedObject &tobj = _track(oid);
-		ERR_FAIL_COND_V(tobj.synchronizer != ObjectID(), ERR_ALREADY_IN_USE);
-		tobj.synchronizer = cid;
-		if (tobj.spawn_state) {
-			// Apply spawn state for remotely spawned node before ready.
-			const List<NodePath> props = ((MultiplayerSynchronizer *)config)->get_replication_config()->get_spawn_properties();
-			Vector<Variant> vars;
-			vars.resize(props.size());
-			int consumed;
-			Error err = MultiplayerAPI::decode_and_decompress_variants(vars, tobj.spawn_state, tobj.spawn_state_size, consumed);
-			tobj.spawn_state = nullptr;
-			tobj.spawn_state_size = 0;
-			ERR_FAIL_COND_V(err, err);
-			return SceneReplicationConfig::set_state(props, p_obj, vars);
-		}
-		return OK;
+	const ObjectID oid = node->get_instance_id();
+	const ObjectID sid = sync->get_instance_id();
+	TrackedObject &tobj = _track(oid);
+	ERR_FAIL_COND_V(tobj.synchronizer != ObjectID(), ERR_ALREADY_IN_USE);
+	tobj.synchronizer = sid;
+	if (tobj.spawn_state) {
+		// Apply spawn state for remotely spawned node before ready.
+		const List<NodePath> props = sync->get_replication_config()->get_spawn_properties();
+		Vector<Variant> vars;
+		vars.resize(props.size());
+		int consumed;
+		Error err = MultiplayerAPI::decode_and_decompress_variants(vars, tobj.spawn_state, tobj.spawn_state_size, consumed);
+		tobj.spawn_state = nullptr;
+		tobj.spawn_state_size = 0;
+		ERR_FAIL_COND_V(err, err);
+		return SceneReplicationConfig::set_state(props, p_obj, vars);
 	}
-	ERR_FAIL_V(ERR_INVALID_PARAMETER);
+	return OK;
 }
 
 Error SceneTreeReplicatorInterface::on_replication_stop(Object *p_obj, Variant p_config) {
 	ERR_FAIL_COND_V(p_config.get_type() != Variant::OBJECT, ERR_INVALID_PARAMETER);
-	Node *config = Object::cast_to<Node>(p_config.get_validated_object());
-	Node *node = Object::cast_to<Node>(p_obj);
-	ERR_FAIL_COND_V(!config, ERR_INVALID_PARAMETER);
-	ERR_FAIL_COND_V(!node, ERR_INVALID_PARAMETER);
-	ObjectID oid = node->get_instance_id();
+	Node *sync = Object::cast_to<MultiplayerSynchronizer>(p_config.get_validated_object());
+	ERR_FAIL_COND_V(!p_obj || !sync, ERR_INVALID_PARAMETER);
+	const ObjectID oid = p_obj->get_instance_id();
+	const ObjectID sid = sync->get_instance_id();
 	ERR_FAIL_COND_V(!is_tracked(oid), ERR_INVALID_PARAMETER);
-
-	TrackedObject &tobj = tracked_objects[oid];
-	const ObjectID cid = config->get_instance_id();
-	if (config->is_class_ptr(MultiplayerSpawner::get_class_ptr_static())) {
-		ERR_FAIL_COND_V(tobj.spawner != cid, ERR_INVALID_PARAMETER);
-		if (has_authority(tobj)) {
-			_send_despawn(tobj, 0);
-		}
-		tobj.spawner = ObjectID();
-	} else if (config->is_class_ptr(MultiplayerSynchronizer::get_class_ptr_static())) {
-		ERR_FAIL_COND_V(tobj.synchronizer != cid, ERR_INVALID_PARAMETER);
-		tobj.synchronizer = ObjectID();
-	} else {
-		return ERR_INVALID_PARAMETER;
-	}
+	TrackedObject &tobj = _track(oid);
+	ERR_FAIL_COND_V(tobj.synchronizer != sid, ERR_INVALID_PARAMETER);
+	tobj.synchronizer = ObjectID();
 	return OK;
 }
 

@@ -681,6 +681,14 @@ void MultiplayerAPI::rpcp(Node *p_node, int p_peer_id, const StringName &p_metho
 	rpc_manager->rpcp(p_node, p_peer_id, p_method, p_arg, p_argcount);
 }
 
+Error MultiplayerAPI::spawn(Object *p_object, Variant p_config) {
+	return replicator->on_spawn(p_object, p_config);
+}
+
+Error MultiplayerAPI::despawn(Object *p_object, Variant p_config) {
+	return replicator->on_despawn(p_object, p_config);
+}
+
 Error MultiplayerAPI::replication_start(Object *p_object, Variant p_config) {
 	return replicator->on_replication_start(p_object, p_config);
 }

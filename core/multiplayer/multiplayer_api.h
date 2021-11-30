@@ -128,6 +128,8 @@ public:
 	// Called by Node.rpc
 	void rpcp(Node *p_node, int p_peer_id, const StringName &p_method, const Variant **p_arg, int p_argcount);
 	// Replication API
+	Error spawn(Object *p_object, Variant p_config);
+	Error despawn(Object *p_object, Variant p_config);
 	Error replication_start(Object *p_object, Variant p_config);
 	Error replication_stop(Object *p_object, Variant p_config);
 	// Called by replicator

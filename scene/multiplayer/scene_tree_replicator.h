@@ -87,6 +87,8 @@ public:
 
 	virtual void on_start() override;
 
+	virtual Error on_spawn(Object *p_obj, Variant p_config) override;
+	virtual Error on_despawn(Object *p_obj, Variant p_config) override;
 	virtual Error on_replication_start(Object *p_obj, Variant p_config) override;
 	virtual Error on_replication_stop(Object *p_obj, Variant p_config) override;
 	virtual void on_network_process() override;

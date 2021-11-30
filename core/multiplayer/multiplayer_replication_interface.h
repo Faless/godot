@@ -31,6 +31,8 @@ public:
 	virtual Error on_despawn_receive(int p_from, const uint8_t *p_buffer, int p_buffer_len);
 	virtual Error on_sync_receive(int p_from, const uint8_t *p_buffer, int p_buffer_len);
 
+	virtual Error on_spawn(Object *p_obj, Variant p_config);
+	virtual Error on_despawn(Object *p_obj, Variant p_config);
 	virtual Error on_replication_start(Object *p_obj, Variant p_config);
 	virtual Error on_replication_stop(Object *p_obj, Variant p_config);
 
@@ -49,6 +51,8 @@ public:
 	GDVIRTUAL3R(int, _on_despawn_receive, int, GDNativeConstPtr<const uint8_t>, int);
 	GDVIRTUAL3R(int, _on_sync_receive, int, GDNativeConstPtr<const uint8_t>, int);
 
+	GDVIRTUAL2R(int, _on_spawn, Object *, Variant);
+	GDVIRTUAL2R(int, _on_despawn, Object *, Variant);
 	GDVIRTUAL2R(int, _on_replication_start, Object *, Variant);
 	GDVIRTUAL2R(int, _on_replication_stop, Object *, Variant);
 

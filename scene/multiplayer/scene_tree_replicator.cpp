@@ -44,7 +44,7 @@ bool SceneTreeReplicatorInterface::has_authority(const TrackedNode &p_tracked) c
 	return spawner->get_multiplayer()->has_multiplayer_peer() ? spawner->is_multiplayer_authority() : false;
 }
 
-const SceneTreeReplicatorInterface::TrackedNode *SceneTreeReplicatorInterface::get_remote(const NetID &p_id) {
+SceneTreeReplicatorInterface::TrackedNode *SceneTreeReplicatorInterface::get_remote(const NetID &p_id) {
 	ERR_FAIL_COND_V(!peers_info.has(p_id.get_peer()), nullptr);
 	const PeerInfo &info = peers_info[p_id.get_peer()];
 	ERR_FAIL_COND_V(!info.recv_nodes.has(p_id), nullptr);
@@ -89,7 +89,9 @@ void SceneTreeReplicatorInterface::on_reset() {
 	// Tracked nodes are cleared on deletion, here we only reset the ids so they can be later re-assigned.
 	const ObjectID *oid = nullptr;
 	while ((oid = tracked_nodes.next(oid))) {
-		tracked_nodes.getptr(*oid)->net_id = NetID();
+		TrackedNode &tobj = tracked_nodes[*oid];
+		tobj.net_id = NetID();
+		tobj.last_sync = 0;
 	}
 }
 
@@ -366,11 +368,15 @@ Error SceneTreeReplicatorInterface::on_despawn_receive(int p_from, const uint8_t
 	return OK;
 }
 
-void SceneTreeReplicatorInterface::_send_sync(const PeerInfo &p_info, int p_peer) {
+void SceneTreeReplicatorInterface::_send_sync(PeerInfo &p_info, int p_peer) {
+	if (p_info.sent_nodes.is_empty()) {
+		return;
+	}
 	MAKE_ROOM(sync_mtu);
 	uint8_t *ptr = packet_cache.ptrw();
 	ptr[0] = MultiplayerAPI::NETWORK_COMMAND_SYNC;
 	int ofs = 1;
+	ofs += encode_uint16(++p_info.last_sent_sync, &ptr[1]);
 	// Can only send updates for already notified nodes.
 	// This is a lazy implementation, we could optimize much more here with by grouping by replication config.
 	for (const ObjectID &oid : p_info.sent_nodes) {
@@ -392,11 +398,11 @@ void SceneTreeReplicatorInterface::_send_sync(const PeerInfo &p_info, int p_peer
 		err = MultiplayerAPI::encode_and_compress_variants(varp.ptrw(), varp.size(), nullptr, size);
 		ERR_CONTINUE_MSG(err != OK, "Unable to encode sync state.");
 		// TODO Handle single state above MTU.
-		ERR_CONTINUE_MSG(size > 1 + 4 + 4 + sync_mtu, vformat("Node states bigger then MTU will not be sent (%d > %d): %s", size, sync_mtu, node->get_path()));
+		ERR_CONTINUE_MSG(size > 3 + 4 + 4 + sync_mtu, vformat("Node states bigger then MTU will not be sent (%d > %d): %s", size, sync_mtu, node->get_path()));
 		if (ofs + 4 + 4 + size > sync_mtu) {
 			// Send what we got, and reset write.
 			send_raw(packet_cache.ptr(), ofs, p_peer, Multiplayer::TRANSFER_MODE_UNRELIABLE, 0);
-			ofs = 1;
+			ofs = 3;
 		}
 		if (size) {
 			ofs += encode_uint32(tobj.net_id.get_id(), &ptr[ofs]);
@@ -405,7 +411,7 @@ void SceneTreeReplicatorInterface::_send_sync(const PeerInfo &p_info, int p_peer
 			ofs += size;
 		}
 	}
-	if (ofs > 1) {
+	if (ofs > 3) {
 		// Got some left over to send.
 		send_raw(packet_cache.ptr(), ofs, p_peer, Multiplayer::TRANSFER_MODE_UNRELIABLE, 0);
 	}
@@ -413,16 +419,21 @@ void SceneTreeReplicatorInterface::_send_sync(const PeerInfo &p_info, int p_peer
 
 Error SceneTreeReplicatorInterface::on_sync_receive(int p_from, const uint8_t *p_buffer, int p_buffer_len) {
 	ERR_FAIL_COND_V(!peers_info.has(p_from), ERR_BUG);
-	ERR_FAIL_COND_V_MSG(p_buffer_len < 9, ERR_INVALID_DATA, "Invalid sync packet received");
-	int ofs = 1;
+	ERR_FAIL_COND_V_MSG(p_buffer_len < 11, ERR_INVALID_DATA, "Invalid sync packet received");
+	uint16_t time = decode_uint16(&p_buffer[1]);
+	int ofs = 3;
 	while (ofs + 8 < p_buffer_len) {
 		uint32_t net_id = decode_uint32(&p_buffer[ofs]);
 		ofs += 4;
 		uint32_t size = decode_uint32(&p_buffer[ofs]);
 		ofs += 4;
-		const TrackedNode *tobj = get_remote(NetID(net_id, p_from));
+		TrackedNode *tobj = get_remote(NetID(net_id, p_from));
 		if (!tobj) {
 			// Not received yet.
+			ofs += size;
+			continue;
+		}
+		if (time <= tobj->last_sync && tobj->last_sync - time < 32767) {
 			ofs += size;
 			continue;
 		}
@@ -439,6 +450,7 @@ Error SceneTreeReplicatorInterface::on_sync_receive(int p_from, const uint8_t *p
 		err = SceneReplicationConfig::set_state(props, node, vars);
 		ERR_FAIL_COND_V(err, err);
 		ofs += size;
+		tobj->last_sync = time;
 	}
 	return OK;
 }

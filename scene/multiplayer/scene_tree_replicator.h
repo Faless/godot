@@ -35,6 +35,7 @@ private:
 		NetID net_id;
 		ObjectID spawner;
 		ObjectID synchronizer;
+		uint16_t last_sync = 0;
 		const uint8_t *spawn_state = nullptr;
 		int spawn_state_size = 0;
 
@@ -54,6 +55,7 @@ private:
 	struct PeerInfo {
 		Set<ObjectID> sent_nodes;
 		HashMap<NetID, ObjectID> recv_nodes;
+		uint16_t last_sent_sync = 0;
 	};
 
 	PackedByteArray packet_cache;
@@ -65,7 +67,7 @@ private:
 	HashMap<int, PeerInfo> peers_info;
 	Set<ObjectID> spawned_nodes;
 
-	void _send_sync(const PeerInfo &p_info, int p_peer);
+	void _send_sync(PeerInfo &p_info, int p_peer);
 	Error _send_spawn(TrackedNode &p_tracked, int p_peer);
 	Error _send_despawn(const TrackedNode &p_tracked, int p_peer);
 
@@ -74,7 +76,7 @@ private:
 	bool is_tracked(const ObjectID &p_id) const { return tracked_nodes.has(p_id); }
 
 	bool has_authority(const TrackedNode &p_tracked) const;
-	const TrackedNode *get_remote(const NetID &p_id);
+	TrackedNode *get_remote(const NetID &p_id);
 
 	void _free_remotes(PeerInfo *p_info);
 	void _disconnected();

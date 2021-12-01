@@ -74,7 +74,6 @@ private:
 	bool is_tracked(const ObjectID &p_id) const { return tracked_nodes.has(p_id); }
 
 	bool has_authority(const TrackedNode &p_tracked) const;
-	bool has_remote(const NetID &p_id) const;
 	const TrackedNode *get_remote(const NetID &p_id);
 
 	void _free_remotes(PeerInfo *p_info);

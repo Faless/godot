@@ -412,6 +412,34 @@ Error SceneTreeReplicatorInterface::on_despawn_receive(int p_from, const uint8_t
 }
 
 Error SceneTreeReplicatorInterface::on_sync_receive(int p_from, const uint8_t *p_buffer, int p_buffer_len) {
+	ERR_FAIL_COND_V(!peers_info.has(p_from), ERR_BUG);
+	ERR_FAIL_COND_V_MSG(p_buffer_len < 9, ERR_INVALID_DATA, "Invalid sync packet received");
+	int ofs = 1;
+	while (ofs + 8 < p_buffer_len) {
+		uint32_t net_id = decode_uint32(&p_buffer[ofs]);
+		ofs += 4;
+		uint32_t size = decode_uint32(&p_buffer[ofs]);
+		ofs += 4;
+		const TrackedNode *tobj = get_remote(NetID(net_id, p_from));
+		if (!tobj) {
+			// Not received yet.
+			ofs += size;
+			continue;
+		}
+		Node *node = tobj->get_node();
+		MultiplayerSynchronizer *sync = tobj->get_synchronizer();
+		ERR_FAIL_COND_V(!node || !sync, ERR_BUG);
+		ERR_FAIL_COND_V(size > uint32_t(p_buffer_len - ofs), ERR_BUG);
+		const List<NodePath> props = sync->get_replication_config()->get_sync_properties();
+		Vector<Variant> vars;
+		vars.resize(props.size());
+		int consumed;
+		Error err = MultiplayerAPI::decode_and_decompress_variants(vars, &p_buffer[ofs], size, consumed);
+		ERR_FAIL_COND_V(err, err);
+		err = SceneReplicationConfig::set_state(props, node, vars);
+		ERR_FAIL_COND_V(err, err);
+		ofs += size;
+	}
 	return OK;
 }
 

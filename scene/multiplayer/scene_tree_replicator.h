@@ -57,12 +57,15 @@ private:
 	};
 
 	PackedByteArray packet_cache;
+	// Will be configurable at some point, highly dependent on underlying protocol.
+	int sync_mtu = 1350;
 
 	uint32_t last_net_id = 0;
 	HashMap<ObjectID, TrackedNode> tracked_nodes;
 	HashMap<int, PeerInfo> peers_info;
 	Set<ObjectID> spawned_nodes;
 
+	void _send_sync(const PeerInfo &p_info, int p_peer);
 	Error _send_spawn(TrackedNode &p_tracked, int p_peer);
 	Error _send_despawn(const TrackedNode &p_tracked, int p_peer);
 

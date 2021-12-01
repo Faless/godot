@@ -7,6 +7,10 @@
 #include "scene/multiplayer/multiplayer_synchronizer.h"
 #include "scene/scene_string_names.h"
 
+#define MAKE_ROOM(m_amount)             \
+	if (packet_cache.size() < m_amount) \
+		packet_cache.resize(m_amount);
+
 MultiplayerReplicationInterface *SceneTreeReplicatorInterface::_create() {
 	return memnew(SceneTreeReplicatorInterface);
 }
@@ -90,6 +94,55 @@ void SceneTreeReplicatorInterface::on_reset() {
 }
 
 void SceneTreeReplicatorInterface::on_network_process() {
+	const int *pid = nullptr;
+	while ((pid = peers_info.next(pid))) {
+		_send_sync(peers_info.get(*pid), *pid);
+	}
+}
+
+void SceneTreeReplicatorInterface::_send_sync(const PeerInfo &p_info, int p_peer) {
+	MAKE_ROOM(sync_mtu);
+	uint8_t *ptr = packet_cache.ptrw();
+	ptr[0] = MultiplayerAPI::NETWORK_COMMAND_SYNC;
+	int ofs = 1;
+	// Can only send updates for already notified nodes.
+	// This is a lazy implementation, we could optimize much more here with by grouping by replication config.
+	for (const ObjectID &oid : p_info.sent_nodes) {
+		ERR_CONTINUE(!is_tracked(oid));
+		TrackedNode &tobj = tracked_nodes[oid];
+		ERR_CONTINUE(tobj.net_id.is_null());
+		MultiplayerSynchronizer *sync = tobj.get_synchronizer();
+		if (!sync) {
+			continue; // nothing to sync.
+		}
+		Node *node = tobj.get_node();
+		ERR_CONTINUE(!node);
+		int size;
+		Vector<Variant> vars;
+		Vector<const Variant *> varp;
+		const List<NodePath> props = sync->get_replication_config()->get_sync_properties();
+		Error err = SceneReplicationConfig::get_state(props, node, vars, varp);
+		ERR_CONTINUE_MSG(err != OK, "Unable to retrieve sync state.");
+		err = MultiplayerAPI::encode_and_compress_variants(varp.ptrw(), varp.size(), nullptr, size);
+		ERR_CONTINUE_MSG(err != OK, "Unable to encode sync state.");
+		// TODO Handle single state above MTU.
+		ERR_CONTINUE_MSG(size > 1 + 4 + 4 + sync_mtu, vformat("Node states bigger then MTU will not be sent (%d > %d): %s", size, sync_mtu, node->get_path()));
+		if (ofs + 4 + 4 + size > sync_mtu) {
+			// Send what we got, and reset write.
+			send_raw(packet_cache.ptr(), ofs, p_peer, Multiplayer::TRANSFER_MODE_UNRELIABLE, 0);
+			ofs = 1;
+		}
+		if (size) {
+			ofs += encode_uint32(tobj.net_id.get_id(), &ptr[ofs]);
+			ofs += encode_uint32(size, &ptr[ofs]);
+			MultiplayerAPI::encode_and_compress_variants(varp.ptrw(), varp.size(), &ptr[ofs], size);
+			ofs += size;
+		}
+	}
+	if (ofs > 1) {
+		// Got some left over to send.
+		send_raw(packet_cache.ptr(), ofs, p_peer, Multiplayer::TRANSFER_MODE_UNRELIABLE, 0);
+	}
 }
 
 Error SceneTreeReplicatorInterface::on_spawn(Object *p_obj, Variant p_config) {
@@ -161,11 +214,8 @@ Error SceneTreeReplicatorInterface::on_replication_stop(Object *p_obj, Variant p
 	return OK;
 }
 
-#define MAKE_ROOM(m_amount)             \
-	if (packet_cache.size() < m_amount) \
-		packet_cache.resize(m_amount);
-
 Error SceneTreeReplicatorInterface::_send_spawn(TrackedNode &p_tracked, int p_peer) {
+	ERR_FAIL_COND_V(p_peer < 0, ERR_BUG);
 	ERR_FAIL_COND_V(!multiplayer, ERR_BUG);
 	Node *node = p_tracked.get_node();
 	MultiplayerSpawner *spawner = p_tracked.get_spawner();
@@ -237,7 +287,17 @@ Error SceneTreeReplicatorInterface::_send_spawn(TrackedNode &p_tracked, int p_pe
 		ERR_FAIL_COND_V(err, err);
 		ofs += state_size;
 	}
-	return send_raw(ptr, ofs, p_peer, Multiplayer::TRANSFER_MODE_RELIABLE, 0);
+	Error err = send_raw(ptr, ofs, p_peer, Multiplayer::TRANSFER_MODE_RELIABLE, 0);
+	if (p_peer) {
+		ERR_FAIL_COND_V(!peers_info.has(p_peer), ERR_BUG);
+		peers_info[p_peer].sent_nodes.insert(p_tracked.id);
+	} else {
+		const int *pid = nullptr;
+		while ((pid = peers_info.next(pid))) {
+			peers_info.get(*pid).sent_nodes.insert(p_tracked.id);
+		}
+	}
+	return err;
 }
 
 Error SceneTreeReplicatorInterface::_send_despawn(const TrackedNode &p_tracked, int p_peer) {
@@ -246,7 +306,17 @@ Error SceneTreeReplicatorInterface::_send_despawn(const TrackedNode &p_tracked, 
 	ptr[0] = (uint8_t)MultiplayerAPI::NETWORK_COMMAND_DESPAWN;
 	int ofs = 1;
 	ofs += encode_uint32(p_tracked.net_id.get_id(), &ptr[ofs]);
-	return send_raw(ptr, ofs, p_peer, Multiplayer::TRANSFER_MODE_RELIABLE, 0);
+	Error err = send_raw(ptr, ofs, p_peer, Multiplayer::TRANSFER_MODE_RELIABLE, 0);
+	if (p_peer) {
+		ERR_FAIL_COND_V(!peers_info.has(p_peer), ERR_BUG);
+		peers_info[p_peer].sent_nodes.erase(p_tracked.id);
+	} else {
+		const int *pid = nullptr;
+		while ((pid = peers_info.next(pid))) {
+			peers_info.get(*pid).sent_nodes.erase(p_tracked.id);
+		}
+	}
+	return err;
 }
 
 Error SceneTreeReplicatorInterface::on_spawn_receive(int p_from, const uint8_t *p_buffer, int p_buffer_len) {

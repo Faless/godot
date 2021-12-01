@@ -30,7 +30,7 @@ private:
 		}
 	};
 
-	struct TrackedObject {
+	struct TrackedNode {
 		ObjectID id;
 		NetID net_id;
 		ObjectID spawner;
@@ -43,9 +43,9 @@ private:
 		Node *get_node() const { return id.is_valid() ? Object::cast_to<Node>(ObjectDB::get_instance(id)) : nullptr; }
 		MultiplayerSpawner *get_spawner() const { return spawner.is_valid() ? Object::cast_to<MultiplayerSpawner>(ObjectDB::get_instance(spawner)) : nullptr; }
 		MultiplayerSynchronizer *get_synchronizer() const { return synchronizer.is_valid() ? Object::cast_to<MultiplayerSynchronizer>(ObjectDB::get_instance(synchronizer)) : nullptr; }
-		TrackedObject() {}
-		TrackedObject(const ObjectID &p_id) { id = p_id; }
-		TrackedObject(const ObjectID &p_id, const NetID &p_net_id) {
+		TrackedNode() {}
+		TrackedNode(const ObjectID &p_id) { id = p_id; }
+		TrackedNode(const ObjectID &p_id, const NetID &p_net_id) {
 			id = p_id;
 			net_id = p_net_id;
 		}
@@ -59,20 +59,20 @@ private:
 	PackedByteArray packet_cache;
 
 	uint32_t last_net_id = 0;
-	HashMap<ObjectID, TrackedObject> tracked_objects;
+	HashMap<ObjectID, TrackedNode> tracked_nodes;
 	HashMap<int, PeerInfo> peers_info;
-	Set<ObjectID> spawned_objects;
+	Set<ObjectID> spawned_nodes;
 
-	Error _send_spawn(TrackedObject &p_tracked, int p_peer);
-	Error _send_despawn(const TrackedObject &p_tracked, int p_peer);
+	Error _send_spawn(TrackedNode &p_tracked, int p_peer);
+	Error _send_despawn(const TrackedNode &p_tracked, int p_peer);
 
-	TrackedObject &_track(const ObjectID &p_id);
+	TrackedNode &_track(const ObjectID &p_id);
 	void _untrack(const ObjectID &p_id);
-	bool is_tracked(const ObjectID &p_id) const { return tracked_objects.has(p_id); }
+	bool is_tracked(const ObjectID &p_id) const { return tracked_nodes.has(p_id); }
 
-	bool has_authority(const TrackedObject &p_tracked) const;
+	bool has_authority(const TrackedNode &p_tracked) const;
 	bool has_remote(const NetID &p_id) const;
-	const TrackedObject *get_remote(const NetID &p_id);
+	const TrackedNode *get_remote(const NetID &p_id);
 
 	void _free_remotes(PeerInfo *p_info);
 	void _disconnected();

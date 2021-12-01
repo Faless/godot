@@ -100,51 +100,6 @@ void SceneTreeReplicatorInterface::on_network_process() {
 	}
 }
 
-void SceneTreeReplicatorInterface::_send_sync(const PeerInfo &p_info, int p_peer) {
-	MAKE_ROOM(sync_mtu);
-	uint8_t *ptr = packet_cache.ptrw();
-	ptr[0] = MultiplayerAPI::NETWORK_COMMAND_SYNC;
-	int ofs = 1;
-	// Can only send updates for already notified nodes.
-	// This is a lazy implementation, we could optimize much more here with by grouping by replication config.
-	for (const ObjectID &oid : p_info.sent_nodes) {
-		ERR_CONTINUE(!is_tracked(oid));
-		TrackedNode &tobj = tracked_nodes[oid];
-		ERR_CONTINUE(tobj.net_id.is_null());
-		MultiplayerSynchronizer *sync = tobj.get_synchronizer();
-		if (!sync) {
-			continue; // nothing to sync.
-		}
-		Node *node = tobj.get_node();
-		ERR_CONTINUE(!node);
-		int size;
-		Vector<Variant> vars;
-		Vector<const Variant *> varp;
-		const List<NodePath> props = sync->get_replication_config()->get_sync_properties();
-		Error err = SceneReplicationConfig::get_state(props, node, vars, varp);
-		ERR_CONTINUE_MSG(err != OK, "Unable to retrieve sync state.");
-		err = MultiplayerAPI::encode_and_compress_variants(varp.ptrw(), varp.size(), nullptr, size);
-		ERR_CONTINUE_MSG(err != OK, "Unable to encode sync state.");
-		// TODO Handle single state above MTU.
-		ERR_CONTINUE_MSG(size > 1 + 4 + 4 + sync_mtu, vformat("Node states bigger then MTU will not be sent (%d > %d): %s", size, sync_mtu, node->get_path()));
-		if (ofs + 4 + 4 + size > sync_mtu) {
-			// Send what we got, and reset write.
-			send_raw(packet_cache.ptr(), ofs, p_peer, Multiplayer::TRANSFER_MODE_UNRELIABLE, 0);
-			ofs = 1;
-		}
-		if (size) {
-			ofs += encode_uint32(tobj.net_id.get_id(), &ptr[ofs]);
-			ofs += encode_uint32(size, &ptr[ofs]);
-			MultiplayerAPI::encode_and_compress_variants(varp.ptrw(), varp.size(), &ptr[ofs], size);
-			ofs += size;
-		}
-	}
-	if (ofs > 1) {
-		// Got some left over to send.
-		send_raw(packet_cache.ptr(), ofs, p_peer, Multiplayer::TRANSFER_MODE_UNRELIABLE, 0);
-	}
-}
-
 Error SceneTreeReplicatorInterface::on_spawn(Object *p_obj, Variant p_config) {
 	Node *node = Object::cast_to<Node>(p_obj);
 	ERR_FAIL_COND_V(!node || p_config.get_type() != Variant::OBJECT, ERR_INVALID_PARAMETER);
@@ -409,6 +364,51 @@ Error SceneTreeReplicatorInterface::on_despawn_receive(int p_from, const uint8_t
 	ERR_FAIL_COND_V(p_from != spawner->get_multiplayer_authority(), ERR_UNAUTHORIZED);
 	node->queue_delete();
 	return OK;
+}
+
+void SceneTreeReplicatorInterface::_send_sync(const PeerInfo &p_info, int p_peer) {
+	MAKE_ROOM(sync_mtu);
+	uint8_t *ptr = packet_cache.ptrw();
+	ptr[0] = MultiplayerAPI::NETWORK_COMMAND_SYNC;
+	int ofs = 1;
+	// Can only send updates for already notified nodes.
+	// This is a lazy implementation, we could optimize much more here with by grouping by replication config.
+	for (const ObjectID &oid : p_info.sent_nodes) {
+		ERR_CONTINUE(!is_tracked(oid));
+		TrackedNode &tobj = tracked_nodes[oid];
+		ERR_CONTINUE(tobj.net_id.is_null());
+		MultiplayerSynchronizer *sync = tobj.get_synchronizer();
+		if (!sync) {
+			continue; // nothing to sync.
+		}
+		Node *node = tobj.get_node();
+		ERR_CONTINUE(!node);
+		int size;
+		Vector<Variant> vars;
+		Vector<const Variant *> varp;
+		const List<NodePath> props = sync->get_replication_config()->get_sync_properties();
+		Error err = SceneReplicationConfig::get_state(props, node, vars, varp);
+		ERR_CONTINUE_MSG(err != OK, "Unable to retrieve sync state.");
+		err = MultiplayerAPI::encode_and_compress_variants(varp.ptrw(), varp.size(), nullptr, size);
+		ERR_CONTINUE_MSG(err != OK, "Unable to encode sync state.");
+		// TODO Handle single state above MTU.
+		ERR_CONTINUE_MSG(size > 1 + 4 + 4 + sync_mtu, vformat("Node states bigger then MTU will not be sent (%d > %d): %s", size, sync_mtu, node->get_path()));
+		if (ofs + 4 + 4 + size > sync_mtu) {
+			// Send what we got, and reset write.
+			send_raw(packet_cache.ptr(), ofs, p_peer, Multiplayer::TRANSFER_MODE_UNRELIABLE, 0);
+			ofs = 1;
+		}
+		if (size) {
+			ofs += encode_uint32(tobj.net_id.get_id(), &ptr[ofs]);
+			ofs += encode_uint32(size, &ptr[ofs]);
+			MultiplayerAPI::encode_and_compress_variants(varp.ptrw(), varp.size(), &ptr[ofs], size);
+			ofs += size;
+		}
+	}
+	if (ofs > 1) {
+		// Got some left over to send.
+		send_raw(packet_cache.ptr(), ofs, p_peer, Multiplayer::TRANSFER_MODE_UNRELIABLE, 0);
+	}
 }
 
 Error SceneTreeReplicatorInterface::on_sync_receive(int p_from, const uint8_t *p_buffer, int p_buffer_len) {

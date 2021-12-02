@@ -2807,7 +2807,7 @@ void EditorInspector::update_tree() {
 					ep->set_use_folding(use_folding);
 					ep->set_checkable(checkable);
 					ep->set_checked(checked);
-					ep->set_keying(keying);
+					ep->set_keying(!keying_locks.is_empty());
 					ep->set_read_only(property_read_only);
 					ep->set_deletable(deletable_properties);
 				}
@@ -2905,14 +2905,25 @@ void EditorInspector::edit(Object *p_object) {
 		object->connect("property_list_changed", callable_mp(this, &EditorInspector::_changed_callback));
 		update_tree();
 	}
+	emit_signal("object_inspected");
 }
 
-void EditorInspector::set_keying(bool p_active) {
-	if (keying == p_active) {
-		return;
+void EditorInspector::set_keying(bool p_enabled, Object *p_obj) {
+	ERR_FAIL_COND(!p_obj);
+	ObjectID oid = p_obj->get_instance_id();
+	ERR_FAIL_COND(oid.is_null());
+	int from = keying_locks.size();
+	if (p_enabled) {
+		keying_locks.insert(oid);
+		if (from == 0) {
+			update_tree();
+		}
+	} else {
+		keying_locks.erase(oid);
+		if (from && keying_locks.is_empty()) {
+			update_tree();
+		}
 	}
-	keying = p_active;
-	update_tree();
 }
 
 void EditorInspector::set_read_only(bool p_read_only) {
@@ -3543,6 +3554,7 @@ void EditorInspector::_bind_methods() {
 	ADD_SIGNAL(MethodInfo("object_id_selected", PropertyInfo(Variant::INT, "id")));
 	ADD_SIGNAL(MethodInfo("property_edited", PropertyInfo(Variant::STRING, "property")));
 	ADD_SIGNAL(MethodInfo("property_toggled", PropertyInfo(Variant::STRING, "property"), PropertyInfo(Variant::BOOL, "checked")));
+	ADD_SIGNAL(MethodInfo("object_inspected", PropertyInfo(Variant::OBJECT, "object")));
 	ADD_SIGNAL(MethodInfo("restart_requested"));
 }
 
@@ -3568,7 +3580,6 @@ EditorInspector::EditorInspector() {
 	update_tree_pending = false;
 	read_only = false;
 	search_box = nullptr;
-	keying = false;
 	_prop_edited = "property_edited";
 	set_process(false);
 	property_focusable = -1;

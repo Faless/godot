@@ -19,6 +19,11 @@
 				Emitted when the Edit button of an [Object] has been pressed in the inspector. This is mainly used in the remote scene tree inspector.
 			</description>
 		</signal>
+		<signal name="object_inspected">
+			<argument index="0" name="object" type="Object" />
+			<description>
+			</description>
+		</signal>
 		<signal name="property_deleted">
 			<argument index="0" name="property" type="String" />
 			<description>

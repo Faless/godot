@@ -435,7 +435,7 @@ class EditorInspector : public ScrollContainer {
 	int changing;
 	bool update_all_pending;
 	bool read_only;
-	bool keying;
+	Set<ObjectID> keying_locks;
 	bool sub_inspector;
 	bool wide_editors;
 	bool deletable_properties;
@@ -513,7 +513,7 @@ public:
 	void edit(Object *p_object);
 	Object *get_edited_object();
 
-	void set_keying(bool p_active);
+	void set_keying(bool p_enabled, Object *p_owner);
 	void set_read_only(bool p_read_only);
 
 	bool is_capitalize_paths_enabled() const;

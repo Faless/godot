@@ -3103,7 +3103,7 @@ void EditorPropertyResource::update_property() {
 				sub_inspector->connect("property_keyed", callable_mp(this, &EditorPropertyResource::_sub_inspector_property_keyed));
 				sub_inspector->connect("resource_selected", callable_mp(this, &EditorPropertyResource::_sub_inspector_resource_selected));
 				sub_inspector->connect("object_id_selected", callable_mp(this, &EditorPropertyResource::_sub_inspector_object_id_selected));
-				sub_inspector->set_keying(is_keying());
+				sub_inspector->set_keying(is_keying(), this);
 				sub_inspector->set_read_only(is_read_only());
 				sub_inspector->set_use_folding(is_using_folding());
 				sub_inspector->set_undo_redo(EditorNode::get_undo_redo());

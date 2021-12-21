@@ -42,7 +42,27 @@ self.addEventListener("fetch", (event) => {
 	const isCachable = FULL_CACHE.some(v => v === local) || (base === referrer && base.endsWith(CACHED_FILES[0]));
 	if (isNavigate || isCachable) {
 		event.respondWith(async function () {
-			try {
+			// Try to use cache first
+			const cache = await caches.open(CACHE_NAME);
+			if (event.request.mode === "navigate") {
+				// Check if we have full cache during HTML page request.
+				const fullCache = await Promise.all(FULL_CACHE.map(name => cache.match(name)));
+				const missing = fullCache.some(v => v === undefined);
+				if (missing) {
+					try {
+						// Always go over network is some cached file is missing.
+						const response = await fetch(event.request);
+						return response;
+					} catch (e) {
+						// And return the hopefully always cached offline page in case of network failure.
+						return await caches.match(OFFLINE_URL);
+					}
+				}
+			}
+			const cached = await cache.match(event.request);
+			if (cached) {
+				return cached;
+			} else {
 				// Use the preloaded response, if it's there
 				let request = event.request.clone();
 				let response = await event.preloadResponse;
@@ -51,22 +71,10 @@ self.addEventListener("fetch", (event) => {
 					response = await fetch(event.request);
 				}
 				if (isCachable) {
-					// Update the cache
-					const cache = await caches.open(CACHE_NAME);
+					// And update the cache
 					cache.put(request, response.clone());
 				}
-				return response;
-			} catch (error) {
-				const cache = await caches.open(CACHE_NAME);
-				if (event.request.mode === "navigate") {
-					// Check if we have full cache.
-					const cached = await Promise.all(FULL_CACHE.map(name => cache.match(name)));
-					const missing = cached.some(v => v === undefined);
-					const cachedResponse = missing ? await caches.match(OFFLINE_URL) : await caches.match(CACHED_FILES[0]);
-					return cachedResponse;
-				}
-				const cachedResponse = await caches.match(event.request);
-				return cachedResponse;
+				return reponse;
 			}
 		}());
 	}

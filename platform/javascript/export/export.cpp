@@ -516,7 +516,7 @@ Error EditorExportPlatformJavaScript::_build_pwa(const Ref<EditorExportPreset> &
 	const String name = p_path.get_file().get_basename();
 	const ExportMode mode = (ExportMode)(int)p_preset->get("variant/export_type");
 	Map<String, String> replaces;
-	replaces["@GODOT_VERSION@"] = "1";
+	replaces["@GODOT_VERSION@"] = String::num_int64(OS::get_singleton()->get_unix_time()) + "|" + String::num_int64(OS::get_singleton()->get_ticks_usec());
 	replaces["@GODOT_NAME@"] = name;
 	replaces["@GODOT_OFFLINE_PAGE@"] = name + ".offline.html";
 	Array files;

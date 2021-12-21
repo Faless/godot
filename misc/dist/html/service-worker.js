@@ -4,7 +4,7 @@
 // Incrementing CACHE_VERSION will kick off the install event and force
 // previously cached resources to be updated from the network.
 const CACHE_VERSION = "@GODOT_VERSION@";
-const CACHE_NAME = "@GODOT_NAME@-cache";
+const CACHE_NAME = "@GODOT_NAME@-cache" + CACHE_VERSION;
 const OFFLINE_URL = "@GODOT_OFFLINE_PAGE@";
 // Files that will be cached on load.
 const CACHED_FILES = @GODOT_CACHE@;
@@ -13,24 +13,20 @@ const CACHABLE_FILES = @GODOT_OPT_CACHE@;
 const FULL_CACHE = CACHED_FILES.concat(CACHABLE_FILES);
 
 self.addEventListener("install", (event) => {
-	event.waitUntil(async function () {
-		const cache = await caches.open(CACHE_NAME);
-		// Clear old cache (including optionals).
-		await Promise.all(FULL_CACHE.map(path => cache.delete(path)));
-		// Insert new one.
-		const done = await cache.addAll(CACHED_FILES);
-		return done;
-	}());
+	event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(CACHED_FILES)));
 });
 
 self.addEventListener("activate", (event) => {
-	event.waitUntil(async function () {
-		if ("navigationPreload" in self.registration) {
-			await self.registration.navigationPreload.enable();
-		}
-	}());
-	// Tell the active service worker to take control of the page immediately.
-	self.clients.claim();
+	event.waitUntil(caches.keys().then(
+		function (keys) {
+			return Promise.all(keys.filter(key => key != CACHE_NAME).map(key => caches.delete(key)));
+		}).then(function() {
+			return ("navigationPreload" in self.registration) ? self.registration.navigationPreload.enable() : Promise.resolve();
+		}).then(function () {
+			// Now we can take control of the page.
+			return self.clients.claim();
+		})
+	);
 });
 
 self.addEventListener("fetch", (event) => {
@@ -64,7 +60,6 @@ self.addEventListener("fetch", (event) => {
 				return cached;
 			} else {
 				// Use the preloaded response, if it's there
-				let request = event.request.clone();
 				let response = await event.preloadResponse;
 				if (!response) {
 					// Or, go over network.
@@ -72,7 +67,7 @@ self.addEventListener("fetch", (event) => {
 				}
 				if (isCachable) {
 					// And update the cache
-					cache.put(request, response.clone());
+					cache.put(event.request, response.clone());
 				}
 				return reponse;
 			}

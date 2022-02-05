@@ -160,6 +160,7 @@ private:
 	///network///
 
 	Ref<MultiplayerAPI> multiplayer;
+	HashMap<NodePath, Ref<MultiplayerAPI>> custom_multiplayers;
 	bool multiplayer_poll = true;
 
 	static SceneTree *singleton;
@@ -332,10 +333,10 @@ public:
 
 	//network API
 
-	Ref<MultiplayerAPI> get_multiplayer() const;
+	Ref<MultiplayerAPI> get_multiplayer(const NodePath &p_for_path = NodePath()) const;
+	void set_multiplayer(Ref<MultiplayerAPI> p_multiplayer, const NodePath &p_root_path = NodePath());
 	void set_multiplayer_poll_enabled(bool p_enabled);
 	bool is_multiplayer_poll_enabled() const;
-	void set_multiplayer(Ref<MultiplayerAPI> p_multiplayer);
 
 	static void add_idle_callback(IdleCallback p_callback);
 

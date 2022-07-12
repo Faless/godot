@@ -127,7 +127,7 @@ private:
 		Node *process_owner = nullptr;
 
 		int multiplayer_authority = 1; // Server by default.
-		Vector<Multiplayer::RPCConfig> rpc_methods;
+		Variant rpc_config;
 
 		// Variables used to properly sort the node when processing, ignored otherwise.
 		// TODO: Should move all the stuff below to bits.
@@ -491,28 +491,14 @@ public:
 	int get_multiplayer_authority() const;
 	bool is_multiplayer_authority() const;
 
-	uint16_t rpc_config(const StringName &p_method, Multiplayer::RPCMode p_rpc_mode, bool p_call_local = false, Multiplayer::TransferMode p_transfer_mode = Multiplayer::TRANSFER_MODE_RELIABLE, int p_channel = 0); // config a local method for RPC
-	Vector<Multiplayer::RPCConfig> get_node_rpc_methods() const;
+	void rpc_config(const StringName &p_method, const Variant &p_config); // config a local method for RPC
+	const Variant get_node_rpc_config() const;
 
 	template <typename... VarArgs>
-	void rpc(const StringName &p_method, VarArgs... p_args) {
-		Variant args[sizeof...(p_args) + 1] = { p_args..., Variant() }; // +1 makes sure zero sized arrays are also supported.
-		const Variant *argptrs[sizeof...(p_args) + 1];
-		for (uint32_t i = 0; i < sizeof...(p_args); i++) {
-			argptrs[i] = &args[i];
-		}
-		rpcp(0, p_method, sizeof...(p_args) == 0 ? nullptr : (const Variant **)argptrs, sizeof...(p_args));
-	}
+	void rpc(const StringName &p_method, VarArgs... p_args);
 
 	template <typename... VarArgs>
-	void rpc_id(int p_peer_id, const StringName &p_method, VarArgs... p_args) {
-		Variant args[sizeof...(p_args) + 1] = { p_args..., Variant() }; // +1 makes sure zero sized arrays are also supported.
-		const Variant *argptrs[sizeof...(p_args) + 1];
-		for (uint32_t i = 0; i < sizeof...(p_args); i++) {
-			argptrs[i] = &args[i];
-		}
-		rpcp(p_peer_id, p_method, sizeof...(p_args) == 0 ? nullptr : (const Variant **)argptrs, sizeof...(p_args));
-	}
+	void rpc_id(int p_peer_id, const StringName &p_method, VarArgs... p_args);
 
 	void rpcp(int p_peer_id, const StringName &p_method, const Variant **p_arg, int p_argcount);
 

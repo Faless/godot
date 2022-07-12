@@ -31,166 +31,64 @@
 #ifndef MULTIPLAYER_API_H
 #define MULTIPLAYER_API_H
 
-#include "core/multiplayer/multiplayer.h"
 #include "core/multiplayer/multiplayer_peer.h"
 #include "core/object/ref_counted.h"
-
-class MultiplayerAPI;
-
-class MultiplayerReplicationInterface : public RefCounted {
-	GDCLASS(MultiplayerReplicationInterface, RefCounted);
-
-public:
-	virtual void on_peer_change(int p_id, bool p_connected) {}
-	virtual void on_reset() {}
-	virtual Error on_spawn_receive(int p_from, const uint8_t *p_buffer, int p_buffer_len) { return ERR_UNAVAILABLE; }
-	virtual Error on_despawn_receive(int p_from, const uint8_t *p_buffer, int p_buffer_len) { return ERR_UNAVAILABLE; }
-	virtual Error on_sync_receive(int p_from, const uint8_t *p_buffer, int p_buffer_len) { return ERR_UNAVAILABLE; }
-	virtual Error on_spawn(Object *p_obj, Variant p_config) { return ERR_UNAVAILABLE; }
-	virtual Error on_despawn(Object *p_obj, Variant p_config) { return ERR_UNAVAILABLE; }
-	virtual Error on_replication_start(Object *p_obj, Variant p_config) { return ERR_UNAVAILABLE; }
-	virtual Error on_replication_stop(Object *p_obj, Variant p_config) { return ERR_UNAVAILABLE; }
-	virtual void on_network_process() {}
-
-	MultiplayerReplicationInterface() {}
-};
-
-class MultiplayerRPCInterface : public RefCounted {
-	GDCLASS(MultiplayerRPCInterface, RefCounted);
-
-public:
-	// Called by Node.rpc
-	virtual void rpcp(Object *p_obj, int p_peer_id, const StringName &p_method, const Variant **p_arg, int p_argcount) {}
-	virtual void process_rpc(int p_from, const uint8_t *p_packet, int p_packet_len) {}
-	virtual String get_rpc_md5(const Object *p_obj) const { return String(); }
-
-	MultiplayerRPCInterface() {}
-};
-
-class MultiplayerCacheInterface : public RefCounted {
-	GDCLASS(MultiplayerCacheInterface, RefCounted);
-
-public:
-	virtual void clear() {}
-	virtual void on_peer_change(int p_id, bool p_connected) {}
-	virtual void process_simplify_path(int p_from, const uint8_t *p_packet, int p_packet_len) {}
-	virtual void process_confirm_path(int p_from, const uint8_t *p_packet, int p_packet_len) {}
-
-	// Returns true if all peers have cached path.
-	virtual bool send_object_cache(Object *p_obj, int p_target, int &p_id) { return false; }
-	virtual int make_object_cache(Object *p_obj) { return false; }
-	virtual Object *get_cached_object(int p_from, uint32_t p_cache_id) { return nullptr; }
-	virtual bool is_cache_confirmed(NodePath p_path, int p_peer) { return false; }
-
-	MultiplayerCacheInterface() {}
-};
 
 class MultiplayerAPI : public RefCounted {
 	GDCLASS(MultiplayerAPI, RefCounted);
 
-public:
-	enum NetworkCommands {
-		NETWORK_COMMAND_REMOTE_CALL = 0,
-		NETWORK_COMMAND_SIMPLIFY_PATH,
-		NETWORK_COMMAND_CONFIRM_PATH,
-		NETWORK_COMMAND_RAW,
-		NETWORK_COMMAND_SPAWN,
-		NETWORK_COMMAND_DESPAWN,
-		NETWORK_COMMAND_SYNC,
-	};
-
-	// For each command, the 4 MSB can contain custom flags, as defined by subsystems.
-	enum {
-		CMD_FLAG_0_SHIFT = 4,
-		CMD_FLAG_1_SHIFT = 5,
-		CMD_FLAG_2_SHIFT = 6,
-		CMD_FLAG_3_SHIFT = 7,
-	};
-
-	// This is the mask that will be used to extract the command.
-	enum {
-		CMD_MASK = 7, // 0x7 -> 0b00001111
-	};
-
 private:
-	Ref<MultiplayerPeer> multiplayer_peer;
-	HashSet<int> connected_peers;
-	int remote_sender_id = 0;
-	int remote_sender_override = 0;
-
-	Vector<uint8_t> packet_cache;
-
-	NodePath root_path;
-	bool allow_object_decoding = false;
-
-	Ref<MultiplayerCacheInterface> cache;
-	Ref<MultiplayerReplicationInterface> replicator;
-	Ref<MultiplayerRPCInterface> rpc;
+	static StringName default_interface;
 
 protected:
 	static void _bind_methods();
-
-	void _process_packet(int p_from, const uint8_t *p_packet, int p_packet_len);
-	void _process_raw(int p_from, const uint8_t *p_packet, int p_packet_len);
+	void _rpc_bind(int p_peer, Object *p_obj, const StringName &p_method, Array args = Array());
 
 public:
-	static MultiplayerReplicationInterface *(*create_default_replication_interface)(MultiplayerAPI *p_multiplayer);
-	static MultiplayerRPCInterface *(*create_default_rpc_interface)(MultiplayerAPI *p_multiplayer);
-	static MultiplayerCacheInterface *(*create_default_cache_interface)(MultiplayerAPI *p_multiplayer);
+	enum RPCMode {
+		RPC_MODE_DISABLED, // No rpc for this method, calls to this will be blocked (default)
+		RPC_MODE_ANY_PEER, // Any peer can call this RPC
+		RPC_MODE_AUTHORITY, // Only the node's multiplayer authority (server by default) can call this RPC
+	};
+
+	static MultiplayerAPI *create();
+	static void set_default_interface(const StringName &p_interface);
 
 	static Error encode_and_compress_variant(const Variant &p_variant, uint8_t *p_buffer, int &r_len, bool p_allow_object_decoding);
 	static Error decode_and_decompress_variant(Variant &r_variant, const uint8_t *p_buffer, int p_len, int *r_len, bool p_allow_object_decoding);
 	static Error encode_and_compress_variants(const Variant **p_variants, int p_count, uint8_t *p_buffer, int &r_len, bool *r_raw = nullptr, bool p_allow_object_decoding = false);
 	static Error decode_and_decompress_variants(Vector<Variant> &r_variants, const uint8_t *p_buffer, int p_len, int &r_len, bool p_raw = false, bool p_allow_object_decoding = false);
 
-	void poll();
-	void clear();
-	void set_root_path(const NodePath &p_path);
-	NodePath get_root_path() const;
-	void set_multiplayer_peer(const Ref<MultiplayerPeer> &p_peer);
-	Ref<MultiplayerPeer> get_multiplayer_peer() const;
+	virtual Error poll();
+	virtual void set_multiplayer_peer(const Ref<MultiplayerPeer> &p_peer);
+	virtual Ref<MultiplayerPeer> get_multiplayer_peer();
+	virtual int get_unique_id();
+	virtual Vector<int> get_peer_ids();
 
-	Error send_bytes(Vector<uint8_t> p_data, int p_to = MultiplayerPeer::TARGET_PEER_BROADCAST, Multiplayer::TransferMode p_mode = Multiplayer::TRANSFER_MODE_RELIABLE, int p_channel = 0);
+	virtual Variant rpcp(Object *p_obj, int p_peer_id, const StringName &p_method, const Variant **p_arg, int p_argcount);
+	virtual int get_remote_sender_id();
 
-	// RPC API
-	void rpcp(Object *p_obj, int p_peer_id, const StringName &p_method, const Variant **p_arg, int p_argcount);
-	String get_rpc_md5(const Object *p_obj) const;
-	// Replication API
-	Error spawn(Object *p_object, Variant p_config);
-	Error despawn(Object *p_object, Variant p_config);
-	Error replication_start(Object *p_object, Variant p_config);
-	Error replication_stop(Object *p_object, Variant p_config);
-	// Cache API
-	bool send_object_cache(Object *p_obj, int p_target, int &p_id);
-	int make_object_cache(Object *p_obj);
-	Object *get_cached_object(int p_from, uint32_t p_cache_id);
-	bool is_cache_confirmed(NodePath p_path, int p_peer);
+	virtual Error object_configuration_add(Object *p_object, Variant p_config);
+	virtual Error object_configuration_remove(Object *p_object, Variant p_config);
 
-	void _add_peer(int p_id);
-	void _del_peer(int p_id);
-	void _connected_to_server();
-	void _connection_failed();
-	void _server_disconnected();
+	bool has_multiplayer_peer() { return get_multiplayer_peer().is_valid(); }
+	bool is_server() { return get_unique_id() == MultiplayerPeer::TARGET_PEER_SERVER; }
 
-	bool has_multiplayer_peer() const { return multiplayer_peer.is_valid(); }
-	Vector<int> get_peer_ids() const;
-	const HashSet<int> get_connected_peers() const { return connected_peers; }
-	int get_remote_sender_id() const { return remote_sender_override ? remote_sender_override : remote_sender_id; }
-	void set_remote_sender_override(int p_id) { remote_sender_override = p_id; }
-	int get_unique_id() const;
-	bool is_server() const;
-	void set_refuse_new_connections(bool p_refuse);
-	bool is_refusing_new_connections() const;
+	MultiplayerAPI() {}
+	virtual ~MultiplayerAPI() {}
 
-	void set_allow_object_decoding(bool p_enable);
-	bool is_object_decoding_allowed() const;
-
-#ifdef DEBUG_ENABLED
-	void profile_bandwidth(const String &p_inout, int p_size);
-#endif
-
-	MultiplayerAPI();
-	~MultiplayerAPI();
+	// Extensions
+	GDVIRTUAL0R(int, _poll);
+	GDVIRTUAL1(_set_multiplayer_peer, Ref<MultiplayerPeer>);
+	GDVIRTUAL0R(Ref<MultiplayerPeer>, _get_multiplayer_peer);
+	GDVIRTUAL0RC(int, _get_unique_id);
+	GDVIRTUAL0RC(PackedInt32Array, _get_peer_ids);
+	GDVIRTUAL4R(Variant, _rpc, int, Object *, StringName, Array);
+	GDVIRTUAL0RC(int, _get_remote_sender_id);
+	GDVIRTUAL2R(int, _object_configuration_add, Object *, Variant);
+	GDVIRTUAL2R(int, _object_configuration_remove, Object *, Variant);
 };
+
+VARIANT_ENUM_CAST(MultiplayerAPI::RPCMode);
 
 #endif // MULTIPLAYER_API_H

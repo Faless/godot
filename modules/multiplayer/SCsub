@@ -1,0 +1,8 @@
+#!/usr/bin/env python
+
+Import("env")
+Import("env_modules")
+
+env_multiplayer = env_modules.Clone()
+
+env_multiplayer.add_source_files(env.modules_sources, "*.cpp")

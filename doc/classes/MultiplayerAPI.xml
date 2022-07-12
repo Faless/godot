@@ -13,75 +13,125 @@
 	<tutorials>
 	</tutorials>
 	<methods>
-		<method name="clear">
-			<return type="void" />
+		<method name="_get_multiplayer_peer" qualifiers="virtual">
+			<return type="MultiplayerPeer" />
 			<description>
-				Clears the current MultiplayerAPI network state (you shouldn't call this unless you know what you are doing).
 			</description>
 		</method>
-		<method name="get_peers" qualifiers="const">
+		<method name="_get_peer_ids" qualifiers="virtual const">
+			<return type="PackedInt32Array" />
+			<description>
+			</description>
+		</method>
+		<method name="_get_remote_sender_id" qualifiers="virtual const">
+			<return type="int" />
+			<description>
+			</description>
+		</method>
+		<method name="_get_unique_id" qualifiers="virtual const">
+			<return type="int" />
+			<description>
+			</description>
+		</method>
+		<method name="_object_configuration_add" qualifiers="virtual">
+			<return type="int" />
+			<argument index="0" name="object" type="Object" />
+			<argument index="1" name="config" type="Variant" />
+			<description>
+			</description>
+		</method>
+		<method name="_object_configuration_remove" qualifiers="virtual">
+			<return type="int" />
+			<argument index="0" name="object" type="Object" />
+			<argument index="1" name="config" type="Variant" />
+			<description>
+			</description>
+		</method>
+		<method name="_poll" qualifiers="virtual">
+			<return type="int" />
+			<description>
+			</description>
+		</method>
+		<method name="_rpc" qualifiers="virtual">
+			<return type="Variant" />
+			<argument index="0" name="peer" type="int" />
+			<argument index="1" name="object" type="Object" />
+			<argument index="2" name="method" type="StringName" />
+			<argument index="3" name="args" type="Array" />
+			<description>
+			</description>
+		</method>
+		<method name="_set_multiplayer_peer" qualifiers="virtual">
+			<return type="void" />
+			<argument index="0" name="multiplayer_peer" type="MultiplayerPeer" />
+			<description>
+			</description>
+		</method>
+		<method name="get_peers">
 			<return type="PackedInt32Array" />
 			<description>
 				Returns the peer IDs of all connected peers of this MultiplayerAPI's [member multiplayer_peer].
 			</description>
 		</method>
-		<method name="get_remote_sender_id" qualifiers="const">
+		<method name="get_remote_sender_id">
 			<return type="int" />
 			<description>
 				Returns the sender's peer ID for the RPC currently being executed.
 				[b]Note:[/b] If not inside an RPC this method will return 0.
 			</description>
 		</method>
-		<method name="get_unique_id" qualifiers="const">
+		<method name="get_unique_id">
 			<return type="int" />
 			<description>
 				Returns the unique peer ID of this MultiplayerAPI's [member multiplayer_peer].
 			</description>
 		</method>
-		<method name="has_multiplayer_peer" qualifiers="const">
+		<method name="has_multiplayer_peer">
 			<return type="bool" />
 			<description>
 				Returns [code]true[/code] if there is a [member multiplayer_peer] set.
 			</description>
 		</method>
-		<method name="is_server" qualifiers="const">
+		<method name="is_server">
 			<return type="bool" />
 			<description>
 				Returns [code]true[/code] if this MultiplayerAPI's [member multiplayer_peer] is valid and in server mode (listening for connections).
 			</description>
 		</method>
+		<method name="object_configuration_add">
+			<return type="int" enum="Error" />
+			<argument index="0" name="object" type="Object" />
+			<argument index="1" name="config" type="Variant" />
+			<description>
+			</description>
+		</method>
+		<method name="object_configuration_remove">
+			<return type="int" enum="Error" />
+			<argument index="0" name="object" type="Object" />
+			<argument index="1" name="config" type="Variant" />
+			<description>
+			</description>
+		</method>
 		<method name="poll">
-			<return type="void" />
+			<return type="int" enum="Error" />
 			<description>
 				Method used for polling the MultiplayerAPI. You only need to worry about this if you set [member SceneTree.multiplayer_poll] to [code]false[/code]. By default, [SceneTree] will poll its MultiplayerAPI(s) for you.
 				[b]Note:[/b] This method results in RPCs being called, so they will be executed in the same context of this function (e.g. [code]_process[/code], [code]physics[/code], [Thread]).
 			</description>
 		</method>
-		<method name="send_bytes">
-			<return type="int" enum="Error" />
-			<argument index="0" name="bytes" type="PackedByteArray" />
-			<argument index="1" name="id" type="int" default="0" />
-			<argument index="2" name="mode" type="int" enum="TransferMode" default="2" />
-			<argument index="3" name="channel" type="int" default="0" />
+		<method name="rpc">
+			<return type="void" />
+			<argument index="0" name="peer" type="int" />
+			<argument index="1" name="object" type="Object" />
+			<argument index="2" name="method" type="StringName" />
+			<argument index="3" name="arguments" type="Array" default="[]" />
 			<description>
-				Sends the given raw [code]bytes[/code] to a specific peer identified by [code]id[/code] (see [method MultiplayerPeer.set_target_peer]). Default ID is [code]0[/code], i.e. broadcast to all peers.
 			</description>
 		</method>
 	</methods>
 	<members>
-		<member name="allow_object_decoding" type="bool" setter="set_allow_object_decoding" getter="is_object_decoding_allowed" default="false">
-			If [code]true[/code], the MultiplayerAPI will allow encoding and decoding of object during RPCs.
-			[b]Warning:[/b] Deserialized objects can contain code which gets executed. Do not use this option if the serialized object comes from untrusted sources to avoid potential security threats such as remote code execution.
-		</member>
 		<member name="multiplayer_peer" type="MultiplayerPeer" setter="set_multiplayer_peer" getter="get_multiplayer_peer">
 			The peer object to handle the RPC system (effectively enabling networking when set). Depending on the peer itself, the MultiplayerAPI will become a network server (check with [method is_server]) and will set root node's network mode to authority, or it will become a regular client peer. All child nodes are set to inherit the network mode by default. Handling of networking-related events (connection, disconnection, new clients) is done by connecting to MultiplayerAPI's signals.
-		</member>
-		<member name="refuse_new_connections" type="bool" setter="set_refuse_new_connections" getter="is_refusing_new_connections" default="false">
-			If [code]true[/code], the MultiplayerAPI's [member multiplayer_peer] refuses new incoming connections.
-		</member>
-		<member name="root_path" type="NodePath" setter="set_root_path" getter="get_root_path" default="NodePath(&quot;&quot;)">
-			The root path to use for RPCs and replication. Instead of an absolute path, a relative path will be used to find the node upon which the RPC should be executed.
-			This effectively allows to have different branches of the scene tree to be managed by different MultiplayerAPI, allowing for example to run both client and server in the same scene.
 		</member>
 	</members>
 	<signals>
@@ -107,17 +157,21 @@
 				Emitted when this MultiplayerAPI's [member multiplayer_peer] disconnects from a peer. Clients get notified when other clients disconnect from the same server.
 			</description>
 		</signal>
-		<signal name="peer_packet">
-			<argument index="0" name="id" type="int" />
-			<argument index="1" name="packet" type="PackedByteArray" />
-			<description>
-				Emitted when this MultiplayerAPI's [member multiplayer_peer] receives a [code]packet[/code] with custom data (see [method send_bytes]). ID is the peer ID of the peer that sent the packet.
-			</description>
-		</signal>
 		<signal name="server_disconnected">
 			<description>
 				Emitted when this MultiplayerAPI's [member multiplayer_peer] disconnects from server. Only emitted on clients.
 			</description>
 		</signal>
 	</signals>
+	<constants>
+		<constant name="RPC_MODE_DISABLED" value="0" enum="RPCMode">
+			Used with [method Node.rpc_config] to disable a method or property for all RPC calls, making it unavailable. Default for all methods.
+		</constant>
+		<constant name="RPC_MODE_ANY_PEER" value="1" enum="RPCMode">
+			Used with [method Node.rpc_config] to set a method to be callable remotely by any peer. Analogous to the [code]@rpc(any)[/code] annotation. Calls are accepted from all remote peers, no matter if they are node's authority or not.
+		</constant>
+		<constant name="RPC_MODE_AUTHORITY" value="2" enum="RPCMode">
+			Used with [method Node.rpc_config] to set a method to be callable remotely only by the current multiplayer authority (which is the server by default). Analogous to the [code]@rpc(authority)[/code] annotation. See [method Node.set_multiplayer_authority].
+		</constant>
+	</constants>
 </class>

@@ -31,6 +31,7 @@
 #ifndef VISUAL_SCRIPT_NODES_H
 #define VISUAL_SCRIPT_NODES_H
 
+#include "core/multiplayer/multiplayer_api.h"
 #include "core/object/gdvirtual.gen.inc"
 #include "core/object/script_language.h"
 #include "visual_script.h"
@@ -49,7 +50,7 @@ class VisualScriptFunction : public VisualScriptNode {
 
 	bool stack_less;
 	int stack_size;
-	Multiplayer::RPCMode rpc_mode;
+	MultiplayerAPI::RPCMode rpc_mode;
 	bool sequenced;
 
 protected:
@@ -90,8 +91,8 @@ public:
 	void set_stack_size(int p_size);
 	int get_stack_size() const;
 
-	void set_rpc_mode(Multiplayer::RPCMode p_mode);
-	Multiplayer::RPCMode get_rpc_mode() const;
+	void set_rpc_mode(MultiplayerAPI::RPCMode p_mode);
+	MultiplayerAPI::RPCMode get_rpc_mode() const;
 
 	virtual VisualScriptNodeInstance *instantiate(VisualScriptInstance *p_instance) override;
 

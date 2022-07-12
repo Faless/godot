@@ -582,26 +582,21 @@ bool Node::is_multiplayer_authority() const {
 
 /***** RPC CONFIG ********/
 
-uint16_t Node::rpc_config(const StringName &p_method, Multiplayer::RPCMode p_rpc_mode, bool p_call_local, Multiplayer::TransferMode p_transfer_mode, int p_channel) {
-	for (int i = 0; i < data.rpc_methods.size(); i++) {
-		if (data.rpc_methods[i].name == p_method) {
-			Multiplayer::RPCConfig &nd = data.rpc_methods.write[i];
-			nd.rpc_mode = p_rpc_mode;
-			nd.transfer_mode = p_transfer_mode;
-			nd.call_local = p_call_local;
-			nd.channel = p_channel;
-			return i | (1 << 15);
-		}
+void Node::rpc_config(const StringName &p_method, const Variant &p_config) {
+	if (data.rpc_config.get_type() != Variant::DICTIONARY) {
+		data.rpc_config = Dictionary();
 	}
-	// New method
-	Multiplayer::RPCConfig nd;
-	nd.name = p_method;
-	nd.rpc_mode = p_rpc_mode;
-	nd.transfer_mode = p_transfer_mode;
-	nd.channel = p_channel;
-	nd.call_local = p_call_local;
-	data.rpc_methods.push_back(nd);
-	return ((uint16_t)data.rpc_methods.size() - 1) | (1 << 15);
+	Dictionary node_config = data.rpc_config;
+	if (p_config.get_type() == Variant::NIL) {
+		node_config.erase(p_method);
+	} else {
+		ERR_FAIL_COND(p_config.get_type() != Variant::DICTIONARY);
+		node_config[p_method] = p_config;
+	}
+}
+
+const Variant Node::get_node_rpc_config() const {
+	return data.rpc_config;
 }
 
 /***** RPC FUNCTIONS ********/
@@ -658,6 +653,21 @@ void Node::_rpc_id_bind(const Variant **p_args, int p_argcount, Callable::CallEr
 	r_error.error = Callable::CallError::CALL_OK;
 }
 
+template <typename... VarArgs>
+void Node::rpc(const StringName &p_method, VarArgs... p_args) {
+	rpc_id(0, p_method, p_args...);
+}
+
+template <typename... VarArgs>
+void Node::rpc_id(int p_peer_id, const StringName &p_method, VarArgs... p_args) {
+	Variant args[sizeof...(p_args) + 1] = { p_args..., Variant() }; // +1 makes sure zero sized arrays are also supported.
+	const Variant *argptrs[sizeof...(p_args) + 1];
+	for (uint32_t i = 0; i < sizeof...(p_args); i++) {
+		argptrs[i] = &args[i];
+	}
+	rpcp(p_peer_id, p_method, sizeof...(p_args) == 0 ? nullptr : (const Variant **)argptrs, sizeof...(p_args));
+}
+
 void Node::rpcp(int p_peer_id, const StringName &p_method, const Variant **p_arg, int p_argcount) {
 	ERR_FAIL_COND(!is_inside_tree());
 	get_multiplayer()->rpcp(this, p_peer_id, p_method, p_arg, p_argcount);
@@ -668,10 +678,6 @@ Ref<MultiplayerAPI> Node::get_multiplayer() const {
 		return Ref<MultiplayerAPI>();
 	}
 	return get_tree()->get_multiplayer(get_path());
-}
-
-Vector<Multiplayer::RPCConfig> Node::get_node_rpc_methods() const {
-	return data.rpc_methods;
 }
 
 //////////// end of rpc
@@ -2888,7 +2894,7 @@ void Node::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("is_multiplayer_authority"), &Node::is_multiplayer_authority);
 
 	ClassDB::bind_method(D_METHOD("get_multiplayer"), &Node::get_multiplayer);
-	ClassDB::bind_method(D_METHOD("rpc_config", "method", "rpc_mode", "call_local", "transfer_mode", "channel"), &Node::rpc_config, DEFVAL(false), DEFVAL(Multiplayer::TRANSFER_MODE_RELIABLE), DEFVAL(0));
+	ClassDB::bind_method(D_METHOD("rpc_config", "method", "config"), &Node::rpc_config);
 
 	ClassDB::bind_method(D_METHOD("set_editor_description", "editor_description"), &Node::set_editor_description);
 	ClassDB::bind_method(D_METHOD("get_editor_description"), &Node::get_editor_description);

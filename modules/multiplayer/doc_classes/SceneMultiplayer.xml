@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="SceneMultiplayer" inherits="MultiplayerAPI" version="4.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
+	<brief_description>
+	</brief_description>
+	<description>
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="clear">
+			<return type="void" />
+			<description>
+				Clears the current SceneMultiplayer network state (you shouldn't call this unless you know what you are doing).
+			</description>
+		</method>
+		<method name="send_bytes">
+			<return type="int" enum="Error" />
+			<argument index="0" name="bytes" type="PackedByteArray" />
+			<argument index="1" name="id" type="int" default="0" />
+			<argument index="2" name="mode" type="int" enum="MultiplayerPeer.TransferMode" default="2" />
+			<argument index="3" name="channel" type="int" default="0" />
+			<description>
+				Sends the given raw [code]bytes[/code] to a specific peer identified by [code]id[/code] (see [method MultiplayerPeer.set_target_peer]). Default ID is [code]0[/code], i.e. broadcast to all peers.
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="allow_object_decoding" type="bool" setter="set_allow_object_decoding" getter="is_object_decoding_allowed" default="false">
+			If [code]true[/code], the MultiplayerAPI will allow encoding and decoding of object during RPCs.
+			[b]Warning:[/b] Deserialized objects can contain code which gets executed. Do not use this option if the serialized object comes from untrusted sources to avoid potential security threat such as remote code execution.
+		</member>
+		<member name="refuse_new_connections" type="bool" setter="set_refuse_new_connections" getter="is_refusing_new_connections" default="false">
+			If [code]true[/code], the MultiplayerAPI's [member MultiplayerAPI.multiplayer_peer] refuses new incoming connections.
+		</member>
+		<member name="root_path" type="NodePath" setter="set_root_path" getter="get_root_path" default="NodePath(&quot;&quot;)">
+			The root path to use for RPCs and replication. Instead of an absolute path, a relative path will be used to find the node upon which the RPC should be executed.
+			This effectively allows to have different branches of the scene tree to be managed by different MultiplayerAPI, allowing for example to run both client and server in the same scene.
+		</member>
+	</members>
+	<signals>
+		<signal name="peer_packet">
+			<argument index="0" name="id" type="int" />
+			<argument index="1" name="packet" type="PackedByteArray" />
+			<description>
+				Emitted when this MultiplayerAPI's [member MultiplayerAPI.multiplayer_peer] receives a [code]packet[/code] with custom data (see [method send_bytes]). ID is the peer ID of the peer that sent the packet.
+			</description>
+		</signal>
+	</signals>
+</class>

@@ -14,7 +14,7 @@ namespace Godot
         /// <summary>
         /// RPC mode for the annotated method.
         /// </summary>
-        public RPCMode Mode { get; } = RPCMode.Disabled;
+        public MultiplayerAPI.RPCMode Mode { get; } = MultiplayerAPI.RPCMode.Disabled;
 
         /// <summary>
         /// If the method will also be called locally; otherwise, it is only called remotely.
@@ -24,7 +24,7 @@ namespace Godot
         /// <summary>
         /// Transfer mode for the annotated method.
         /// </summary>
-        public TransferMode TransferMode { get; set; } = TransferMode.Reliable;
+        public MultiplayerPeer.TransferMode TransferMode { get; set; } = MultiplayerPeer.TransferMode.Reliable;
 
         /// <summary>
         /// Transfer channel for the annotated mode.
@@ -35,7 +35,7 @@ namespace Godot
         /// Constructs a <see cref="RPCAttribute"/> instance.
         /// </summary>
         /// <param name="mode">The RPC mode to use.</param>
-        public RPCAttribute(RPCMode mode = RPCMode.Authority)
+        public RPCAttribute(MultiplayerAPI.RPCMode mode = MultiplayerAPI.RPCMode.Authority)
         {
             Mode = mode;
         }

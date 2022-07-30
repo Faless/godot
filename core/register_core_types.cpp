@@ -58,6 +58,7 @@
 #include "core/io/resource_format_binary.h"
 #include "core/io/resource_importer.h"
 #include "core/io/resource_uid.h"
+#include "core/io/stream_peer_compression.h"
 #include "core/io/stream_peer_ssl.h"
 #include "core/io/tcp_server.h"
 #include "core/io/translation_loader_po.h"
@@ -181,6 +182,7 @@ void register_core_types() {
 	GDREGISTER_ABSTRACT_CLASS(StreamPeer);
 	GDREGISTER_CLASS(StreamPeerExtension);
 	GDREGISTER_CLASS(StreamPeerBuffer);
+	GDREGISTER_CLASS(StreamPeerCompressor);
 	GDREGISTER_CLASS(StreamPeerTCP);
 	GDREGISTER_CLASS(TCPServer);
 

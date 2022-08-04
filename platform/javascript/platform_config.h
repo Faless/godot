@@ -31,3 +31,7 @@
 #include <alloca.h>
 
 #define OPENGL_INCLUDE_H "platform/javascript/godot_webgl2.h"
+
+#define __has_trivial_destructor __is_trivially_destructible
+#define __has_trivial_copy __is_trivially_constructible
+#define __has_trivial_constructor __is_trivially_constructible

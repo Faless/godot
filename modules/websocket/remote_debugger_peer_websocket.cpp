@@ -39,12 +39,12 @@ Error RemoteDebuggerPeerWebSocket::connect_to_host(const String &p_uri) {
 	ws_client->connect_to_url(p_uri, protocols);
 	ws_client->poll();
 
-	if (ws_client->get_connection_status() == WebSocketClient::CONNECTION_DISCONNECTED) {
-		ERR_PRINT("Remote Debugger: Unable to connect. Status: " + String::num(ws_client->get_connection_status()) + ".");
+	if (ws_client->get_status() != WebSocketClient::STATUS_CONNECTING) { // TODO check me.
+		ERR_PRINT("Remote Debugger: Unable to connect. Status: " + String::num(ws_client->get_status()) + ".");
 		return FAILED;
 	}
 
-	ws_peer = ws_client->get_peer(1);
+	// ws_peer = ws_client->get_peer(1); TODO FIXME
 
 	return OK;
 }

@@ -38,9 +38,7 @@ WebSocketClient::WebSocketClient() {
 WebSocketClient::~WebSocketClient() {
 }
 
-Error WebSocketClient::connect_to_url(String p_url, const Vector<String> p_protocols, bool gd_mp_api, const Vector<String> p_custom_headers) {
-	_is_multiplayer = gd_mp_api;
-
+Error WebSocketClient::connect_to_url(String p_url, const Vector<String> p_protocols, const Vector<String> p_custom_headers) {
 	String host = p_url;
 	String path;
 	String scheme;
@@ -74,28 +72,16 @@ Ref<X509Certificate> WebSocketClient::get_trusted_tls_certificate() const {
 }
 
 void WebSocketClient::set_trusted_tls_certificate(Ref<X509Certificate> p_cert) {
-	ERR_FAIL_COND(get_connection_status() != CONNECTION_DISCONNECTED);
+	ERR_FAIL_COND(get_status() != STATUS_DISCONNECTED);
 	tls_cert = p_cert;
 }
 
-bool WebSocketClient::is_server() const {
-	return false;
-}
-
 void WebSocketClient::_on_peer_packet() {
-	if (_is_multiplayer) {
-		_process_multiplayer(get_peer(1), 1);
-	} else {
-		emit_signal(SNAME("data_received"));
-	}
+	emit_signal(SNAME("data_received"));
 }
 
 void WebSocketClient::_on_connect(String p_protocol) {
-	if (_is_multiplayer) {
-		// need to wait for ID confirmation...
-	} else {
-		emit_signal(SNAME("connection_established"), p_protocol);
-	}
+	emit_signal(SNAME("connection_established"), p_protocol);
 }
 
 void WebSocketClient::_on_close_request(int p_code, String p_reason) {
@@ -103,19 +89,11 @@ void WebSocketClient::_on_close_request(int p_code, String p_reason) {
 }
 
 void WebSocketClient::_on_disconnect(bool p_was_clean) {
-	if (_is_multiplayer) {
-		emit_signal(SNAME("connection_failed"));
-	} else {
-		emit_signal(SNAME("connection_closed"), p_was_clean);
-	}
+	emit_signal(SNAME("connection_closed"), p_was_clean);
 }
 
 void WebSocketClient::_on_error() {
-	if (_is_multiplayer) {
-		emit_signal(SNAME("connection_failed"));
-	} else {
-		emit_signal(SNAME("connection_error"));
-	}
+	emit_signal(SNAME("connection_error"));
 }
 
 void WebSocketClient::_bind_methods() {
@@ -125,6 +103,7 @@ void WebSocketClient::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_connected_port"), &WebSocketClient::get_connected_port);
 	ClassDB::bind_method(D_METHOD("set_verify_tls_enabled", "enabled"), &WebSocketClient::set_verify_tls_enabled);
 	ClassDB::bind_method(D_METHOD("is_verify_tls_enabled"), &WebSocketClient::is_verify_tls_enabled);
+	ClassDB::bind_method(D_METHOD("set_buffers", "input_buffer_size_kb", "input_max_packets", "output_buffer_size_kb", "output_max_packets"), &WebSocketMultiplayerPeer::set_buffers);
 
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "verify_tls", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NONE), "set_verify_tls_enabled", "is_verify_tls_enabled");
 
@@ -138,4 +117,11 @@ void WebSocketClient::_bind_methods() {
 	ADD_SIGNAL(MethodInfo("server_close_request", PropertyInfo(Variant::INT, "code"), PropertyInfo(Variant::STRING, "reason")));
 	ADD_SIGNAL(MethodInfo("connection_closed", PropertyInfo(Variant::BOOL, "was_clean_close")));
 	ADD_SIGNAL(MethodInfo("connection_error"));
+
+	BIND_ENUM_CONSTANT(STATUS_DISCONNECTED);
+	BIND_ENUM_CONSTANT(STATUS_CONNECTING);
+	BIND_ENUM_CONSTANT(STATUS_HANDSHAKING);
+	BIND_ENUM_CONSTANT(STATUS_CONNECTED);
+	BIND_ENUM_CONSTANT(STATUS_ERROR);
+	BIND_ENUM_CONSTANT(STATUS_TLS_ERROR);
 }

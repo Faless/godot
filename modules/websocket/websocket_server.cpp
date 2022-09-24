@@ -33,7 +33,6 @@
 GDCINULL(WebSocketServer);
 
 WebSocketServer::WebSocketServer() {
-	_peer_id = 1;
 	bind_ip = IPAddress("*");
 }
 
@@ -45,7 +44,9 @@ void WebSocketServer::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_extra_headers", "headers"), &WebSocketServer::set_extra_headers, DEFVAL(Vector<String>()));
 	ClassDB::bind_method(D_METHOD("listen", "port", "protocols", "gd_mp_api"), &WebSocketServer::listen, DEFVAL(Vector<String>()), DEFVAL(false));
 	ClassDB::bind_method(D_METHOD("stop"), &WebSocketServer::stop);
+	ClassDB::bind_method(D_METHOD("set_buffers", "input_buffer_size_kb", "input_max_packets", "output_buffer_size_kb", "output_max_packets"), &WebSocketMultiplayerPeer::set_buffers);
 	ClassDB::bind_method(D_METHOD("has_peer", "id"), &WebSocketServer::has_peer);
+	ClassDB::bind_method(D_METHOD("get_peer", "peer_id"), &WebSocketMultiplayerPeer::get_peer);
 	ClassDB::bind_method(D_METHOD("get_peer_address", "id"), &WebSocketServer::get_peer_address);
 	ClassDB::bind_method(D_METHOD("get_peer_port", "id"), &WebSocketServer::get_peer_port);
 	ClassDB::bind_method(D_METHOD("disconnect_peer", "id", "code", "reason"), &WebSocketServer::disconnect_peer, DEFVAL(1000), DEFVAL(""));
@@ -122,44 +123,35 @@ void WebSocketServer::set_handshake_timeout(float p_timeout) {
 	handshake_timeout = p_timeout * 1000;
 }
 
-MultiplayerPeer::ConnectionStatus WebSocketServer::get_connection_status() const {
-	if (is_listening()) {
-		return CONNECTION_CONNECTED;
-	}
-
-	return CONNECTION_DISCONNECTED;
-}
-
-bool WebSocketServer::is_server() const {
-	return true;
-}
-
 void WebSocketServer::_on_peer_packet(int32_t p_peer_id) {
+#if 0
 	if (_is_multiplayer) {
 		_process_multiplayer(get_peer(p_peer_id), p_peer_id);
 	} else {
-		emit_signal(SNAME("data_received"), p_peer_id);
-	}
+#endif
+	emit_signal(SNAME("data_received"), p_peer_id);
 }
 
 void WebSocketServer::_on_connect(int32_t p_peer_id, String p_protocol, String p_resource_name) {
+#if 0
 	if (_is_multiplayer) {
 		// Send add to clients
 		_send_add(p_peer_id);
 		emit_signal(SNAME("peer_connected"), p_peer_id);
 	} else {
-		emit_signal(SNAME("client_connected"), p_peer_id, p_protocol, p_resource_name);
-	}
+#endif
+	emit_signal(SNAME("client_connected"), p_peer_id, p_protocol, p_resource_name);
 }
 
 void WebSocketServer::_on_disconnect(int32_t p_peer_id, bool p_was_clean) {
+#if 0
 	if (_is_multiplayer) {
 		// Send delete to clients
 		_send_del(p_peer_id);
 		emit_signal(SNAME("peer_disconnected"), p_peer_id);
 	} else {
-		emit_signal(SNAME("client_disconnected"), p_peer_id, p_was_clean);
-	}
+#endif
+	emit_signal(SNAME("client_disconnected"), p_peer_id, p_was_clean);
 }
 
 void WebSocketServer::_on_close_request(int32_t p_peer_id, int p_code, String p_reason) {

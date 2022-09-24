@@ -36,19 +36,27 @@
 #include "websocket_multiplayer_peer.h"
 #include "websocket_peer.h"
 
-class WebSocketClient : public WebSocketMultiplayerPeer {
-	GDCLASS(WebSocketClient, WebSocketMultiplayerPeer);
+class WebSocketClient : public RefCounted {
+	GDCLASS(WebSocketClient, RefCounted);
 	GDCICLASS(WebSocketClient);
 
 protected:
-	Ref<WebSocketPeer> _peer;
 	bool verify_tls = true;
 	Ref<X509Certificate> tls_cert;
 
 	static void _bind_methods();
 
 public:
-	Error connect_to_url(String p_url, const Vector<String> p_protocols = Vector<String>(), bool gd_mp_api = false, const Vector<String> p_custom_headers = Vector<String>());
+	enum Status {
+		STATUS_DISCONNECTED,
+		STATUS_CONNECTING,
+		STATUS_HANDSHAKING,
+		STATUS_CONNECTED,
+		STATUS_ERROR,
+		STATUS_TLS_ERROR,
+	};
+
+	Error connect_to_url(String p_url, const Vector<String> p_protocols = Vector<String>(), const Vector<String> p_custom_headers = Vector<String>());
 
 	void set_verify_tls_enabled(bool p_verify_tls);
 	bool is_verify_tls_enabled() const;
@@ -60,7 +68,10 @@ public:
 	virtual IPAddress get_connected_host() const = 0;
 	virtual uint16_t get_connected_port() const = 0;
 
-	virtual bool is_server() const override;
+	virtual Error set_buffers(int p_in_buffer, int p_in_packets, int p_out_buffer, int p_out_packets) = 0;
+	virtual Status get_status() const = 0;
+	virtual int get_max_packet_size() const = 0;
+	virtual void poll() = 0;
 
 	void _on_peer_packet();
 	void _on_connect(String p_protocol);
@@ -71,5 +82,7 @@ public:
 	WebSocketClient();
 	~WebSocketClient();
 };
+
+VARIANT_ENUM_CAST(WebSocketClient::Status);
 
 #endif // WEBSOCKET_CLIENT_H

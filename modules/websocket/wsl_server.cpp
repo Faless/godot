@@ -174,10 +174,9 @@ void WSLServer::set_extra_headers(const Vector<String> &p_headers) {
 	_extra_headers = p_headers;
 }
 
-Error WSLServer::listen(int p_port, const Vector<String> p_protocols, bool gd_mp_api) {
+Error WSLServer::listen(int p_port, const Vector<String> p_protocols) {
 	ERR_FAIL_COND_V(is_listening(), ERR_ALREADY_IN_USE);
 
-	_is_multiplayer = gd_mp_api;
 	// Strip edges from protocols.
 	_protocols.resize(p_protocols.size());
 	String *pw = _protocols.ptrw();
@@ -214,7 +213,7 @@ void WSLServer::poll() {
 			continue;
 		}
 		// Creating new peer
-		int32_t id = generate_unique_id();
+		int32_t id = (((MultiplayerPeer *)this)->generate_unique_id()); // TODO FIXME really?
 
 		WSLPeer::PeerData *data = memnew(struct WSLPeer::PeerData);
 		data->obj = this;
@@ -242,9 +241,11 @@ void WSLServer::poll() {
 
 	while (_server->is_connection_available()) {
 		Ref<StreamPeerTCP> conn = _server->take_connection();
+		/* TODO proper take connection.
 		if (is_refusing_new_connections()) {
 			continue; // Conn will go out-of-scope and be closed.
 		}
+		*/
 
 		Ref<PendingPeer> peer = memnew(PendingPeer);
 		if (private_key.is_valid() && tls_cert.is_valid()) {
@@ -264,10 +265,6 @@ void WSLServer::poll() {
 
 bool WSLServer::is_listening() const {
 	return _server->is_listening();
-}
-
-int WSLServer::get_max_packet_size() const {
-	return (1 << _out_buf_size) - PROTO_SIZE;
 }
 
 void WSLServer::stop() {

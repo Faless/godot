@@ -78,10 +78,9 @@ private:
 public:
 	Error set_buffers(int p_in_buffer, int p_in_packets, int p_out_buffer, int p_out_packets) override;
 	void set_extra_headers(const Vector<String> &p_headers) override;
-	Error listen(int p_port, const Vector<String> p_protocols = Vector<String>(), bool gd_mp_api = false) override;
+	Error listen(int p_port, const Vector<String> p_protocols = Vector<String>()) override;
 	void stop() override;
 	bool is_listening() const override;
-	int get_max_packet_size() const override;
 	bool has_peer(int p_id) const override;
 	Ref<WebSocketPeer> get_peer(int p_id) const override;
 	IPAddress get_peer_address(int p_peer_id) const override;

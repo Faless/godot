@@ -2,10 +2,12 @@
 
 #ifndef WEB_ENABLED
 
-Error WSLClientPeer::connect_to_host(String p_host, String p_path, uint16_t p_port, bool p_tls, const Vector<String> p_protocols, const Vector<String> p_custom_headers) {
+Error WSLClientPeer::connect_to_host(String p_host, String p_path, uint16_t p_port, bool p_tls, const Vector<String> p_protocols, const Vector<String> p_custom_headers, bool p_verify_tls, Ref<X509Certificate> p_cert) {
 	ERR_FAIL_COND_V(_connection.is_valid(), ERR_ALREADY_IN_USE);
 	ERR_FAIL_COND_V(p_path.is_empty(), ERR_INVALID_PARAMETER);
 
+	tls_cert = p_cert;
+	verify_tls = p_verify_tls;
 	if (p_host.is_valid_ip_address()) {
 		_ip_candidates.push_back(IPAddress(p_host));
 	} else {
@@ -72,7 +74,6 @@ Error WSLClientPeer::connect_to_host(String p_host, String p_path, uint16_t p_po
 	CharString cs = request.utf8();
 	_handshake_buffer->put_data((const uint8_t *)cs.get_data(), cs.size());
 	_state = STATE_CONNECTING;
-	_is_client = true;
 
 	return OK;
 }
@@ -244,10 +245,8 @@ void WSLClientPeer::_do_client_handshake() {
 				// Create peer. TODO check
 				conn = _connection;
 				tcp = _tcp;
-				is_server = false;
-				id = 1;
 				// TODO FIXME
-				//				make_context(data, _in_buf_size, _in_pkt_size, _out_buf_size, _out_pkt_size);
+				// make_context(data, _in_buf_size, _in_pkt_size, _out_buf_size, _out_pkt_size);
 				//set_no_delay(true);
 				_state = STATE_OPEN;
 				_handshaking = false;

@@ -83,8 +83,8 @@ private:
 	static void _wsl_msg_recv_callback(wslay_event_context_ptr ctx, const struct wslay_event_on_msg_recv_arg *arg, void *user_data);
 	static wslay_event_callbacks _wsl_callbacks;
 
-	static bool _wsl_poll(struct PeerData *p_data);
-	static void _wsl_destroy(struct PeerData **p_data);
+	static bool _wsl_poll(PeerData *p_data);
+	static void _wsl_destroy(PeerData **p_data);
 
 	struct PeerData *_data = nullptr;
 	uint8_t _is_string = 0;
@@ -99,7 +99,7 @@ private:
 	WriteMode write_mode = WRITE_MODE_BINARY;
 
 public:
-	virtual Error connect_to_url(String p_url, const Vector<String> p_protocols = Vector<String>(), const Vector<String> p_custom_headers = Vector<String>(), bool p_verify_tls = true, Ref<X509Certificate> p_cert = Ref<X509Certificate>()) override { return ERR_UNAVAILABLE; }
+	virtual Error connect_to_url(String p_url, const Vector<String> p_protocols = Vector<String>(), const Vector<String> p_custom_headers = Vector<String>(), bool p_verify_tls = true, Ref<X509Certificate> p_cert = Ref<X509Certificate>()) override;
 
 	int close_code = -1;
 	String close_reason;

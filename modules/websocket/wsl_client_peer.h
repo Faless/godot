@@ -20,7 +20,6 @@ private:
 	Vector<String> _protocols;
 	bool _handshaking = true;
 	bool _pending_request = true;
-	bool _is_client = false;
 	Ref<StreamPeer> _connection;
 	Ref<StreamPeerTCP> _tcp;
 	String _key;
@@ -43,7 +42,7 @@ private:
 public:
 	virtual Error poll() override;
 
-	Error connect_to_host(String p_host, String p_path, uint16_t p_port, bool p_tls, const Vector<String> p_protocol = Vector<String>(), const Vector<String> p_custom_headers = Vector<String>());
+	Error connect_to_host(String p_host, String p_path, uint16_t p_port, bool p_tls, const Vector<String> p_protocol = Vector<String>(), const Vector<String> p_custom_headers = Vector<String>(), bool p_verify_tls = true, Ref<X509Certificate> p_cert = Ref<X509Certificate>());
 
 	WSLClientPeer(){};
 	~WSLClientPeer(){};

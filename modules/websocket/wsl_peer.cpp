@@ -33,11 +33,42 @@
 #include "wsl_peer.h"
 
 #include "wsl_client.h"
+#include "wsl_client_peer.h"
 #include "wsl_server.h"
 
 #include "core/crypto/crypto_core.h"
 #include "core/math/random_number_generator.h"
 #include "core/os/os.h"
+
+Error WSLPeer::connect_to_url(String p_url, const Vector<String> p_protocols, const Vector<String> p_custom_headers, bool p_verify_tls, Ref<X509Certificate> p_cert) {
+	ERR_FAIL_COND_V(_data != nullptr, ERR_ALREADY_IN_USE);
+	String host = p_url;
+	String path;
+	String scheme;
+	int port = 0;
+	Error err = p_url.parse_url(scheme, host, port, path);
+	ERR_FAIL_COND_V_MSG(err != OK, err, "Invalid URL: " + p_url);
+
+	bool tls = false;
+	if (scheme == "wss://") {
+		tls = true;
+	}
+	if (port == 0) {
+		port = tls ? 443 : 80;
+	}
+	if (path.is_empty()) {
+		path = "/";
+	}
+	WSLClientPeer *data = memnew(WSLClientPeer);
+	data->is_server = false;
+	err = data->connect_to_host(host, path, port, tls, p_protocols, p_custom_headers, p_verify_tls, p_cert);
+	if (err != OK) {
+		memdelete(data);
+		data = nullptr;
+	}
+	_data = data;
+	return err;
+}
 
 String WSLPeer::generate_key() {
 	// Random key

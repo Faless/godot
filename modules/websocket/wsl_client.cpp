@@ -83,6 +83,7 @@ void WSLClient::_do_handshake() {
 					ERR_FAIL_MSG("Invalid response headers.");
 				}
 				// Create peer.
+#if 0
 				WSLPeer::PeerData *data = memnew(struct WSLPeer::PeerData);
 				data->conn = _connection;
 				data->tcp = _tcp;
@@ -90,6 +91,7 @@ void WSLClient::_do_handshake() {
 				data->id = 1;
 				_peer->make_context(data, _in_buf_size, _in_pkt_size, _out_buf_size, _out_pkt_size);
 				_peer->set_no_delay(true);
+#endif
 				_status = STATUS_CONNECTED;
 				_on_connect(protocol);
 				break;
@@ -388,7 +390,6 @@ WSLClient::WSLClient() {
 
 WSLClient::~WSLClient() {
 	_peer->close_now();
-	_peer->invalidate();
 	disconnect_from_host();
 }
 

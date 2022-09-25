@@ -41,6 +41,13 @@ class WebSocketPeer : public PacketPeer {
 	GDCICLASS(WebSocketPeer);
 
 public:
+	enum State {
+		STATE_CONNECTING,
+		STATE_OPEN,
+		STATE_CLOSING,
+		STATE_CLOSED
+	};
+
 	enum WriteMode {
 		WRITE_MODE_TEXT,
 		WRITE_MODE_BINARY,

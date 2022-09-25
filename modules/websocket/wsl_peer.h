@@ -43,39 +43,7 @@
 
 #define WSL_MAX_HEADER_SIZE 4096
 
-class WSLPeer : public WebSocketPeer {
-	GDCIIMPL(WSLPeer, WebSocketPeer);
-
-public:
-	class PeerData {
-	public:
-		// TODO move up.
-		enum State {
-			STATE_CONNECTING,
-			STATE_OPEN,
-			STATE_CLOSING,
-			STATE_CLOSED
-		};
-
-		State _state = STATE_CLOSED;
-
-		bool polling = false;
-		bool destroy = false;
-		bool valid = false;
-		bool is_server = false;
-		void *peer = nullptr;
-		Ref<StreamPeer> conn;
-		Ref<StreamPeerTCP> tcp;
-		int id = 1;
-		wslay_event_context_ptr ctx = nullptr;
-
-		virtual Error poll() { return ERR_UNAVAILABLE; }
-		virtual ~PeerData() {}
-	};
-
-	static String compute_key_response(String p_key);
-	static String generate_key();
-
+class WSLContext : public RefCounted {
 private:
 	static ssize_t _wsl_recv_callback(wslay_event_context_ptr ctx, uint8_t *data, size_t len, int flags, void *user_data);
 	static ssize_t _wsl_send_callback(wslay_event_context_ptr ctx, const uint8_t *data, size_t len, int flags, void *user_data);
@@ -83,10 +51,40 @@ private:
 	static void _wsl_msg_recv_callback(wslay_event_context_ptr ctx, const struct wslay_event_on_msg_recv_arg *arg, void *user_data);
 	static wslay_event_callbacks _wsl_callbacks;
 
-	static bool _wsl_poll(PeerData *p_data);
-	static void _wsl_destroy(PeerData **p_data);
+protected:
+	WebSocketPeer::State _state = WebSocketPeer::STATE_CLOSED;
 
-	struct PeerData *_data = nullptr;
+	bool _valid = false;
+
+	bool is_server = false;
+	void *peer = nullptr;
+	Ref<StreamPeer> _connection;
+	wslay_event_context_ptr _ctx = nullptr;
+
+	void make_context(bool p_is_server, unsigned int p_max_recv_msg_length);
+
+public:
+	Ref<StreamPeerTCP> get_tcp() const;
+	bool is_active() const { return _valid; }
+	WebSocketPeer::State get_state() const { return _state; }
+	wslay_event_context_ptr get_ctx() const { return _ctx; }
+
+	void close(int p_code, String p_reason);
+	void _wsl_poll();
+
+	virtual Error poll() { return ERR_UNAVAILABLE; }
+	virtual ~WSLContext() {}
+};
+
+class WSLPeer : public WebSocketPeer {
+	GDCIIMPL(WSLPeer, WebSocketPeer);
+
+public:
+	static String compute_key_response(String p_key);
+	static String generate_key();
+
+private:
+	Ref<WSLContext> _wsl_context;
 	uint8_t _is_string = 0;
 	// Our packet info is just a boolean (is_string), using uint8_t for it.
 	PacketBuffer<uint8_t> _in_buffer;
@@ -123,9 +121,12 @@ public:
 	virtual bool was_string_packet() const override;
 	virtual void set_no_delay(bool p_enabled) override;
 
+	/* TODO
 	void make_context(PeerData *p_data, unsigned int p_in_buf_size, unsigned int p_in_pkt_size, unsigned int p_out_buf_size, unsigned int p_out_pkt_size);
-	Error parse_message(const wslay_event_on_msg_recv_arg *arg);
 	void invalidate();
+	*/
+
+	Error parse_message(const wslay_event_on_msg_recv_arg *arg);
 
 	WSLPeer();
 	~WSLPeer();

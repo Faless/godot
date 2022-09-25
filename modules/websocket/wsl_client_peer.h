@@ -8,7 +8,7 @@
 
 #ifndef WEB_ENABLED
 
-class WSLClientPeer : public WSLPeer::PeerData {
+class WSLClientPeer : public WSLContext {
 private:
 	// Client
 	Ref<StreamPeerBuffer> _handshake_buffer;

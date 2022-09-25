@@ -73,7 +73,7 @@ Error WSLClientPeer::connect_to_host(String p_host, String p_path, uint16_t p_po
 	request += "\r\n";
 	CharString cs = request.utf8();
 	_handshake_buffer->put_data((const uint8_t *)cs.get_data(), cs.size());
-	_state = STATE_CONNECTING;
+	_state = WebSocketPeer::STATE_CONNECTING;
 
 	return OK;
 }
@@ -161,7 +161,7 @@ Error WSLClientPeer::poll() {
 void WSLClientPeer::disconnect_from_host() {
 	_connection = Ref<StreamPeer>(nullptr);
 	_tcp = Ref<StreamPeerTCP>(memnew(StreamPeerTCP));
-	_state = STATE_CLOSED;
+	_state = WebSocketPeer::STATE_CLOSED;
 
 	_key = "";
 	_host = "";
@@ -188,7 +188,7 @@ void WSLClientPeer::_do_client_handshake() {
 		// Sending handshake failed
 		if (err != OK) {
 			// TODO err
-			_state = STATE_CLOSED;
+			_state = WebSocketPeer::STATE_CLOSED;
 			disconnect_from_host();
 			return;
 		}
@@ -207,7 +207,7 @@ void WSLClientPeer::_do_client_handshake() {
 			Vector<uint8_t> data = _handshake_buffer->get_data_array();
 			if (left == 0) {
 				// Header is too big
-				_state = STATE_CLOSED;
+				_state = WebSocketPeer::STATE_CLOSED;
 				disconnect_from_host();
 				ERR_FAIL_MSG("Response headers too big.");
 				return;
@@ -216,12 +216,12 @@ void WSLClientPeer::_do_client_handshake() {
 			Error err = _connection->get_partial_data(data.ptrw() + pos, 1, read);
 			if (err == ERR_FILE_EOF) {
 				// We got a disconnect.
-				_state = STATE_CLOSED;
+				_state = WebSocketPeer::STATE_CLOSED;
 				disconnect_from_host();
 				return;
 			} else if (err != OK) {
 				// Got some error.
-				_state = STATE_CLOSED;
+				_state = WebSocketPeer::STATE_CLOSED;
 				disconnect_from_host();
 				return;
 			} else if (read != 1) {
@@ -238,17 +238,15 @@ void WSLClientPeer::_do_client_handshake() {
 				String protocol;
 				// Response is over, verify headers and create peer.
 				if (!_verify_server_response(protocol)) {
-					_state = STATE_CLOSED;
+					_state = WebSocketPeer::STATE_CLOSED;
 					disconnect_from_host();
 					ERR_FAIL_MSG("Invalid response headers.");
 				}
 				// Create peer. TODO check
-				conn = _connection;
-				tcp = _tcp;
 				// TODO FIXME
 				// make_context(data, _in_buf_size, _in_pkt_size, _out_buf_size, _out_pkt_size);
 				//set_no_delay(true);
-				_state = STATE_OPEN;
+				_state = WebSocketPeer::STATE_OPEN;
 				_handshaking = false;
 				break;
 			}

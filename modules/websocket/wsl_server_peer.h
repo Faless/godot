@@ -37,9 +37,8 @@
 
 #include "core/io/stream_peer_tls.h"
 
-class WSLServerPeer : public WSLPeer::PeerData {
+class WSLServerPeer : public WSLContext {
 private:
-	Ref<StreamPeer> connection;
 	bool use_tls = false;
 	String resource_name; // TODO FIXME what about me?
 

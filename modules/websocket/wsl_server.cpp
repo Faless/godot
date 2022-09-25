@@ -215,6 +215,7 @@ void WSLServer::poll() {
 		// Creating new peer
 		int32_t id = (((MultiplayerPeer *)this)->generate_unique_id()); // TODO FIXME really?
 
+#if 0
 		WSLPeer::PeerData *data = memnew(struct WSLPeer::PeerData);
 		data->conn = ppeer->connection;
 		data->tcp = ppeer->tcp;
@@ -228,6 +229,7 @@ void WSLServer::poll() {
 		_peer_map[id] = ws_peer;
 		remove_peers.push_back(ppeer);
 		_on_connect(id, ppeer->protocol, resource_name);
+#endif
 	}
 	for (const Ref<PendingPeer> &E : remove_peers) {
 		_pending.erase(E);

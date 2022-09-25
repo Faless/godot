@@ -97,10 +97,10 @@ bool WSLServerPeer::_parse_client_request(const Vector<String> p_protocols, Stri
 
 Error WSLServerPeer::_do_server_handshake(const Vector<String> p_protocols, String &r_resource_name, const Vector<String> &p_extra_headers) {
 	if (use_tls) {
-		Ref<StreamPeerTLS> tls = static_cast<Ref<StreamPeerTLS>>(connection);
+		Ref<StreamPeerTLS> tls = static_cast<Ref<StreamPeerTLS>>(_connection);
 		if (tls.is_null()) {
 			ERR_FAIL_V_MSG(ERR_BUG, "Couldn't get StreamPeerTLS for WebSocket handshake.");
-			_state = STATE_CLOSED;
+			_state = WebSocketPeer::STATE_CLOSED;
 			return FAILED;
 		}
 		tls->poll();
@@ -108,7 +108,7 @@ Error WSLServerPeer::_do_server_handshake(const Vector<String> p_protocols, Stri
 			return OK; // Pending handshake
 		} else if (tls->get_status() != StreamPeerTLS::STATUS_CONNECTED) {
 			print_verbose(vformat("WebSocket SSL connection error during handshake (StreamPeerTLS status code %d).", tls->get_status()));
-			_state = STATE_CLOSED;
+			_state = WebSocketPeer::STATE_CLOSED;
 			return FAILED;
 		}
 	}
@@ -119,10 +119,10 @@ Error WSLServerPeer::_do_server_handshake(const Vector<String> p_protocols, Stri
 			ERR_FAIL_COND_V_MSG(handshake_buffer->get_available_bytes() < 1, ERR_OUT_OF_MEMORY, "WebSocket response headers are too big.");
 			int pos = handshake_buffer->get_position();
 			Vector<uint8_t> data = handshake_buffer->get_data_array();
-			Error err = connection->get_partial_data(data.ptrw() + pos, 1, read);
+			Error err = _connection->get_partial_data(data.ptrw() + pos, 1, read);
 			if (err != OK) { // Got an error
 				print_verbose(vformat("WebSocket error while getting partial data (StreamPeer error code %d).", err));
-				_state = STATE_CLOSED;
+				_state = WebSocketPeer::STATE_CLOSED;
 				return FAILED;
 			} else if (read != 1) { // Busy, wait next poll
 				return OK;
@@ -132,7 +132,7 @@ Error WSLServerPeer::_do_server_handshake(const Vector<String> p_protocols, Stri
 			if (l > 3 && r[l] == '\n' && r[l - 1] == '\r' && r[l - 2] == '\n' && r[l - 3] == '\r') {
 				r[l - 3] = '\0';
 				if (!_parse_client_request(p_protocols, r_resource_name)) {
-					_state = STATE_CLOSED;
+					_state = WebSocketPeer::STATE_CLOSED;
 					return FAILED;
 				}
 				String s = "HTTP/1.1 101 Switching Protocols\r\n";
@@ -166,16 +166,16 @@ Error WSLServerPeer::_do_server_handshake(const Vector<String> p_protocols, Stri
 		Vector<uint8_t> data = handshake_buffer->get_data_array();
 		int pos = handshake_buffer->get_position();
 		int sent = 0;
-		Error err = connection->put_partial_data(data.ptr() + pos, left, sent);
+		Error err = _connection->put_partial_data(data.ptr() + pos, left, sent);
 		if (err != OK) {
 			print_verbose(vformat("WebSocket error while putting partial data (StreamPeer error code %d).", err));
-			_state = STATE_CLOSED;
+			_state = WebSocketPeer::STATE_CLOSED;
 			return err;
 		}
 		handshake_buffer->seek(pos + sent);
 		left -= sent;
 		if (left == 0) {
-			_state = STATE_OPEN;
+			_state = WebSocketPeer::STATE_OPEN;
 		}
 	}
 
@@ -186,22 +186,22 @@ Error WSLServerPeer::accept_stream(Ref<StreamPeer> p_stream, const Vector<String
 	ERR_FAIL_COND_V(p_stream.is_null(), ERR_INVALID_PARAMETER);
 
 	if (p_stream->is_class_ptr(StreamPeerTCP::get_class_ptr_static())) {
-		connection = p_stream;
+		_connection = p_stream;
 		use_tls = false;
 	} else if (p_stream->is_class_ptr(StreamPeerTLS::get_class_ptr_static())) {
-		connection = p_stream;
+		_connection = p_stream;
 		use_tls = true;
 	}
-	ERR_FAIL_COND_V(!connection.is_valid(), ERR_INVALID_PARAMETER);
+	ERR_FAIL_COND_V(!_connection.is_valid(), ERR_INVALID_PARAMETER);
 	_pending_request = true;
 	_protocols = p_protocols;
 	_custom_headers = p_custom_headers;
-	_state = STATE_CONNECTING;
+	_state = WebSocketPeer::STATE_CONNECTING;
 	return OK;
 }
 
 Error WSLServerPeer::poll() {
-	if (_state == STATE_CONNECTING) {
+	if (_state == WebSocketPeer::STATE_CONNECTING) {
 		return _do_server_handshake(_protocols, resource_name, _custom_headers);
 	}
 	return OK;

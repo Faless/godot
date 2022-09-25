@@ -143,7 +143,7 @@ int WSLPeer::_wsl_genmask_callback(wslay_event_context_ptr ctx, uint8_t *buf, si
 
 void WSLPeer::_wsl_msg_recv_callback(wslay_event_context_ptr ctx, const struct wslay_event_on_msg_recv_arg *arg, void *user_data) {
 	struct WSLPeer::PeerData *peer_data = (struct WSLPeer::PeerData *)user_data;
-	if (!peer_data->valid || peer_data->closing) {
+	if (!peer_data->valid || peer_data->_state == PeerData::STATE_CLOSING) {
 		return;
 	}
 	WSLPeer *peer = static_cast<WSLPeer *>(peer_data->peer);
@@ -152,6 +152,8 @@ void WSLPeer::_wsl_msg_recv_callback(wslay_event_context_ptr ctx, const struct w
 		return;
 	}
 
+	// TODO Nothing?
+#if 0
 	if (peer_data->is_server) {
 		WSLServer *helper = static_cast<WSLServer *>(peer_data->obj);
 		helper->_on_peer_packet(peer_data->id);
@@ -159,6 +161,7 @@ void WSLPeer::_wsl_msg_recv_callback(wslay_event_context_ptr ctx, const struct w
 		WSLClient *helper = static_cast<WSLClient *>(peer_data->obj);
 		helper->_on_peer_packet();
 	}
+#endif
 }
 
 wslay_event_callbacks WSLPeer::_wsl_callbacks = {
@@ -183,6 +186,8 @@ Error WSLPeer::parse_message(const wslay_event_on_msg_recv_arg *arg) {
 			close_reason.parse_utf8((char *)arg->msg + 2, len - 2);
 		}
 		if (!wslay_event_get_close_sent(_data->ctx)) {
+			// TODO FIXME close request
+#if 0
 			if (_data->is_server) {
 				WSLServer *helper = static_cast<WSLServer *>(_data->obj);
 				helper->_on_close_request(_data->id, close_code, close_reason);
@@ -190,6 +195,7 @@ Error WSLPeer::parse_message(const wslay_event_on_msg_recv_arg *arg) {
 				WSLClient *helper = static_cast<WSLClient *>(_data->obj);
 				helper->_on_close_request(close_code, close_reason);
 			}
+#endif
 		}
 		return ERR_FILE_EOF;
 	} else if (arg->opcode != WSLAY_BINARY_FRAME) {
@@ -313,7 +319,7 @@ void WSLPeer::close(int p_code, String p_reason) {
 		CharString cs = p_reason.utf8();
 		wslay_event_queue_close(_data->ctx, p_code, (uint8_t *)cs.ptr(), cs.size());
 		wslay_event_send(_data->ctx);
-		_data->closing = true;
+		_data->_state = PeerData::STATE_CLOSING;
 	}
 
 	_in_buffer.clear();

@@ -84,7 +84,6 @@ void WSLClient::_do_handshake() {
 				}
 				// Create peer.
 				WSLPeer::PeerData *data = memnew(struct WSLPeer::PeerData);
-				data->obj = this;
 				data->conn = _connection;
 				data->tcp = _tcp;
 				data->is_server = false;

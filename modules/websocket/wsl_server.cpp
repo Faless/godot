@@ -216,7 +216,6 @@ void WSLServer::poll() {
 		int32_t id = (((MultiplayerPeer *)this)->generate_unique_id()); // TODO FIXME really?
 
 		WSLPeer::PeerData *data = memnew(struct WSLPeer::PeerData);
-		data->obj = this;
 		data->conn = ppeer->connection;
 		data->tcp = ppeer->tcp;
 		data->is_server = true;

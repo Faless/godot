@@ -63,8 +63,6 @@ public:
 		bool destroy = false;
 		bool valid = false;
 		bool is_server = false;
-		bool closing = false;
-		void *obj = nullptr;
 		void *peer = nullptr;
 		Ref<StreamPeer> conn;
 		Ref<StreamPeerTCP> tcp;

@@ -44,20 +44,15 @@ private:
 	Ref<StreamPeerTCP> tcp;
 	Ref<StreamPeer> connection;
 	bool use_tls = false;
-	uint32_t handshake_timeout = 3000; // TODO FIXME remove
 	String resource_name; // TODO FIXME what about me?
-	bool pending = true; // TODO FIXME check poll.
 
-	uint64_t time = 0;
-	uint8_t req_buf[WSL_MAX_HEADER_SIZE] = {};
-	int req_pos = 0;
 	String key;
 	String protocol;
 	bool has_request = false;
-	CharString response;
-	int response_sent = 0;
 
-	Error _do_server_handshake(const Vector<String> p_protocols, uint64_t p_timeout, String &r_resource_name, const Vector<String> &p_extra_headers);
+	Ref<StreamPeerBuffer> handshake_buffer;
+
+	Error _do_server_handshake(const Vector<String> p_protocols, String &r_resource_name, const Vector<String> &p_extra_headers);
 	bool _parse_client_request(const Vector<String> p_protocols, String &r_resource_name);
 
 	int _in_buf_size = DEF_BUF_SHIFT;

@@ -34,7 +34,7 @@
 #include "core/os/os.h"
 
 bool WSLServerPeer::_parse_client_request(const Vector<String> p_protocols, String &r_resource_name) {
-	Vector<String> psa = String((char *)req_buf).split("\r\n");
+	Vector<String> psa = String((const char *)handshake_buffer->get_data_array().ptr()).split("\r\n");
 	int len = psa.size();
 	ERR_FAIL_COND_V_MSG(len < 4, false, "Not enough response headers, got: " + itos(len) + ", expected >= 4.");
 
@@ -95,22 +95,20 @@ bool WSLServerPeer::_parse_client_request(const Vector<String> p_protocols, Stri
 	return true;
 }
 
-Error WSLServerPeer::_do_server_handshake(const Vector<String> p_protocols, uint64_t p_timeout, String &r_resource_name, const Vector<String> &p_extra_headers) {
-	if (OS::get_singleton()->get_ticks_msec() - time > p_timeout) {
-		print_verbose(vformat("WebSocket handshake timed out after %.3f seconds.", p_timeout * 0.001));
-		return ERR_TIMEOUT;
-	}
-
+Error WSLServerPeer::_do_server_handshake(const Vector<String> p_protocols, String &r_resource_name, const Vector<String> &p_extra_headers) {
 	if (use_tls) {
 		Ref<StreamPeerTLS> tls = static_cast<Ref<StreamPeerTLS>>(connection);
 		if (tls.is_null()) {
 			ERR_FAIL_V_MSG(ERR_BUG, "Couldn't get StreamPeerTLS for WebSocket handshake.");
+			_state = STATE_CLOSED;
+			return FAILED;
 		}
 		tls->poll();
 		if (tls->get_status() == StreamPeerTLS::STATUS_HANDSHAKING) {
-			return ERR_BUSY;
+			return OK;
 		} else if (tls->get_status() != StreamPeerTLS::STATUS_CONNECTED) {
 			print_verbose(vformat("WebSocket SSL connection error during handshake (StreamPeerTLS status code %d).", tls->get_status()));
+			_state = STATE_CLOSED;
 			return FAILED;
 		}
 	}
@@ -118,19 +116,23 @@ Error WSLServerPeer::_do_server_handshake(const Vector<String> p_protocols, uint
 	if (!has_request) {
 		int read = 0;
 		while (true) {
-			ERR_FAIL_COND_V_MSG(req_pos >= WSL_MAX_HEADER_SIZE, ERR_OUT_OF_MEMORY, "WebSocket response headers are too big.");
-			Error err = connection->get_partial_data(&req_buf[req_pos], 1, read);
+			ERR_FAIL_COND_V_MSG(handshake_buffer->get_available_bytes() < 1, ERR_OUT_OF_MEMORY, "WebSocket response headers are too big.");
+			int pos = handshake_buffer->get_position();
+			Vector<uint8_t> data = handshake_buffer->get_data_array();
+			Error err = connection->get_partial_data(data.ptrw() + pos, 1, read);
 			if (err != OK) { // Got an error
 				print_verbose(vformat("WebSocket error while getting partial data (StreamPeer error code %d).", err));
+				_state = STATE_CLOSED;
 				return FAILED;
 			} else if (read != 1) { // Busy, wait next poll
-				return ERR_BUSY;
+				return OK;
 			}
-			char *r = (char *)req_buf;
-			int l = req_pos;
+			char *r = (char *)data.ptr();
+			int l = pos;
 			if (l > 3 && r[l] == '\n' && r[l - 1] == '\r' && r[l - 2] == '\n' && r[l - 3] == '\r') {
 				r[l - 3] = '\0';
 				if (!_parse_client_request(p_protocols, r_resource_name)) {
+					_state = STATE_CLOSED;
 					return FAILED;
 				}
 				String s = "HTTP/1.1 101 Switching Protocols\r\n";
@@ -144,34 +146,45 @@ Error WSLServerPeer::_do_server_handshake(const Vector<String> p_protocols, uint
 					s += p_extra_headers[i] + "\r\n";
 				}
 				s += "\r\n";
-				response = s.utf8();
+				CharString cs = s.utf8();
+				handshake_buffer->clear();
+				handshake_buffer->put_data((const uint8_t *)cs.get_data(), cs.size());
+				handshake_buffer->seek(0);
 				has_request = true;
 				break;
 			}
-			req_pos += 1;
+			handshake_buffer->seek(pos + 1);
 		}
 	}
 
-	if (has_request && response_sent < response.size() - 1) {
+	if (!has_request) { // Still pending.
+		return OK;
+	}
+
+	int left = handshake_buffer->get_available_bytes();
+	if (has_request && left) {
+		Vector<uint8_t> data = handshake_buffer->get_data_array();
+		int pos = handshake_buffer->get_position();
 		int sent = 0;
-		Error err = connection->put_partial_data((const uint8_t *)response.get_data() + response_sent, response.size() - response_sent - 1, sent);
+		Error err = connection->put_partial_data(data.ptr() + pos, left, sent);
 		if (err != OK) {
 			print_verbose(vformat("WebSocket error while putting partial data (StreamPeer error code %d).", err));
+			_state = STATE_CLOSED;
 			return err;
 		}
-		response_sent += sent;
-	}
-
-	if (response_sent < response.size() - 1) {
-		return ERR_BUSY;
+		handshake_buffer->seek(pos + sent);
+		left -= sent;
+		if (left == 0) {
+			_state = STATE_OPEN;
+		}
 	}
 
 	return OK;
 }
 
 Error WSLServerPeer::poll() {
-	if (pending) {
-		return _do_server_handshake(_protocols, handshake_timeout, resource_name, _extra_headers);
+	if (_state == STATE_CONNECTING) {
+		return _do_server_handshake(_protocols, resource_name, _extra_headers);
 	}
 	return OK;
 }

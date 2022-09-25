@@ -63,12 +63,40 @@ protected:
 
 	void make_context(bool p_is_server, unsigned int p_max_recv_msg_length);
 
+	// TODO Check
+	Ref<StreamPeerBuffer> _handshake_buffer;
+	Vector<String> _protocols;
+	String _protocol;
+	bool _use_tls = false;
+	bool _pending_request = true;
+	String _key;
+
+	// TODO Server only?
+	Vector<String> _custom_headers;
+
+	// TODO Client only?
+	String _host;
+	uint16_t _port = 0;
+	Array _ip_candidates;
+	IP::ResolverID _resolver_id = IP::RESOLVER_INVALID_ID;
+	bool verify_tls = true;
+	Ref<X509Certificate> tls_cert;
+
+	Error _do_server_handshake(const Vector<String> p_protocols, String &r_resource_name, const Vector<String> &p_extra_headers);
+	bool _parse_client_request(const Vector<String> p_protocols, String &r_resource_name);
+
+	void _do_client_handshake();
+	bool _verify_server_response(String &r_protocol);
+	Error _client_poll();
+
 public:
 	Ref<StreamPeerTCP> get_tcp() const;
 	bool is_active() const { return _valid; }
 	WebSocketPeer::State get_state() const { return _state; }
 	wslay_event_context_ptr get_ctx() const { return _ctx; }
 
+	Error accept_stream(Ref<StreamPeer> p_stream, const Vector<String> &p_protocols = Vector<String>(), const Vector<String> &p_custom_headers = Vector<String>());
+	Error connect_to_host(String p_host, String p_path, uint16_t p_port, bool p_tls, const Vector<String> p_protocol = Vector<String>(), const Vector<String> p_custom_headers = Vector<String>(), bool p_verify_tls = true, Ref<X509Certificate> p_cert = Ref<X509Certificate>());
 	void close(int p_code, String p_reason);
 	void _wsl_poll();
 

@@ -41,6 +41,474 @@
 #include "core/math/random_number_generator.h"
 #include "core/os/os.h"
 
+///
+/// Server functions
+///
+Error WSLContext::accept_stream(Ref<StreamPeer> p_stream, const Vector<String> &p_protocols, const Vector<String> &p_custom_headers) {
+	ERR_FAIL_COND_V(p_stream.is_null(), ERR_INVALID_PARAMETER);
+
+	if (p_stream->is_class_ptr(StreamPeerTCP::get_class_ptr_static())) {
+		_connection = p_stream;
+		_use_tls = false;
+	} else if (p_stream->is_class_ptr(StreamPeerTLS::get_class_ptr_static())) {
+		_connection = p_stream;
+		_use_tls = true;
+	}
+	ERR_FAIL_COND_V(!_connection.is_valid(), ERR_INVALID_PARAMETER);
+	_pending_request = true;
+	_protocols = p_protocols;
+	_custom_headers = p_custom_headers;
+	_state = WebSocketPeer::STATE_CONNECTING;
+	return OK;
+}
+
+bool WSLContext::_parse_client_request(const Vector<String> p_protocols, String &r_resource_name) {
+	Vector<String> psa = String((const char *)_handshake_buffer->get_data_array().ptr()).split("\r\n");
+	int len = psa.size();
+	ERR_FAIL_COND_V_MSG(len < 4, false, "Not enough response headers, got: " + itos(len) + ", expected >= 4.");
+
+	Vector<String> req = psa[0].split(" ", false);
+	ERR_FAIL_COND_V_MSG(req.size() < 2, false, "Invalid protocol or status code.");
+
+	// Wrong protocol
+	ERR_FAIL_COND_V_MSG(req[0] != "GET" || req[2] != "HTTP/1.1", false, "Invalid method or HTTP version.");
+
+	r_resource_name = req[1];
+	HashMap<String, String> headers;
+	for (int i = 1; i < len; i++) {
+		Vector<String> header = psa[i].split(":", false, 1);
+		ERR_FAIL_COND_V_MSG(header.size() != 2, false, "Invalid header -> " + psa[i]);
+		String name = header[0].to_lower();
+		String value = header[1].strip_edges();
+		if (headers.has(name)) {
+			headers[name] += "," + value;
+		} else {
+			headers[name] = value;
+		}
+	}
+#define WSL_CHECK(NAME, VALUE)                                                          \
+	ERR_FAIL_COND_V_MSG(!headers.has(NAME) || headers[NAME].to_lower() != VALUE, false, \
+			"Missing or invalid header '" + String(NAME) + "'. Expected value '" + VALUE + "'.");
+#define WSL_CHECK_EX(NAME) \
+	ERR_FAIL_COND_V_MSG(!headers.has(NAME), false, "Missing header '" + String(NAME) + "'.");
+	WSL_CHECK("upgrade", "websocket");
+	WSL_CHECK("sec-websocket-version", "13");
+	WSL_CHECK_EX("sec-websocket-key");
+	WSL_CHECK_EX("connection");
+#undef WSL_CHECK_EX
+#undef WSL_CHECK
+	_key = headers["sec-websocket-key"];
+	if (headers.has("sec-websocket-protocol")) {
+		Vector<String> protos = headers["sec-websocket-protocol"].split(",");
+		for (int i = 0; i < protos.size(); i++) {
+			String proto = protos[i].strip_edges();
+			// Check if we have the given protocol
+			for (int j = 0; j < p_protocols.size(); j++) {
+				if (proto != p_protocols[j]) {
+					continue;
+				}
+				_protocol = proto;
+				break;
+			}
+			// Found a protocol
+			if (!_protocol.is_empty()) {
+				break;
+			}
+		}
+		if (_protocol.is_empty()) { // Invalid protocol(s) requested
+			return false;
+		}
+	} else if (p_protocols.size() > 0) { // No protocol requested, but we need one
+		return false;
+	}
+	return true;
+}
+
+Error WSLContext::_do_server_handshake(const Vector<String> p_protocols, String &r_resource_name, const Vector<String> &p_extra_headers) {
+	if (_use_tls) {
+		Ref<StreamPeerTLS> tls = static_cast<Ref<StreamPeerTLS>>(_connection);
+		if (tls.is_null()) {
+			ERR_FAIL_V_MSG(ERR_BUG, "Couldn't get StreamPeerTLS for WebSocket handshake.");
+			_state = WebSocketPeer::STATE_CLOSED;
+			return FAILED;
+		}
+		tls->poll();
+		if (tls->get_status() == StreamPeerTLS::STATUS_HANDSHAKING) {
+			return OK; // Pending handshake
+		} else if (tls->get_status() != StreamPeerTLS::STATUS_CONNECTED) {
+			print_verbose(vformat("WebSocket SSL connection error during handshake (StreamPeerTLS status code %d).", tls->get_status()));
+			_state = WebSocketPeer::STATE_CLOSED;
+			return FAILED;
+		}
+	}
+
+	if (_pending_request) {
+		int read = 0;
+		while (true) {
+			ERR_FAIL_COND_V_MSG(_handshake_buffer->get_available_bytes() < 1, ERR_OUT_OF_MEMORY, "WebSocket response headers are too big.");
+			int pos = _handshake_buffer->get_position();
+			Vector<uint8_t> data = _handshake_buffer->get_data_array();
+			Error err = _connection->get_partial_data(data.ptrw() + pos, 1, read);
+			if (err != OK) { // Got an error
+				print_verbose(vformat("WebSocket error while getting partial data (StreamPeer error code %d).", err));
+				_state = WebSocketPeer::STATE_CLOSED;
+				return FAILED;
+			} else if (read != 1) { // Busy, wait next poll
+				return OK;
+			}
+			char *r = (char *)data.ptr();
+			int l = pos;
+			if (l > 3 && r[l] == '\n' && r[l - 1] == '\r' && r[l - 2] == '\n' && r[l - 3] == '\r') {
+				r[l - 3] = '\0';
+				if (!_parse_client_request(p_protocols, r_resource_name)) {
+					_state = WebSocketPeer::STATE_CLOSED;
+					return FAILED;
+				}
+				String s = "HTTP/1.1 101 Switching Protocols\r\n";
+				s += "Upgrade: websocket\r\n";
+				s += "Connection: Upgrade\r\n";
+				s += "Sec-WebSocket-Accept: " + WSLPeer::compute_key_response(_key) + "\r\n";
+				if (!_protocol.is_empty()) {
+					s += "Sec-WebSocket-Protocol: " + _protocol + "\r\n";
+				}
+				for (int i = 0; i < p_extra_headers.size(); i++) {
+					s += p_extra_headers[i] + "\r\n";
+				}
+				s += "\r\n";
+				CharString cs = s.utf8();
+				_handshake_buffer->clear();
+				_handshake_buffer->put_data((const uint8_t *)cs.get_data(), cs.size());
+				_handshake_buffer->seek(0);
+				_pending_request = false;
+				break;
+			}
+			_handshake_buffer->seek(pos + 1);
+		}
+	}
+
+	if (_pending_request) { // Still pending.
+		return OK;
+	}
+
+	int left = _handshake_buffer->get_available_bytes();
+	if (left) {
+		Vector<uint8_t> data = _handshake_buffer->get_data_array();
+		int pos = _handshake_buffer->get_position();
+		int sent = 0;
+		Error err = _connection->put_partial_data(data.ptr() + pos, left, sent);
+		if (err != OK) {
+			print_verbose(vformat("WebSocket error while putting partial data (StreamPeer error code %d).", err));
+			_state = WebSocketPeer::STATE_CLOSED;
+			return err;
+		}
+		_handshake_buffer->seek(pos + sent);
+		left -= sent;
+		if (left == 0) {
+			_state = WebSocketPeer::STATE_OPEN;
+		}
+	}
+
+	return OK;
+}
+
+///
+/// Client functions
+///
+Error WSLContext::_client_poll() {
+	Ref<StreamPeerTCP> tcp = get_tcp();
+	ERR_FAIL_COND_V(tcp.is_null(), ERR_BUG);
+	if (_resolver_id != IP::RESOLVER_INVALID_ID) {
+		IP::ResolverStatus ip_status = IP::get_singleton()->get_resolve_item_status(_resolver_id);
+		if (ip_status == IP::RESOLVER_STATUS_WAITING) {
+			return OK;
+		}
+		// Anything else is either a candidate or a failure.
+		Error err = FAILED;
+		if (ip_status == IP::RESOLVER_STATUS_DONE) {
+			_ip_candidates = IP::get_singleton()->get_resolve_item_addresses(_resolver_id);
+			while (_ip_candidates.size()) {
+				err = tcp->connect_to_host(_ip_candidates.pop_front(), _port);
+				if (err == OK) {
+					break;
+				}
+			}
+		}
+		IP::get_singleton()->erase_resolve_item(_resolver_id);
+		_resolver_id = IP::RESOLVER_INVALID_ID;
+		if (err != OK) {
+			_state = WebSocketPeer::STATE_CLOSED;
+			return FAILED;
+		}
+	}
+
+	if (_connection.is_null()) {
+		return OK; // Not connected.
+	}
+
+	tcp->poll();
+	switch (tcp->get_status()) {
+		case StreamPeerTCP::STATUS_NONE:
+			// Clean close
+			_state = WebSocketPeer::STATE_CLOSED;
+			return OK;
+		case StreamPeerTCP::STATUS_CONNECTED: {
+			_ip_candidates.clear();
+			Ref<StreamPeerTLS> tls;
+			if (_use_tls) {
+				if (_connection == tcp) {
+					// Start SSL handshake
+					tls = Ref<StreamPeerTLS>(StreamPeerTLS::create());
+					ERR_FAIL_COND_V_MSG(tls.is_null(), ERR_BUG, "SSL is not available in this build.");
+					tls->set_blocking_handshake_enabled(false);
+					if (tls->connect_to_stream(tcp, verify_tls, _host, tls_cert) != OK) {
+						_state = WebSocketPeer::STATE_CLOSED;
+						return FAILED;
+					}
+					_connection = tls;
+				} else {
+					tls = static_cast<Ref<StreamPeerTLS>>(_connection);
+					ERR_FAIL_COND_V(tls.is_null(), ERR_BUG);
+					tls->poll();
+				}
+				if (tls->get_status() == StreamPeerTLS::STATUS_HANDSHAKING) {
+					return OK; // Need more polling.
+				} else if (tls->get_status() != StreamPeerTLS::STATUS_CONNECTED) {
+					_state = WebSocketPeer::STATE_CLOSED;
+					return FAILED; // Error.
+				}
+			}
+			// Do websocket handshake.
+			_do_client_handshake();
+			return OK;
+		}
+		case StreamPeerTCP::STATUS_ERROR:
+			while (_ip_candidates.size() > 0) {
+				tcp->disconnect_from_host();
+				if (tcp->connect_to_host(_ip_candidates.pop_front(), _port) == OK) {
+					return OK;
+				}
+			}
+			_state = WebSocketPeer::STATE_CLOSED;
+			return FAILED;
+		case StreamPeerTCP::STATUS_CONNECTING:
+			return OK;
+	}
+	return OK;
+}
+
+void WSLContext::_do_client_handshake() {
+	if (_pending_request) {
+		int left = _handshake_buffer->get_available_bytes();
+		int pos = _handshake_buffer->get_position();
+		const Vector<uint8_t> data = _handshake_buffer->get_data_array();
+		int sent = 0;
+		Error err = _connection->put_partial_data(data.ptr() + pos, left, sent);
+		// Sending handshake failed
+		if (err != OK) {
+			// TODO err
+			_state = WebSocketPeer::STATE_CLOSED;
+			return;
+		}
+		_handshake_buffer->seek(pos + sent);
+		if (_handshake_buffer->get_available_bytes() == 0) {
+			_pending_request = false;
+			_handshake_buffer->clear();
+			_handshake_buffer->resize(WSL_MAX_HEADER_SIZE);
+			_handshake_buffer->seek(0);
+		}
+	} else {
+		int read = 0;
+		while (true) {
+			int left = _handshake_buffer->get_available_bytes();
+			int pos = _handshake_buffer->get_position();
+			Vector<uint8_t> data = _handshake_buffer->get_data_array();
+			if (left == 0) {
+				// Header is too big
+				_state = WebSocketPeer::STATE_CLOSED;
+				ERR_FAIL_MSG("Response headers too big.");
+				return;
+			}
+
+			Error err = _connection->get_partial_data(data.ptrw() + pos, 1, read);
+			if (err == ERR_FILE_EOF) {
+				// We got a disconnect.
+				_state = WebSocketPeer::STATE_CLOSED;
+				return;
+			} else if (err != OK) {
+				// Got some error.
+				_state = WebSocketPeer::STATE_CLOSED;
+				return;
+			} else if (read != 1) {
+				// Busy, wait next poll.
+				break;
+			}
+			_handshake_buffer->seek(pos + read);
+
+			// Check "\r\n\r\n" header terminator
+			char *r = (char *)data.ptrw();
+			int l = pos;
+			if (l > 3 && r[l] == '\n' && r[l - 1] == '\r' && r[l - 2] == '\n' && r[l - 3] == '\r') {
+				r[l - 3] = '\0';
+				String protocol;
+				// Response is over, verify headers and create peer.
+				if (!_verify_server_response(protocol)) {
+					_state = WebSocketPeer::STATE_CLOSED;
+					ERR_FAIL_MSG("Invalid response headers.");
+				}
+				// Create peer. TODO check
+				// TODO FIXME
+				// make_context(data, _in_buf_size, _in_pkt_size, _out_buf_size, _out_pkt_size);
+				//set_no_delay(true);
+				_state = WebSocketPeer::STATE_OPEN;
+				break;
+			}
+		}
+	}
+}
+
+bool WSLContext::_verify_server_response(String &r_protocol) {
+	Vector<uint8_t> data = _handshake_buffer->get_data_array();
+	String s = (char *)data.ptrw();
+	Vector<String> psa = s.split("\r\n");
+	int len = psa.size();
+	ERR_FAIL_COND_V_MSG(len < 4, false, "Not enough response headers. Got: " + itos(len) + ", expected >= 4.");
+
+	Vector<String> req = psa[0].split(" ", false);
+	ERR_FAIL_COND_V_MSG(req.size() < 2, false, "Invalid protocol or status code. Got '" + psa[0] + "', expected 'HTTP/1.1 101'.");
+
+	// Wrong protocol
+	ERR_FAIL_COND_V_MSG(req[0] != "HTTP/1.1", false, "Invalid protocol. Got: '" + req[0] + "', expected 'HTTP/1.1'.");
+	ERR_FAIL_COND_V_MSG(req[1] != "101", false, "Invalid status code. Got: '" + req[1] + "', expected '101'.");
+
+	HashMap<String, String> headers;
+	for (int i = 1; i < len; i++) {
+		Vector<String> header = psa[i].split(":", false, 1);
+		ERR_FAIL_COND_V_MSG(header.size() != 2, false, "Invalid header -> " + psa[i] + ".");
+		String name = header[0].to_lower();
+		String value = header[1].strip_edges();
+		if (headers.has(name)) {
+			headers[name] += "," + value;
+		} else {
+			headers[name] = value;
+		}
+	}
+
+#define WSL_CHECK(NAME, VALUE)                                                          \
+	ERR_FAIL_COND_V_MSG(!headers.has(NAME) || headers[NAME].to_lower() != VALUE, false, \
+			"Missing or invalid header '" + String(NAME) + "'. Expected value '" + VALUE + "'.");
+#define WSL_CHECK_NC(NAME, VALUE)                                            \
+	ERR_FAIL_COND_V_MSG(!headers.has(NAME) || headers[NAME] != VALUE, false, \
+			"Missing or invalid header '" + String(NAME) + "'. Expected value '" + VALUE + "'.");
+	WSL_CHECK("connection", "upgrade");
+	WSL_CHECK("upgrade", "websocket");
+	WSL_CHECK_NC("sec-websocket-accept", WSLPeer::compute_key_response(_key));
+#undef WSL_CHECK_NC
+#undef WSL_CHECK
+	if (_protocols.size() == 0) {
+		// We didn't request a custom protocol
+		ERR_FAIL_COND_V_MSG(headers.has("sec-websocket-protocol"), false, "Received unrequested sub-protocol -> " + headers["sec-websocket-protocol"]);
+	} else {
+		// We requested at least one custom protocol but didn't receive one
+		ERR_FAIL_COND_V_MSG(!headers.has("sec-websocket-protocol"), false, "Requested sub-protocol(s) but received none.");
+		// Check received sub-protocol was one of those requested.
+		r_protocol = headers["sec-websocket-protocol"];
+		bool valid = false;
+		for (int i = 0; i < _protocols.size(); i++) {
+			if (_protocols[i] != r_protocol) {
+				continue;
+			}
+			valid = true;
+			break;
+		}
+		if (!valid) {
+			ERR_FAIL_V_MSG(false, "Received unrequested sub-protocol -> " + r_protocol);
+			return false;
+		}
+	}
+	return true;
+}
+
+Error WSLContext::connect_to_host(String p_host, String p_path, uint16_t p_port, bool p_tls, const Vector<String> p_protocols, const Vector<String> p_custom_headers, bool p_verify_tls, Ref<X509Certificate> p_cert) {
+	ERR_FAIL_COND_V(_connection.is_valid(), ERR_ALREADY_IN_USE);
+	ERR_FAIL_COND_V(p_path.is_empty(), ERR_INVALID_PARAMETER);
+
+	tls_cert = p_cert;
+	verify_tls = p_verify_tls;
+	if (p_host.is_valid_ip_address()) {
+		_ip_candidates.push_back(IPAddress(p_host));
+	} else {
+		// Queue hostname for resolution.
+		_resolver_id = IP::get_singleton()->resolve_hostname_queue_item(p_host);
+		ERR_FAIL_COND_V(_resolver_id == IP::RESOLVER_INVALID_ID, ERR_INVALID_PARAMETER);
+		// Check if it was found in cache.
+		IP::ResolverStatus ip_status = IP::get_singleton()->get_resolve_item_status(_resolver_id);
+		if (ip_status == IP::RESOLVER_STATUS_DONE) {
+			_ip_candidates = IP::get_singleton()->get_resolve_item_addresses(_resolver_id);
+			IP::get_singleton()->erase_resolve_item(_resolver_id);
+			_resolver_id = IP::RESOLVER_INVALID_ID;
+		}
+	}
+
+	Ref<StreamPeerTCP> tcp;
+	tcp.instantiate();
+	// We assume OK while hostname resolution is pending.
+	Error err = _resolver_id != IP::RESOLVER_INVALID_ID ? OK : FAILED;
+	while (_ip_candidates.size()) {
+		err = tcp->connect_to_host(_ip_candidates.pop_front(), p_port);
+		if (err == OK) {
+			break;
+		}
+	}
+	if (err != OK) {
+		tcp->disconnect_from_host();
+		return err;
+	}
+	_connection = tcp;
+	_use_tls = p_tls;
+	_host = p_host;
+	_port = p_port;
+	// Strip edges from protocols.
+	_protocols.resize(p_protocols.size());
+	String *pw = _protocols.ptrw();
+	for (int i = 0; i < p_protocols.size(); i++) {
+		pw[i] = p_protocols[i].strip_edges();
+	}
+
+	_key = WSLPeer::generate_key();
+	String request = "GET " + p_path + " HTTP/1.1\r\n";
+	String port = "";
+	if ((p_port != 80 && !p_tls) || (p_port != 443 && p_tls)) {
+		port = ":" + itos(p_port);
+	}
+	request += "Host: " + p_host + port + "\r\n";
+	request += "Upgrade: websocket\r\n";
+	request += "Connection: Upgrade\r\n";
+	request += "Sec-WebSocket-Key: " + _key + "\r\n";
+	request += "Sec-WebSocket-Version: 13\r\n";
+	if (p_protocols.size() > 0) {
+		request += "Sec-WebSocket-Protocol: ";
+		for (int i = 0; i < p_protocols.size(); i++) {
+			if (i != 0) {
+				request += ",";
+			}
+			request += p_protocols[i];
+		}
+		request += "\r\n";
+	}
+	for (int i = 0; i < p_custom_headers.size(); i++) {
+		request += p_custom_headers[i] + "\r\n";
+	}
+	request += "\r\n";
+	CharString cs = request.utf8();
+	_handshake_buffer->put_data((const uint8_t *)cs.get_data(), cs.size());
+	_state = WebSocketPeer::STATE_CONNECTING;
+
+	return OK;
+}
+
+///
+/// Callback functions.
+///
 void WSLContext::_wsl_poll() {
 	ERR_FAIL_COND(!_ctx);
 	int err = 0;
@@ -190,7 +658,7 @@ Error WSLPeer::connect_to_url(String p_url, const Vector<String> p_protocols, co
 	if (path.is_empty()) {
 		path = "/";
 	}
-	WSLClientPeer *data = memnew(WSLClientPeer);
+	WSLContext *data = memnew(WSLContext);
 	err = data->connect_to_host(host, path, port, tls, p_protocols, p_custom_headers, p_verify_tls, p_cert);
 	if (err != OK) {
 		memdelete(data);
@@ -202,7 +670,7 @@ Error WSLPeer::connect_to_url(String p_url, const Vector<String> p_protocols, co
 
 Error WSLPeer::accept_stream(Ref<StreamPeer> p_stream, const Vector<String> p_protocols, const Vector<String> p_custom_headers) {
 	ERR_FAIL_COND_V(_wsl_context.is_valid(), ERR_ALREADY_IN_USE);
-	WSLServerPeer *data = memnew(WSLServerPeer);
+	WSLContext *data = memnew(WSLContext);
 	// TODO FIXME meh..
 	Error err = data->accept_stream(p_stream, p_protocols, p_custom_headers);
 	if (err != OK) {

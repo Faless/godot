@@ -47,6 +47,13 @@ class WSLPeer : public WebSocketPeer {
 	GDCIIMPL(WSLPeer, WebSocketPeer);
 
 public:
+	enum State {
+		STATE_CONNECTING,
+		STATE_OPEN,
+		STATE_CLOSING,
+		STATE_CLOSED
+	};
+
 	struct PeerData {
 		bool polling = false;
 		bool destroy = false;
@@ -81,11 +88,27 @@ private:
 
 	Vector<uint8_t> _packet_buffer;
 
+	// Client
+	int _in_buf_size = DEF_BUF_SHIFT;
+	int _in_pkt_size = DEF_PKT_SHIFT;
+	int _out_buf_size = DEF_BUF_SHIFT;
+	int _out_pkt_size = DEF_PKT_SHIFT;
+	State _state;
+	Ref<StreamPeerBuffer> _handshake_buffer;
+	Vector<String> _protocols;
+	bool _handshaking = true;
+	bool _pending_request = true;
+	bool _is_client = false;
+	Ref<StreamPeer> _connection;
+	Ref<StreamPeerTCP> _tcp;
+	String _key;
+
 	WriteMode write_mode = WRITE_MODE_BINARY;
 
-	int _out_buf_size = 0;
-	int _out_pkt_size = 0;
+	void _do_client_handshake();
+	bool _verify_server_response(String &r_protocol);
 
+	void _clear() {} // TODO
 public:
 	int close_code = -1;
 	String close_reason;

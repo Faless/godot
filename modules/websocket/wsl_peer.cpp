@@ -39,6 +39,149 @@
 #include "core/math/random_number_generator.h"
 #include "core/os/os.h"
 
+void WSLPeer::_do_client_handshake() {
+	if (_pending_request) {
+		int left = _handshake_buffer->get_available_bytes();
+		int pos = _handshake_buffer->get_position();
+		const Vector<uint8_t> data = _handshake_buffer->get_data_array();
+		int sent = 0;
+		Error err = _connection->put_partial_data(data.ptr() + pos, left, sent);
+		// Sending handshake failed
+		if (err != OK) {
+			// TODO err
+			_state = STATE_CLOSED;
+			_clear();
+			return;
+		}
+		_handshake_buffer->seek(pos + sent);
+		if (_handshake_buffer->get_available_bytes() == 0) {
+			_pending_request = false;
+			_handshake_buffer->clear();
+			_handshake_buffer->resize(WSL_MAX_HEADER_SIZE);
+			_handshake_buffer->seek(0);
+		}
+	} else {
+		int read = 0;
+		while (true) {
+			int left = _handshake_buffer->get_available_bytes();
+			int pos = _handshake_buffer->get_position();
+			Vector<uint8_t> data = _handshake_buffer->get_data_array();
+			if (left == 0) {
+				// Header is too big
+				_state = STATE_CLOSED;
+				_clear();
+				ERR_FAIL_MSG("Response headers too big.");
+				return;
+			}
+
+			Error err = _connection->get_partial_data(data.ptrw() + pos, 1, read);
+			if (err == ERR_FILE_EOF) {
+				// We got a disconnect.
+				_state = STATE_CLOSED;
+				_clear();
+				return;
+			} else if (err != OK) {
+				// Got some error.
+				_state = STATE_CLOSED;
+				_clear();
+				return;
+			} else if (read != 1) {
+				// Busy, wait next poll.
+				break;
+			}
+			_handshake_buffer->seek(pos + read);
+
+			// Check "\r\n\r\n" header terminator
+			char *r = (char *)data.ptrw();
+			int l = pos;
+			if (l > 3 && r[l] == '\n' && r[l - 1] == '\r' && r[l - 2] == '\n' && r[l - 3] == '\r') {
+				r[l - 3] = '\0';
+				String protocol;
+				// Response is over, verify headers and create peer.
+				if (!_verify_server_response(protocol)) {
+					_state = STATE_CLOSED;
+					_clear();
+					ERR_FAIL_MSG("Invalid response headers.");
+				}
+				// Create peer.
+				WSLPeer::PeerData *data = memnew(struct WSLPeer::PeerData);
+				data->obj = this;
+				data->conn = _connection;
+				data->tcp = _tcp;
+				data->is_server = false;
+				data->id = 1;
+				make_context(data, _in_buf_size, _in_pkt_size, _out_buf_size, _out_pkt_size);
+				set_no_delay(true);
+				_state = STATE_OPEN;
+				_handshaking = false;
+				break;
+			}
+		}
+	}
+}
+
+bool WSLPeer::_verify_server_response(String &r_protocol) {
+	Vector<uint8_t> data = _handshake_buffer->get_data_array();
+	String s = (char *)data.ptrw();
+	Vector<String> psa = s.split("\r\n");
+	int len = psa.size();
+	ERR_FAIL_COND_V_MSG(len < 4, false, "Not enough response headers. Got: " + itos(len) + ", expected >= 4.");
+
+	Vector<String> req = psa[0].split(" ", false);
+	ERR_FAIL_COND_V_MSG(req.size() < 2, false, "Invalid protocol or status code. Got '" + psa[0] + "', expected 'HTTP/1.1 101'.");
+
+	// Wrong protocol
+	ERR_FAIL_COND_V_MSG(req[0] != "HTTP/1.1", false, "Invalid protocol. Got: '" + req[0] + "', expected 'HTTP/1.1'.");
+	ERR_FAIL_COND_V_MSG(req[1] != "101", false, "Invalid status code. Got: '" + req[1] + "', expected '101'.");
+
+	HashMap<String, String> headers;
+	for (int i = 1; i < len; i++) {
+		Vector<String> header = psa[i].split(":", false, 1);
+		ERR_FAIL_COND_V_MSG(header.size() != 2, false, "Invalid header -> " + psa[i] + ".");
+		String name = header[0].to_lower();
+		String value = header[1].strip_edges();
+		if (headers.has(name)) {
+			headers[name] += "," + value;
+		} else {
+			headers[name] = value;
+		}
+	}
+
+#define WSL_CHECK(NAME, VALUE)                                                          \
+	ERR_FAIL_COND_V_MSG(!headers.has(NAME) || headers[NAME].to_lower() != VALUE, false, \
+			"Missing or invalid header '" + String(NAME) + "'. Expected value '" + VALUE + "'.");
+#define WSL_CHECK_NC(NAME, VALUE)                                            \
+	ERR_FAIL_COND_V_MSG(!headers.has(NAME) || headers[NAME] != VALUE, false, \
+			"Missing or invalid header '" + String(NAME) + "'. Expected value '" + VALUE + "'.");
+	WSL_CHECK("connection", "upgrade");
+	WSL_CHECK("upgrade", "websocket");
+	WSL_CHECK_NC("sec-websocket-accept", WSLPeer::compute_key_response(_key));
+#undef WSL_CHECK_NC
+#undef WSL_CHECK
+	if (_protocols.size() == 0) {
+		// We didn't request a custom protocol
+		ERR_FAIL_COND_V_MSG(headers.has("sec-websocket-protocol"), false, "Received unrequested sub-protocol -> " + headers["sec-websocket-protocol"]);
+	} else {
+		// We requested at least one custom protocol but didn't receive one
+		ERR_FAIL_COND_V_MSG(!headers.has("sec-websocket-protocol"), false, "Requested sub-protocol(s) but received none.");
+		// Check received sub-protocol was one of those requested.
+		r_protocol = headers["sec-websocket-protocol"];
+		bool valid = false;
+		for (int i = 0; i < _protocols.size(); i++) {
+			if (_protocols[i] != r_protocol) {
+				continue;
+			}
+			valid = true;
+			break;
+		}
+		if (!valid) {
+			ERR_FAIL_V_MSG(false, "Received unrequested sub-protocol -> " + r_protocol);
+			return false;
+		}
+	}
+	return true;
+}
+
 String WSLPeer::generate_key() {
 	// Random key
 	RandomNumberGenerator rng;
@@ -230,6 +373,10 @@ WSLPeer::WriteMode WSLPeer::get_write_mode() const {
 }
 
 void WSLPeer::poll() {
+	if (_handshaking && _is_client) { // TODO also for server.
+		return _do_client_handshake();
+	}
+
 	if (!_data) {
 		return;
 	}

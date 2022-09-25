@@ -31,6 +31,7 @@
 #ifndef WEBSOCKET_PEER_H
 #define WEBSOCKET_PEER_H
 
+#include "core/crypto/crypto.h"
 #include "core/error/error_list.h"
 #include "core/io/packet_peer.h"
 #include "websocket_macros.h"
@@ -49,6 +50,8 @@ protected:
 	static void _bind_methods();
 
 public:
+	virtual Error connect_to_url(String p_url, const Vector<String> p_protocols = Vector<String>(), const Vector<String> p_custom_headers = Vector<String>(), bool p_verify_tls = true, Ref<X509Certificate> p_cert = Ref<X509Certificate>()) { return ERR_UNAVAILABLE; };
+
 	virtual WriteMode get_write_mode() const = 0;
 	virtual void set_write_mode(WriteMode p_mode) = 0;
 

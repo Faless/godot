@@ -39,6 +39,7 @@ WebSocketPeer::~WebSocketPeer() {
 }
 
 void WebSocketPeer::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("connect_to_url", "url", "protocols", "custom_headers"), &WebSocketPeer::connect_to_url, DEFVAL(Vector<String>()), DEFVAL(Vector<String>()), DEFVAL(true), DEFVAL(Ref<X509Certificate>()));
 	ClassDB::bind_method(D_METHOD("get_write_mode"), &WebSocketPeer::get_write_mode);
 	ClassDB::bind_method(D_METHOD("set_write_mode", "mode"), &WebSocketPeer::set_write_mode);
 	ClassDB::bind_method(D_METHOD("is_connected_to_host"), &WebSocketPeer::is_connected_to_host);

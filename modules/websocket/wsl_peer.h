@@ -47,14 +47,18 @@ class WSLPeer : public WebSocketPeer {
 	GDCIIMPL(WSLPeer, WebSocketPeer);
 
 public:
-	enum State {
-		STATE_CONNECTING,
-		STATE_OPEN,
-		STATE_CLOSING,
-		STATE_CLOSED
-	};
+	class PeerData {
+	public:
+		// TODO move up.
+		enum State {
+			STATE_CONNECTING,
+			STATE_OPEN,
+			STATE_CLOSING,
+			STATE_CLOSED
+		};
 
-	struct PeerData {
+		State _state = STATE_CLOSED;
+
 		bool polling = false;
 		bool destroy = false;
 		bool valid = false;
@@ -66,6 +70,9 @@ public:
 		Ref<StreamPeerTCP> tcp;
 		int id = 1;
 		wslay_event_context_ptr ctx = nullptr;
+
+		virtual Error poll() { return ERR_UNAVAILABLE; }
+		virtual ~PeerData() {}
 	};
 
 	static String compute_key_response(String p_key);
@@ -88,36 +95,13 @@ private:
 
 	Vector<uint8_t> _packet_buffer;
 
-	// Client
-	int _in_buf_size = DEF_BUF_SHIFT;
-	int _in_pkt_size = DEF_PKT_SHIFT;
 	int _out_buf_size = DEF_BUF_SHIFT;
 	int _out_pkt_size = DEF_PKT_SHIFT;
-	State _state;
-	Ref<StreamPeerBuffer> _handshake_buffer;
-	Vector<String> _protocols;
-	bool _handshaking = true;
-	bool _pending_request = true;
-	bool _is_client = false;
-	Ref<StreamPeer> _connection;
-	Ref<StreamPeerTCP> _tcp;
-	String _key;
-	String _host;
-	uint16_t _port = 0;
-	Array _ip_candidates;
-	bool _use_tls = false;
-	IP::ResolverID _resolver_id = IP::RESOLVER_INVALID_ID;
 
 	WriteMode write_mode = WRITE_MODE_BINARY;
 
-	void _do_client_handshake();
-	bool _verify_server_response(String &r_protocol);
-
-	void _clear();
-	void _client_poll();
-
 public:
-	virtual Error connect_to_url(String p_url, const Vector<String> p_protocols = Vector<String>(), const Vector<String> p_custom_headers = Vector<String>(), bool p_verify_tls = true, Ref<X509Certificate> p_cert = Ref<X509Certificate>()) override;
+	virtual Error connect_to_url(String p_url, const Vector<String> p_protocols = Vector<String>(), const Vector<String> p_custom_headers = Vector<String>(), bool p_verify_tls = true, Ref<X509Certificate> p_cert = Ref<X509Certificate>()) override { return ERR_UNAVAILABLE; }
 
 	int close_code = -1;
 	String close_reason;

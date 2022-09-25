@@ -90,7 +90,7 @@ bool WSLPeer::_wsl_poll(struct PeerData *p_data) {
 	return false;
 }
 
-ssize_t wsl_recv_callback(wslay_event_context_ptr ctx, uint8_t *data, size_t len, int flags, void *user_data) {
+ssize_t WSLPeer::_wsl_recv_callback(wslay_event_context_ptr ctx, uint8_t *data, size_t len, int flags, void *user_data) {
 	struct WSLPeer::PeerData *peer_data = (struct WSLPeer::PeerData *)user_data;
 	if (!peer_data->valid) {
 		wslay_event_set_error(ctx, WSLAY_ERR_CALLBACK_FAILURE);
@@ -111,7 +111,7 @@ ssize_t wsl_recv_callback(wslay_event_context_ptr ctx, uint8_t *data, size_t len
 	return read;
 }
 
-ssize_t wsl_send_callback(wslay_event_context_ptr ctx, const uint8_t *data, size_t len, int flags, void *user_data) {
+ssize_t WSLPeer::_wsl_send_callback(wslay_event_context_ptr ctx, const uint8_t *data, size_t len, int flags, void *user_data) {
 	struct WSLPeer::PeerData *peer_data = (struct WSLPeer::PeerData *)user_data;
 	if (!peer_data->valid) {
 		wslay_event_set_error(ctx, WSLAY_ERR_CALLBACK_FAILURE);
@@ -131,7 +131,7 @@ ssize_t wsl_send_callback(wslay_event_context_ptr ctx, const uint8_t *data, size
 	return sent;
 }
 
-int wsl_genmask_callback(wslay_event_context_ptr ctx, uint8_t *buf, size_t len, void *user_data) {
+int WSLPeer::_wsl_genmask_callback(wslay_event_context_ptr ctx, uint8_t *buf, size_t len, void *user_data) {
 	RandomNumberGenerator rng;
 	// TODO maybe use crypto in the future?
 	rng.set_seed(OS::get_singleton()->get_unix_time());
@@ -141,7 +141,7 @@ int wsl_genmask_callback(wslay_event_context_ptr ctx, uint8_t *buf, size_t len, 
 	return 0;
 }
 
-void wsl_msg_recv_callback(wslay_event_context_ptr ctx, const struct wslay_event_on_msg_recv_arg *arg, void *user_data) {
+void WSLPeer::_wsl_msg_recv_callback(wslay_event_context_ptr ctx, const struct wslay_event_on_msg_recv_arg *arg, void *user_data) {
 	struct WSLPeer::PeerData *peer_data = (struct WSLPeer::PeerData *)user_data;
 	if (!peer_data->valid || peer_data->closing) {
 		return;
@@ -161,14 +161,14 @@ void wsl_msg_recv_callback(wslay_event_context_ptr ctx, const struct wslay_event
 	}
 }
 
-wslay_event_callbacks wsl_callbacks = {
-	wsl_recv_callback,
-	wsl_send_callback,
-	wsl_genmask_callback,
+wslay_event_callbacks WSLPeer::_wsl_callbacks = {
+	_wsl_recv_callback,
+	_wsl_send_callback,
+	_wsl_genmask_callback,
 	nullptr, /* on_frame_recv_start_callback */
 	nullptr, /* on_frame_recv_callback */
 	nullptr, /* on_frame_recv_end_callback */
-	wsl_msg_recv_callback
+	_wsl_msg_recv_callback
 };
 
 Error WSLPeer::parse_message(const wslay_event_on_msg_recv_arg *arg) {
@@ -214,9 +214,9 @@ void WSLPeer::make_context(PeerData *p_data, unsigned int p_in_buf_size, unsigne
 	_data->valid = true;
 
 	if (_data->is_server) {
-		wslay_event_context_server_init(&(_data->ctx), &wsl_callbacks, _data);
+		wslay_event_context_server_init(&(_data->ctx), &_wsl_callbacks, _data);
 	} else {
-		wslay_event_context_client_init(&(_data->ctx), &wsl_callbacks, _data);
+		wslay_event_context_client_init(&(_data->ctx), &_wsl_callbacks, _data);
 	}
 	wslay_event_config_set_max_recv_msg_length(_data->ctx, (1ULL << p_in_buf_size));
 }

@@ -51,7 +51,6 @@ public:
 	static String generate_key();
 
 private:
-	void _wsl_poll();
 	Error connect_to_host(String p_host, String p_path, uint16_t p_port, bool p_tls, const Vector<String> p_protocol = Vector<String>(), const Vector<String> p_custom_headers = Vector<String>(), bool p_verify_tls = true, Ref<X509Certificate> p_cert = Ref<X509Certificate>());
 
 	static ssize_t _wsl_recv_callback(wslay_event_context_ptr ctx, uint8_t *data, size_t len, int flags, void *user_data);
@@ -94,13 +93,12 @@ private:
 
 	Vector<uint8_t> _packet_buffer;
 
+	int _in_buf_size = DEF_BUF_SHIFT;
 	int _out_buf_size = DEF_BUF_SHIFT;
-	int _out_pkt_size = DEF_PKT_SHIFT;
 
 	WriteMode write_mode = WRITE_MODE_BINARY;
 
 	void make_context(unsigned int p_max_recv_msg_length);
-	Error parse_message(const wslay_event_on_msg_recv_arg *arg);
 
 public:
 	WebSocketPeer::State get_state() const { return ready_state; }

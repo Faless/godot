@@ -366,9 +366,6 @@ void WSLPeer::_do_client_handshake() {
 					ERR_FAIL_MSG("Invalid response headers.");
 				}
 				// Create peer. TODO check
-				// TODO FIXME
-				// make_context(data, _in_buf_size, _in_pkt_size, _out_buf_size, _out_pkt_size);
-				//set_no_delay(true);
 				ready_state = WebSocketPeer::STATE_OPEN;
 				break;
 			}
@@ -592,9 +589,33 @@ void WSLPeer::_wsl_msg_recv_callback(wslay_event_context_ptr ctx, const struct w
 		return;
 	}
 
-	if (peer->parse_message(arg) != OK) {
-		return;
+	uint8_t op = arg->opcode;
+	if (op == WSLAY_TEXT_FRAME || op == WSLAY_BINARY_FRAME) {
+		// Message.
+		uint8_t is_string = arg->opcode == WSLAY_TEXT_FRAME ? 1 : 0;
+		peer->_in_buffer.write_packet(arg->msg, arg->msg_length, &is_string);
+	} else if (op == WSLAY_CONNECTION_CLOSE) {
+		// Close request.
+		peer->close_code = arg->status_code;
+		size_t len = arg->msg_length;
+		peer->close_reason = "";
+		if (len > 2 /* first 2 bytes = close code */) {
+			peer->close_reason.parse_utf8((char *)arg->msg + 2, len - 2);
+		}
+		if (!wslay_event_get_close_sent(peer->wsl_ctx)) {
+			// TODO FIXME close request
+#if 0
+			if (_data->is_server) {
+				WSLServer *helper = static_cast<WSLServer *>(_data->obj);
+				helper->_on_close_request(_data->id, close_code, close_reason);
+			} else {
+				WSLClient *helper = static_cast<WSLClient *>(_data->obj);
+				helper->_on_close_request(close_code, close_reason);
+			}
+#endif
+		}
 	}
+	// Ping or pong.
 }
 
 wslay_event_callbacks WSLPeer::_wsl_callbacks = {
@@ -607,19 +628,6 @@ wslay_event_callbacks WSLPeer::_wsl_callbacks = {
 	_wsl_msg_recv_callback
 };
 
-void WSLPeer::_wsl_poll() {
-	ERR_FAIL_COND(!wsl_ctx);
-	int err = 0;
-	if ((err = wslay_event_recv(wsl_ctx)) != 0 || (err = wslay_event_send(wsl_ctx)) != 0) {
-		print_verbose("Websocket (wslay) poll error: " + itos(err));
-		wslay_event_context_free(wsl_ctx);
-		wsl_ctx = nullptr;
-	} else if (wslay_event_get_close_sent(wsl_ctx) && wslay_event_get_close_received(wsl_ctx)) {
-		wslay_event_context_free(wsl_ctx);
-		wsl_ctx = nullptr;
-	}
-}
-
 void WSLPeer::make_context(unsigned int p_max_recv_msg_length) {
 	ERR_FAIL_COND(wsl_ctx != nullptr);
 
@@ -628,7 +636,7 @@ void WSLPeer::make_context(unsigned int p_max_recv_msg_length) {
 	} else {
 		wslay_event_context_client_init(&wsl_ctx, &_wsl_callbacks, this);
 	}
-	wslay_event_config_set_max_recv_msg_length(wsl_ctx, p_max_recv_msg_length);
+	wslay_event_config_set_max_recv_msg_length(wsl_ctx, (1ULL << _in_buf_size));
 }
 
 String WSLPeer::generate_key() {
@@ -649,38 +657,6 @@ String WSLPeer::compute_key_response(String p_key) {
 	String key = p_key + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"; // Magic UUID as per RFC
 	Vector<uint8_t> sha = key.sha1_buffer();
 	return CryptoCore::b64_encode_str(sha.ptr(), sha.size());
-}
-
-Error WSLPeer::parse_message(const wslay_event_on_msg_recv_arg *arg) {
-	uint8_t is_string = 0;
-	if (arg->opcode == WSLAY_TEXT_FRAME) {
-		is_string = 1;
-	} else if (arg->opcode == WSLAY_CONNECTION_CLOSE) {
-		close_code = arg->status_code;
-		size_t len = arg->msg_length;
-		close_reason = "";
-		if (len > 2 /* first 2 bytes = close code */) {
-			close_reason.parse_utf8((char *)arg->msg + 2, len - 2);
-		}
-		if (!wslay_event_get_close_sent(wsl_ctx)) {
-			// TODO FIXME close request
-#if 0
-			if (_data->is_server) {
-				WSLServer *helper = static_cast<WSLServer *>(_data->obj);
-				helper->_on_close_request(_data->id, close_code, close_reason);
-			} else {
-				WSLClient *helper = static_cast<WSLClient *>(_data->obj);
-				helper->_on_close_request(close_code, close_reason);
-			}
-#endif
-		}
-		return ERR_FILE_EOF;
-	} else if (arg->opcode != WSLAY_BINARY_FRAME) {
-		// Ping or pong
-		return ERR_SKIP;
-	}
-	_in_buffer.write_packet(arg->msg, arg->msg_length, &is_string);
-	return OK;
 }
 
 void WSLPeer::set_write_mode(WriteMode p_mode) {
@@ -706,19 +682,29 @@ void WSLPeer::poll() {
 	}
 
 	if (ready_state == STATE_OPEN || ready_state == STATE_CLOSING) {
-		_wsl_poll();
-	}
-
-	// We might have disconnected.
-	if (ready_state == STATE_CLOSED) {
-		tcp.instantiate();
-		connection.unref();
+		ERR_FAIL_COND(!wsl_ctx);
+		int err = 0;
+		if ((err = wslay_event_recv(wsl_ctx)) != 0 || (err = wslay_event_send(wsl_ctx)) != 0) {
+			// Error close.
+			print_verbose("Websocket (wslay) poll error: " + itos(err));
+			wslay_event_context_free(wsl_ctx);
+			wsl_ctx = nullptr;
+			close_now();
+			return;
+		}
+		if (wslay_event_get_close_sent(wsl_ctx) && wslay_event_get_close_received(wsl_ctx)) {
+			// Clean close.
+			wslay_event_context_free(wsl_ctx);
+			wsl_ctx = nullptr;
+			close_now();
+			return;
+		}
 	}
 }
 
 Error WSLPeer::put_packet(const uint8_t *p_buffer, int p_buffer_size) {
 	ERR_FAIL_COND_V(!is_connected_to_host(), FAILED);
-	ERR_FAIL_COND_V(_out_pkt_size && (wslay_event_get_queued_msg_count(wsl_ctx) >= (1ULL << _out_pkt_size)), ERR_OUT_OF_MEMORY);
+	ERR_FAIL_COND_V(wslay_event_get_queued_msg_count(wsl_ctx) >= 2048, ERR_OUT_OF_MEMORY);
 	ERR_FAIL_COND_V(_out_buf_size && (wslay_event_get_queued_msg_length(wsl_ctx) + p_buffer_size >= (1ULL << _out_buf_size)), ERR_OUT_OF_MEMORY);
 
 	struct wslay_event_msg msg;

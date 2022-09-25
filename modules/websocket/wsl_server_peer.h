@@ -41,8 +41,6 @@
 
 class WSLServerPeer : public WSLPeer::PeerData {
 private:
-	bool _parse_request(const Vector<String> p_protocols, String &r_resource_name);
-
 	Ref<StreamPeerTCP> tcp;
 	Ref<StreamPeer> connection;
 	bool use_tls = false;
@@ -59,7 +57,8 @@ private:
 	CharString response;
 	int response_sent = 0;
 
-	Error do_handshake(const Vector<String> p_protocols, uint64_t p_timeout, String &r_resource_name, const Vector<String> &p_extra_headers);
+	Error _do_server_handshake(const Vector<String> p_protocols, uint64_t p_timeout, String &r_resource_name, const Vector<String> &p_extra_headers);
+	bool _parse_client_request(const Vector<String> p_protocols, String &r_resource_name);
 
 	int _in_buf_size = DEF_BUF_SHIFT;
 	int _in_pkt_size = DEF_PKT_SHIFT;

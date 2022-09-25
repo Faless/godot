@@ -33,7 +33,7 @@
 #include "wsl_server_peer.h"
 #include "core/os/os.h"
 
-bool WSLServerPeer::_parse_request(const Vector<String> p_protocols, String &r_resource_name) {
+bool WSLServerPeer::_parse_client_request(const Vector<String> p_protocols, String &r_resource_name) {
 	Vector<String> psa = String((char *)req_buf).split("\r\n");
 	int len = psa.size();
 	ERR_FAIL_COND_V_MSG(len < 4, false, "Not enough response headers, got: " + itos(len) + ", expected >= 4.");
@@ -95,7 +95,7 @@ bool WSLServerPeer::_parse_request(const Vector<String> p_protocols, String &r_r
 	return true;
 }
 
-Error WSLServerPeer::do_handshake(const Vector<String> p_protocols, uint64_t p_timeout, String &r_resource_name, const Vector<String> &p_extra_headers) {
+Error WSLServerPeer::_do_server_handshake(const Vector<String> p_protocols, uint64_t p_timeout, String &r_resource_name, const Vector<String> &p_extra_headers) {
 	if (OS::get_singleton()->get_ticks_msec() - time > p_timeout) {
 		print_verbose(vformat("WebSocket handshake timed out after %.3f seconds.", p_timeout * 0.001));
 		return ERR_TIMEOUT;
@@ -130,7 +130,7 @@ Error WSLServerPeer::do_handshake(const Vector<String> p_protocols, uint64_t p_t
 			int l = req_pos;
 			if (l > 3 && r[l] == '\n' && r[l - 1] == '\r' && r[l - 2] == '\n' && r[l - 3] == '\r') {
 				r[l - 3] = '\0';
-				if (!_parse_request(p_protocols, r_resource_name)) {
+				if (!_parse_client_request(p_protocols, r_resource_name)) {
 					return FAILED;
 				}
 				String s = "HTTP/1.1 101 Switching Protocols\r\n";
@@ -171,7 +171,7 @@ Error WSLServerPeer::do_handshake(const Vector<String> p_protocols, uint64_t p_t
 
 Error WSLServerPeer::poll() {
 	if (pending) {
-		return do_handshake(_protocols, handshake_timeout, resource_name, _extra_headers);
+		return _do_server_handshake(_protocols, handshake_timeout, resource_name, _extra_headers);
 	}
 	return OK;
 }

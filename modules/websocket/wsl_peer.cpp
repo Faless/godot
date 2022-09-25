@@ -39,6 +39,211 @@
 #include "core/math/random_number_generator.h"
 #include "core/os/os.h"
 
+Error WSLPeer::connect_to_url(String p_url, const Vector<String> p_protocols = Vector<String>(), const Vector<String> p_custom_headers = Vector<String>(), bool p_verify_tls = true, Ref<X509Certificate> p_cert = Ref<X509Certificate>()) {
+	ERR_FAIL_COND_V(_connection.is_valid(), ERR_ALREADY_IN_USE);
+	String host = p_url;
+	String path;
+	String scheme;
+	int port = 0;
+	Error err = p_url.parse_url(scheme, host, port, path);
+	ERR_FAIL_COND_V_MSG(err != OK, err, "Invalid URL: " + p_url);
+
+	_host = host;
+	_port = port;
+	_use_tls = false;
+	if (scheme == "wss://") {
+		_use_tls = true;
+	}
+	if (port == 0) {
+		port = _use_tls ? 443 : 80;
+	}
+	if (path.is_empty()) {
+		path = "/";
+	}
+
+	_peer = Ref<WSLPeer>(memnew(WSLPeer));
+
+	if (_host.is_valid_ip_address()) {
+		_ip_candidates.push_back(IPAddress(_host));
+	} else {
+		// Queue hostname for resolution.
+		_resolver_id = IP::get_singleton()->resolve_hostname_queue_item(_host);
+		ERR_FAIL_COND_V(_resolver_id == IP::RESOLVER_INVALID_ID, ERR_INVALID_PARAMETER);
+		// Check if it was found in cache.
+		IP::ResolverStatus ip_status = IP::get_singleton()->get_resolve_item_status(_resolver_id);
+		if (ip_status == IP::RESOLVER_STATUS_DONE) {
+			_ip_candidates = IP::get_singleton()->get_resolve_item_addresses(_resolver_id);
+			IP::get_singleton()->erase_resolve_item(_resolver_id);
+			_resolver_id = IP::RESOLVER_INVALID_ID;
+		}
+	}
+
+	// We assume OK while hostname resolution is pending.
+	Error err = _resolver_id != IP::RESOLVER_INVALID_ID ? OK : FAILED;
+	while (_ip_candidates.size()) {
+		err = _tcp->connect_to_host(_ip_candidates.pop_front(), _port);
+		if (err == OK) {
+			break;
+		}
+	}
+	if (err != OK) {
+		_tcp->disconnect_from_host();
+		return err;
+	}
+	_connection = _tcp;
+	// Strip edges from protocols.
+	_protocols.resize(p_protocols.size());
+	String *pw = _protocols.ptrw();
+	for (int i = 0; i < p_protocols.size(); i++) {
+		pw[i] = p_protocols[i].strip_edges();
+	}
+
+	_key = WSLPeer::generate_key();
+	String request = "GET " + p_path + " HTTP/1.1\r\n";
+	String port = "";
+	if ((p_port != 80 && !p_tls) || (p_port != 443 && p_tls)) {
+		port = ":" + itos(p_port);
+	}
+	request += "Host: " + p_host + port + "\r\n";
+	request += "Upgrade: websocket\r\n";
+	request += "Connection: Upgrade\r\n";
+	request += "Sec-WebSocket-Key: " + _key + "\r\n";
+	request += "Sec-WebSocket-Version: 13\r\n";
+	if (p_protocols.size() > 0) {
+		request += "Sec-WebSocket-Protocol: ";
+		for (int i = 0; i < p_protocols.size(); i++) {
+			if (i != 0) {
+				request += ",";
+			}
+			request += p_protocols[i];
+		}
+		request += "\r\n";
+	}
+	for (int i = 0; i < p_custom_headers.size(); i++) {
+		request += p_custom_headers[i] + "\r\n";
+	}
+	request += "\r\n";
+	CharString cs = request.utf8();
+	_handshake_buffer.put_data((const uint8_t *)cs.get_data(), cs.size());
+	_status = STATUS_CONNECTING;
+	_is_client = true;
+
+	return OK;
+}
+
+void WSLPeer::_client_poll() {
+	if (_resolver_id != IP::RESOLVER_INVALID_ID) {
+		IP::ResolverStatus ip_status = IP::get_singleton()->get_resolve_item_status(_resolver_id);
+		if (ip_status == IP::RESOLVER_STATUS_WAITING) {
+			return;
+		}
+		// Anything else is either a candidate or a failure.
+		Error err = FAILED;
+		if (ip_status == IP::RESOLVER_STATUS_DONE) {
+			_ip_candidates = IP::get_singleton()->get_resolve_item_addresses(_resolver_id);
+			while (_ip_candidates.size()) {
+				err = _tcp->connect_to_host(_ip_candidates.pop_front(), _port);
+				if (err == OK) {
+					break;
+				}
+			}
+		}
+		IP::get_singleton()->erase_resolve_item(_resolver_id);
+		_resolver_id = IP::RESOLVER_INVALID_ID;
+		if (err != OK) {
+			_status = STATUS_CLOSED;
+			_clear();
+			return;
+		}
+	}
+	if (_peer->is_connected_to_host()) {
+		_peer->poll();
+		if (!_peer->is_connected_to_host()) {
+			_status = STATUS_CLOSED;
+			_clear();
+		}
+		return;
+	}
+
+	if (_connection.is_null()) {
+		return; // Not connected.
+	}
+
+	_tcp->poll();
+	switch (_tcp->get_status()) {
+		case StreamPeerTCP::STATUS_NONE:
+			// Clean close
+			_status = STATUS_CLOSED;
+			_clear();
+			break;
+		case StreamPeerTCP::STATUS_CONNECTED: {
+			_ip_candidates.clear();
+			Ref<StreamPeerTLS> tls;
+			if (_use_tls) {
+				if (_connection == _tcp) {
+					// Start SSL handshake
+					tls = Ref<StreamPeerTLS>(StreamPeerTLS::create());
+					ERR_FAIL_COND_MSG(tls.is_null(), "SSL is not available in this build.");
+					tls->set_blocking_handshake_enabled(false);
+					if (tls->connect_to_stream(_tcp, verify_tls, _host, tls_cert) != OK) {
+						disconnect_from_host();
+						_on_error();
+						return;
+					}
+					_connection = tls;
+				} else {
+					tls = static_cast<Ref<StreamPeerTLS>>(_connection);
+					ERR_FAIL_COND(tls.is_null()); // Bug?
+					tls->poll();
+				}
+				if (tls->get_status() == StreamPeerTLS::STATUS_HANDSHAKING) {
+					return; // Need more polling.
+				} else if (tls->get_status() != StreamPeerTLS::STATUS_CONNECTED) {
+					disconnect_from_host();
+					_on_error();
+					return; // Error.
+				}
+			}
+			// Do websocket handshake.
+			_do_handshake();
+		} break;
+		case StreamPeerTCP::STATUS_ERROR:
+			while (_ip_candidates.size() > 0) {
+				_tcp->disconnect_from_host();
+				if (_tcp->connect_to_host(_ip_candidates.pop_front(), _port) == OK) {
+					return;
+				}
+			}
+			disconnect_from_host();
+			_on_error();
+			break;
+		case StreamPeerTCP::STATUS_CONNECTING:
+			break; // Wait for connection
+	}
+}
+
+void WSLPeer::_clear() {
+	// TODO more, from close.
+	_connection.unref();
+	_tcp.unref();
+	_tcp.instantiate();
+	_state = STATE_CLOSED;
+
+	_key = "";
+	_host = "";
+	_protocols.clear();
+	_use_tls = false;
+
+	_handshake_buffer->clear();
+
+	if (_resolver_id != IP::RESOLVER_INVALID_ID) {
+		IP::get_singleton()->erase_resolve_item(_resolver_id);
+		_resolver_id = IP::RESOLVER_INVALID_ID;
+	}
+
+	_ip_candidates.clear();
+}
+
 void WSLPeer::_do_client_handshake() {
 	if (_pending_request) {
 		int left = _handshake_buffer->get_available_bytes();

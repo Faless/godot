@@ -102,14 +102,23 @@ private:
 	Ref<StreamPeer> _connection;
 	Ref<StreamPeerTCP> _tcp;
 	String _key;
+	String _host;
+	uint16_t _port = 0;
+	Array _ip_candidates;
+	bool _use_tls = false;
+	IP::ResolverID _resolver_id = IP::RESOLVER_INVALID_ID;
 
 	WriteMode write_mode = WRITE_MODE_BINARY;
 
 	void _do_client_handshake();
 	bool _verify_server_response(String &r_protocol);
 
-	void _clear() {} // TODO
+	void _clear();
+	void _client_poll();
+
 public:
+	virtual Error connect_to_url(String p_url, const Vector<String> p_protocols = Vector<String>(), const Vector<String> p_custom_headers = Vector<String>(), bool p_verify_tls = true, Ref<X509Certificate> p_cert = Ref<X509Certificate>()) override;
+
 	int close_code = -1;
 	String close_reason;
 	void poll(); // Used by client and server.

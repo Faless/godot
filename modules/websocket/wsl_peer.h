@@ -43,67 +43,6 @@
 
 #define WSL_MAX_HEADER_SIZE 4096
 
-class WSLContext : public RefCounted {
-private:
-	static ssize_t _wsl_recv_callback(wslay_event_context_ptr ctx, uint8_t *data, size_t len, int flags, void *user_data);
-	static ssize_t _wsl_send_callback(wslay_event_context_ptr ctx, const uint8_t *data, size_t len, int flags, void *user_data);
-	static int _wsl_genmask_callback(wslay_event_context_ptr ctx, uint8_t *buf, size_t len, void *user_data);
-	static void _wsl_msg_recv_callback(wslay_event_context_ptr ctx, const struct wslay_event_on_msg_recv_arg *arg, void *user_data);
-	static wslay_event_callbacks _wsl_callbacks;
-
-protected:
-	WebSocketPeer::State _state = WebSocketPeer::STATE_CLOSED;
-
-	bool _valid = false;
-
-	bool is_server = false;
-	void *peer = nullptr;
-	Ref<StreamPeer> _connection;
-	wslay_event_context_ptr _ctx = nullptr;
-
-	void make_context(bool p_is_server, unsigned int p_max_recv_msg_length);
-
-	// TODO Check
-	Ref<StreamPeerBuffer> _handshake_buffer;
-	Vector<String> _protocols;
-	String _protocol;
-	bool _use_tls = false;
-	bool _pending_request = true;
-	String _key;
-
-	// TODO Server only?
-	Vector<String> _custom_headers;
-
-	// TODO Client only?
-	String _host;
-	uint16_t _port = 0;
-	Array _ip_candidates;
-	IP::ResolverID _resolver_id = IP::RESOLVER_INVALID_ID;
-	bool verify_tls = true;
-	Ref<X509Certificate> tls_cert;
-
-	Error _do_server_handshake(const Vector<String> p_protocols, String &r_resource_name, const Vector<String> &p_extra_headers);
-	bool _parse_client_request(const Vector<String> p_protocols, String &r_resource_name);
-
-	void _do_client_handshake();
-	bool _verify_server_response(String &r_protocol);
-	Error _client_poll();
-
-public:
-	Ref<StreamPeerTCP> get_tcp() const;
-	bool is_active() const { return _valid; }
-	WebSocketPeer::State get_state() const { return _state; }
-	wslay_event_context_ptr get_ctx() const { return _ctx; }
-
-	Error accept_stream(Ref<StreamPeer> p_stream, const Vector<String> &p_protocols = Vector<String>(), const Vector<String> &p_custom_headers = Vector<String>());
-	Error connect_to_host(String p_host, String p_path, uint16_t p_port, bool p_tls, const Vector<String> p_protocol = Vector<String>(), const Vector<String> p_custom_headers = Vector<String>(), bool p_verify_tls = true, Ref<X509Certificate> p_cert = Ref<X509Certificate>());
-	void close(int p_code, String p_reason);
-	void _wsl_poll();
-
-	virtual Error poll() { return ERR_UNAVAILABLE; }
-	virtual ~WSLContext() {}
-};
-
 class WSLPeer : public WebSocketPeer {
 	GDCIIMPL(WSLPeer, WebSocketPeer);
 
@@ -112,7 +51,43 @@ public:
 	static String generate_key();
 
 private:
-	Ref<WSLContext> _wsl_context;
+	void _wsl_poll();
+	Error connect_to_host(String p_host, String p_path, uint16_t p_port, bool p_tls, const Vector<String> p_protocol = Vector<String>(), const Vector<String> p_custom_headers = Vector<String>(), bool p_verify_tls = true, Ref<X509Certificate> p_cert = Ref<X509Certificate>());
+
+	static ssize_t _wsl_recv_callback(wslay_event_context_ptr ctx, uint8_t *data, size_t len, int flags, void *user_data);
+	static ssize_t _wsl_send_callback(wslay_event_context_ptr ctx, const uint8_t *data, size_t len, int flags, void *user_data);
+	static int _wsl_genmask_callback(wslay_event_context_ptr ctx, uint8_t *buf, size_t len, void *user_data);
+	static void _wsl_msg_recv_callback(wslay_event_context_ptr ctx, const struct wslay_event_on_msg_recv_arg *arg, void *user_data);
+	static wslay_event_callbacks _wsl_callbacks;
+
+	WebSocketPeer::State ready_state = WebSocketPeer::STATE_CLOSED;
+	bool is_server = false;
+	Ref<StreamPeerTCP> tcp;
+	Ref<StreamPeer> connection;
+	wslay_event_context_ptr wsl_ctx = nullptr;
+
+	String requested_url;
+	bool pending_request = true;
+	Ref<StreamPeerBuffer> handshake_buffer;
+	Vector<String> supported_protocols;
+	String selected_protocol;
+	String session_key;
+
+	Vector<String> custom_headers;
+	Array ip_candidates;
+	IP::ResolverID resolver_id = IP::RESOLVER_INVALID_ID;
+
+	bool use_tls = true;
+	bool verify_tls = true;
+	Ref<X509Certificate> tls_cert;
+
+	Error _do_server_handshake();
+	bool _parse_client_request();
+
+	void _do_client_handshake();
+	bool _verify_server_response();
+	Error _client_poll();
+
 	uint8_t _is_string = 0;
 	// Our packet info is just a boolean (is_string), using uint8_t for it.
 	PacketBuffer<uint8_t> _in_buffer;
@@ -124,7 +99,11 @@ private:
 
 	WriteMode write_mode = WRITE_MODE_BINARY;
 
+	void make_context(unsigned int p_max_recv_msg_length);
+	Error parse_message(const wslay_event_on_msg_recv_arg *arg);
+
 public:
+	WebSocketPeer::State get_state() const { return ready_state; }
 	virtual Error connect_to_url(String p_url, const Vector<String> p_protocols = Vector<String>(), const Vector<String> p_custom_headers = Vector<String>(), bool p_verify_tls = true, Ref<X509Certificate> p_cert = Ref<X509Certificate>()) override;
 	virtual Error accept_stream(Ref<StreamPeer> p_stream, const Vector<String> p_protocols = Vector<String>(), const Vector<String> p_custom_headers = Vector<String>()) override;
 
@@ -148,13 +127,6 @@ public:
 	virtual void set_write_mode(WriteMode p_mode) override;
 	virtual bool was_string_packet() const override;
 	virtual void set_no_delay(bool p_enabled) override;
-
-	/* TODO
-	void make_context(PeerData *p_data, unsigned int p_in_buf_size, unsigned int p_in_pkt_size, unsigned int p_out_buf_size, unsigned int p_out_pkt_size);
-	void invalidate();
-	*/
-
-	Error parse_message(const wslay_event_on_msg_recv_arg *arg);
 
 	WSLPeer();
 	~WSLPeer();

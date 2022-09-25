@@ -35,6 +35,7 @@
 #include "wsl_client.h"
 #include "wsl_client_peer.h"
 #include "wsl_server.h"
+#include "wsl_server_peer.h"
 
 #include "core/crypto/crypto_core.h"
 #include "core/math/random_number_generator.h"
@@ -62,6 +63,20 @@ Error WSLPeer::connect_to_url(String p_url, const Vector<String> p_protocols, co
 	WSLClientPeer *data = memnew(WSLClientPeer);
 	data->is_server = false;
 	err = data->connect_to_host(host, path, port, tls, p_protocols, p_custom_headers, p_verify_tls, p_cert);
+	if (err != OK) {
+		memdelete(data);
+		data = nullptr;
+	}
+	_data = data;
+	return err;
+}
+
+Error WSLPeer::accept_stream(Ref<StreamPeer> p_stream, const Vector<String> p_protocols, const Vector<String> p_custom_headers) {
+	ERR_FAIL_COND_V(_data != nullptr, ERR_ALREADY_IN_USE);
+	WSLServerPeer *data = memnew(WSLServerPeer);
+	data->is_server = true;
+	// TODO FIXME meh..
+	Error err = data->accept_stream(p_stream, p_protocols, p_custom_headers);
 	if (err != OK) {
 		memdelete(data);
 		data = nullptr;

@@ -182,9 +182,26 @@ Error WSLServerPeer::_do_server_handshake(const Vector<String> p_protocols, Stri
 	return OK;
 }
 
+Error WSLServerPeer::accept_stream(Ref<StreamPeer> p_stream, const Vector<String> &p_protocols, const Vector<String> &p_custom_headers) {
+	ERR_FAIL_COND_V(p_stream.is_null(), ERR_INVALID_PARAMETER);
+
+	if (p_stream->is_class_ptr(StreamPeerTCP::get_class_ptr_static())) {
+		connection = p_stream;
+		use_tls = false;
+	} else if (p_stream->is_class_ptr(StreamPeerTLS::get_class_ptr_static())) {
+		connection = p_stream;
+		use_tls = true;
+	}
+	ERR_FAIL_COND_V(!connection.is_valid(), ERR_INVALID_PARAMETER);
+	_protocols = p_protocols;
+	_custom_headers = p_custom_headers;
+	_state = STATE_CONNECTING;
+	return OK;
+}
+
 Error WSLServerPeer::poll() {
 	if (_state == STATE_CONNECTING) {
-		return _do_server_handshake(_protocols, resource_name, _extra_headers);
+		return _do_server_handshake(_protocols, resource_name, _custom_headers);
 	}
 	return OK;
 }

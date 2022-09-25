@@ -35,13 +35,10 @@
 
 #include "wsl_peer.h"
 
-#include "core/io/stream_peer_tcp.h"
 #include "core/io/stream_peer_tls.h"
-#include "core/io/tcp_server.h"
 
 class WSLServerPeer : public WSLPeer::PeerData {
 private:
-	Ref<StreamPeerTCP> tcp;
 	Ref<StreamPeer> connection;
 	bool use_tls = false;
 	String resource_name; // TODO FIXME what about me?
@@ -55,16 +52,13 @@ private:
 	Error _do_server_handshake(const Vector<String> p_protocols, String &r_resource_name, const Vector<String> &p_extra_headers);
 	bool _parse_client_request(const Vector<String> p_protocols, String &r_resource_name);
 
-	int _in_buf_size = DEF_BUF_SHIFT;
-	int _in_pkt_size = DEF_PKT_SHIFT;
-	int _out_buf_size = DEF_BUF_SHIFT;
-	int _out_pkt_size = DEF_PKT_SHIFT;
-
 	Vector<String> _protocols;
-	Vector<String> _extra_headers;
+	Vector<String> _custom_headers;
 
 public:
 	virtual Error poll() override;
+
+	Error accept_stream(Ref<StreamPeer> p_stream, const Vector<String> &p_protocols = Vector<String>(), const Vector<String> &p_custom_headers = Vector<String>());
 
 	WSLServerPeer();
 	~WSLServerPeer();

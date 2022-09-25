@@ -33,9 +33,7 @@
 #include "wsl_peer.h"
 
 #include "wsl_client.h"
-#include "wsl_client_peer.h"
 #include "wsl_server.h"
-#include "wsl_server_peer.h"
 
 #include "core/crypto/crypto_core.h"
 #include "core/math/random_number_generator.h"

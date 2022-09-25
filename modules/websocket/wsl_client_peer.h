@@ -11,11 +11,6 @@
 class WSLClientPeer : public WSLPeer::PeerData {
 private:
 	// Client
-	int _in_buf_size = DEF_BUF_SHIFT;
-	int _in_pkt_size = DEF_PKT_SHIFT;
-	int _out_buf_size = DEF_BUF_SHIFT;
-	int _out_pkt_size = DEF_PKT_SHIFT;
-	State _state;
 	Ref<StreamPeerBuffer> _handshake_buffer;
 	Vector<String> _protocols;
 	bool _handshaking = true;

@@ -43,9 +43,9 @@ private:
 	bool use_tls = false;
 	String resource_name; // TODO FIXME what about me?
 
-	String key;
-	String protocol;
-	bool has_request = false;
+	String _key;
+	String _protocol;
+	bool _pending_request = true;
 
 	Ref<StreamPeerBuffer> handshake_buffer;
 

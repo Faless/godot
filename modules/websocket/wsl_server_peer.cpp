@@ -68,7 +68,7 @@ bool WSLServerPeer::_parse_client_request(const Vector<String> p_protocols, Stri
 	WSL_CHECK_EX("connection");
 #undef WSL_CHECK_EX
 #undef WSL_CHECK
-	key = headers["sec-websocket-key"];
+	_key = headers["sec-websocket-key"];
 	if (headers.has("sec-websocket-protocol")) {
 		Vector<String> protos = headers["sec-websocket-protocol"].split(",");
 		for (int i = 0; i < protos.size(); i++) {
@@ -78,15 +78,15 @@ bool WSLServerPeer::_parse_client_request(const Vector<String> p_protocols, Stri
 				if (proto != p_protocols[j]) {
 					continue;
 				}
-				protocol = proto;
+				_protocol = proto;
 				break;
 			}
 			// Found a protocol
-			if (!protocol.is_empty()) {
+			if (!_protocol.is_empty()) {
 				break;
 			}
 		}
-		if (protocol.is_empty()) { // Invalid protocol(s) requested
+		if (_protocol.is_empty()) { // Invalid protocol(s) requested
 			return false;
 		}
 	} else if (p_protocols.size() > 0) { // No protocol requested, but we need one
@@ -105,7 +105,7 @@ Error WSLServerPeer::_do_server_handshake(const Vector<String> p_protocols, Stri
 		}
 		tls->poll();
 		if (tls->get_status() == StreamPeerTLS::STATUS_HANDSHAKING) {
-			return OK;
+			return OK; // Pending handshake
 		} else if (tls->get_status() != StreamPeerTLS::STATUS_CONNECTED) {
 			print_verbose(vformat("WebSocket SSL connection error during handshake (StreamPeerTLS status code %d).", tls->get_status()));
 			_state = STATE_CLOSED;
@@ -113,7 +113,7 @@ Error WSLServerPeer::_do_server_handshake(const Vector<String> p_protocols, Stri
 		}
 	}
 
-	if (!has_request) {
+	if (_pending_request) {
 		int read = 0;
 		while (true) {
 			ERR_FAIL_COND_V_MSG(handshake_buffer->get_available_bytes() < 1, ERR_OUT_OF_MEMORY, "WebSocket response headers are too big.");
@@ -138,9 +138,9 @@ Error WSLServerPeer::_do_server_handshake(const Vector<String> p_protocols, Stri
 				String s = "HTTP/1.1 101 Switching Protocols\r\n";
 				s += "Upgrade: websocket\r\n";
 				s += "Connection: Upgrade\r\n";
-				s += "Sec-WebSocket-Accept: " + WSLPeer::compute_key_response(key) + "\r\n";
-				if (!protocol.is_empty()) {
-					s += "Sec-WebSocket-Protocol: " + protocol + "\r\n";
+				s += "Sec-WebSocket-Accept: " + WSLPeer::compute_key_response(_key) + "\r\n";
+				if (!_protocol.is_empty()) {
+					s += "Sec-WebSocket-Protocol: " + _protocol + "\r\n";
 				}
 				for (int i = 0; i < p_extra_headers.size(); i++) {
 					s += p_extra_headers[i] + "\r\n";
@@ -150,19 +150,19 @@ Error WSLServerPeer::_do_server_handshake(const Vector<String> p_protocols, Stri
 				handshake_buffer->clear();
 				handshake_buffer->put_data((const uint8_t *)cs.get_data(), cs.size());
 				handshake_buffer->seek(0);
-				has_request = true;
+				_pending_request = false;
 				break;
 			}
 			handshake_buffer->seek(pos + 1);
 		}
 	}
 
-	if (!has_request) { // Still pending.
+	if (_pending_request) { // Still pending.
 		return OK;
 	}
 
 	int left = handshake_buffer->get_available_bytes();
-	if (has_request && left) {
+	if (left) {
 		Vector<uint8_t> data = handshake_buffer->get_data_array();
 		int pos = handshake_buffer->get_position();
 		int sent = 0;
@@ -193,6 +193,7 @@ Error WSLServerPeer::accept_stream(Ref<StreamPeer> p_stream, const Vector<String
 		use_tls = true;
 	}
 	ERR_FAIL_COND_V(!connection.is_valid(), ERR_INVALID_PARAMETER);
+	_pending_request = true;
 	_protocols = p_protocols;
 	_custom_headers = p_custom_headers;
 	_state = STATE_CONNECTING;

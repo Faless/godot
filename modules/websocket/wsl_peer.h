@@ -133,7 +133,7 @@ public:
 	virtual Error connect_to_url(String p_url, const Vector<String> p_protocols = Vector<String>(), const Vector<String> p_custom_headers = Vector<String>(), bool p_verify_tls = true, Ref<X509Certificate> p_cert = Ref<X509Certificate>()) override;
 	virtual Error accept_stream(Ref<StreamPeer> p_stream, const Vector<String> p_protocols = Vector<String>(), const Vector<String> p_custom_headers = Vector<String>()) override;
 
-	void poll(); // Used by client and server.
+	virtual void poll() override;
 
 	virtual int get_available_packet_count() const override;
 	virtual Error get_packet(const uint8_t **r_buffer, int &r_buffer_size) override;

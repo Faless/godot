@@ -80,9 +80,9 @@ private:
 		}
 
 		void try_next_candidate(Ref<StreamPeerTCP> &p_tcp);
+		void start(const String &p_host, int p_port);
+		void stop();
 		Resolver() {}
-		Resolver(const String &p_host, int p_port);
-		~Resolver();
 	};
 
 	Resolver resolver;

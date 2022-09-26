@@ -55,7 +55,9 @@ void WSLPeer::deinitialize() {
 ///
 /// Resolver
 ///
-WSLPeer::Resolver::Resolver(const String &p_host, int p_port) {
+void WSLPeer::Resolver::start(const String &p_host, int p_port) {
+	stop();
+
 	port = p_port;
 	if (p_host.is_valid_ip_address()) {
 		ip_candidates.push_back(IPAddress(p_host));
@@ -73,10 +75,12 @@ WSLPeer::Resolver::Resolver(const String &p_host, int p_port) {
 	}
 }
 
-WSLPeer::Resolver::~Resolver() {
+void WSLPeer::Resolver::stop() {
 	if (resolver_id != IP::RESOLVER_INVALID_ID) {
 		IP::get_singleton()->erase_resolve_item(resolver_id);
+		resolver_id = IP::RESOLVER_INVALID_ID;
 	}
+	port = 0;
 }
 
 void WSLPeer::Resolver::try_next_candidate(Ref<StreamPeerTCP> &p_tcp) {
@@ -293,6 +297,7 @@ Error WSLPeer::_do_server_handshake() {
 			wslay_event_config_set_max_recv_msg_length(wsl_ctx, (1ULL << _in_buf_size));
 			in_buffer.resize(11, _in_buf_size);
 			packet_buffer.resize(1 << _in_buf_size);
+			resolver.stop();
 			ready_state = STATE_OPEN;
 		}
 	}
@@ -506,7 +511,7 @@ Error WSLPeer::connect_to_url(String p_url, const Vector<String> p_protocols, co
 	tls_cert = p_cert;
 	tcp.instantiate();
 
-	resolver = Resolver(host, port);
+	resolver.start(host, port);
 	resolver.try_next_candidate(tcp);
 
 	if (tcp->get_status() != StreamPeerTCP::STATUS_CONNECTING && !resolver.has_more_candidates()) {
@@ -804,7 +809,7 @@ void WSLPeer::_clear() {
 		wsl_ctx = nullptr;
 	}
 
-	resolver = Resolver();
+	resolver.stop();
 	requested_url = "";
 	requested_host = "";
 	pending_request = true;

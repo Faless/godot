@@ -51,6 +51,23 @@ public:
 	static String generate_key();
 
 private:
+	class Resolver {
+		Array ip_candidates;
+		IP::ResolverID resolver_id = IP::RESOLVER_INVALID_ID;
+		int port = 0;
+
+	public:
+		bool has_more_candidates() {
+			return ip_candidates.size() > 0 || resolver_id != IP::RESOLVER_INVALID_ID;
+		}
+
+		void try_next_candidate(Ref<StreamPeerTCP> &p_tcp);
+		Resolver() {}
+		Resolver(const String &p_host, int p_port);
+	};
+
+	Resolver resolver;
+
 	Error connect_to_host(String p_host, String p_path, uint16_t p_port, bool p_tls, const Vector<String> p_protocol = Vector<String>(), const Vector<String> p_custom_headers = Vector<String>(), bool p_verify_tls = true, Ref<X509Certificate> p_cert = Ref<X509Certificate>());
 
 	static ssize_t _wsl_recv_callback(wslay_event_context_ptr ctx, uint8_t *data, size_t len, int flags, void *user_data);
@@ -66,6 +83,7 @@ private:
 	wslay_event_context_ptr wsl_ctx = nullptr;
 
 	String requested_url;
+	String requested_host;
 	bool pending_request = true;
 	Ref<StreamPeerBuffer> handshake_buffer;
 	Vector<String> supported_protocols;
@@ -85,7 +103,6 @@ private:
 
 	void _do_client_handshake();
 	bool _verify_server_response();
-	Error _client_poll();
 
 	uint8_t _is_string = 0;
 	// Our packet info is just a boolean (is_string), using uint8_t for it.

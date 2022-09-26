@@ -221,97 +221,49 @@ Error WSLPeer::_do_server_handshake() {
 ///
 /// Client functions
 ///
-Error WSLPeer::_client_poll() {
-	ERR_FAIL_COND_V(tcp.is_null(), ERR_BUG);
-
-	// TODO improve
-	String host;
-	String path;
-	String scheme;
-	int port = 0;
-	requested_url.parse_url(scheme, host, port, path);
+void WSLPeer::_do_client_handshake() {
+	ERR_FAIL_COND(tcp.is_null());
 
 	// Try to connect to candidates.
-	if (resolver_id != IP::RESOLVER_INVALID_ID) {
-		IP::ResolverStatus ip_status = IP::get_singleton()->get_resolve_item_status(resolver_id);
-		if (ip_status == IP::RESOLVER_STATUS_WAITING) {
-			return OK;
+	if (resolver.has_more_candidates()) {
+		resolver.try_next_candidate(tcp);
+		if (resolver.has_more_candidates()) {
+			return; // Still pending.
 		}
-		// Anything else is either a candidate or a failure.
-		Error err = FAILED;
-		if (ip_status == IP::RESOLVER_STATUS_DONE) {
-			ip_candidates = IP::get_singleton()->get_resolve_item_addresses(resolver_id);
-			while (ip_candidates.size()) {
-				err = tcp->connect_to_host(ip_candidates.pop_front(), port);
-				if (err == OK) {
-					break;
-				}
-			}
-		}
-		IP::get_singleton()->erase_resolve_item(resolver_id);
-		resolver_id = IP::RESOLVER_INVALID_ID;
-		if (err != OK) {
-			close_now();
-			return FAILED;
-		}
-	}
-
-	if (connection.is_null()) {
-		return OK; // Not connected.
 	}
 
 	tcp->poll();
-	switch (tcp->get_status()) {
-		case StreamPeerTCP::STATUS_NONE:
-			// Clean close
-			ready_state = WebSocketPeer::STATE_CLOSED;
-			return OK;
-		case StreamPeerTCP::STATUS_CONNECTED: {
-			ip_candidates.clear();
-			Ref<StreamPeerTLS> tls;
-			if (use_tls) {
-				if (connection == tcp) {
-					// Start SSL handshake
-					tls = Ref<StreamPeerTLS>(StreamPeerTLS::create());
-					ERR_FAIL_COND_V_MSG(tls.is_null(), ERR_BUG, "SSL is not available in this build.");
-					tls->set_blocking_handshake_enabled(false);
-					if (tls->connect_to_stream(tcp, verify_tls, host, tls_cert) != OK) {
-						close_now();
-						return FAILED;
-					}
-					connection = tls;
-				} else {
-					tls = static_cast<Ref<StreamPeerTLS>>(connection);
-					ERR_FAIL_COND_V(tls.is_null(), ERR_BUG);
-					tls->poll();
-				}
-				if (tls->get_status() == StreamPeerTLS::STATUS_HANDSHAKING) {
-					return OK; // Need more polling.
-				} else if (tls->get_status() != StreamPeerTLS::STATUS_CONNECTED) {
-					close_now();
-					return FAILED; // Error.
-				}
-			}
-			// Do websocket handshake.
-			_do_client_handshake();
-			return OK;
-		}
-		case StreamPeerTCP::STATUS_ERROR:
-			while (ip_candidates.size() > 0) {
-				tcp->disconnect_from_host();
-				if (tcp->connect_to_host(ip_candidates.pop_front(), port) == OK) {
-					return OK;
-				}
-			}
-			close_now();
-			return FAILED;
-		case StreamPeerTCP::STATUS_CONNECTING:
-			return OK;
+	if (tcp->get_status() != StreamPeerTCP::STATUS_CONNECTED) {
+		close_now(); // Failed to connect.
+		return;
 	}
-	return OK;
-}
 
-void WSLPeer::_do_client_handshake() {
+	if (use_tls) {
+		Ref<StreamPeerTLS> tls;
+		if (connection == tcp) {
+			// Start SSL handshake
+			tls = Ref<StreamPeerTLS>(StreamPeerTLS::create());
+			ERR_FAIL_COND_MSG(tls.is_null(), "SSL is not available in this build.");
+			tls->set_blocking_handshake_enabled(false);
+			if (tls->connect_to_stream(tcp, verify_tls, requested_host, tls_cert) != OK) {
+				close_now();
+				return; // Error.
+			}
+			connection = tls;
+		} else {
+			tls = static_cast<Ref<StreamPeerTLS>>(connection);
+			ERR_FAIL_COND(tls.is_null());
+			tls->poll();
+		}
+		if (tls->get_status() == StreamPeerTLS::STATUS_HANDSHAKING) {
+			return; // Need more polling.
+		} else if (tls->get_status() != StreamPeerTLS::STATUS_CONNECTED) {
+			close_now();
+			return; // Error.
+		}
+	}
+
+	// Do websocket handshake.
 	if (pending_request) {
 		int left = handshake_buffer->get_available_bytes();
 		int pos = handshake_buffer->get_position();
@@ -320,9 +272,8 @@ void WSLPeer::_do_client_handshake() {
 		Error err = connection->put_partial_data(data.ptr() + pos, left, sent);
 		// Sending handshake failed
 		if (err != OK) {
-			// TODO err
 			close_now();
-			return;
+			return; // Error.
 		}
 		handshake_buffer->seek(pos + sent);
 		if (handshake_buffer->get_available_bytes() == 0) {
@@ -441,6 +392,61 @@ bool WSLPeer::_verify_server_response() {
 	return true;
 }
 
+WSLPeer::Resolver::Resolver(const String &p_host, int p_port) {
+	port = p_port;
+	if (p_host.is_valid_ip_address()) {
+		ip_candidates.push_back(IPAddress(p_host));
+	} else {
+		// Queue hostname for resolution.
+		resolver_id = IP::get_singleton()->resolve_hostname_queue_item(p_host);
+		ERR_FAIL_COND(resolver_id == IP::RESOLVER_INVALID_ID);
+		// Check if it was found in cache.
+		IP::ResolverStatus ip_status = IP::get_singleton()->get_resolve_item_status(resolver_id);
+		if (ip_status == IP::RESOLVER_STATUS_DONE) {
+			ip_candidates = IP::get_singleton()->get_resolve_item_addresses(resolver_id);
+			IP::get_singleton()->erase_resolve_item(resolver_id);
+			resolver_id = IP::RESOLVER_INVALID_ID;
+		}
+	}
+}
+
+void WSLPeer::Resolver::try_next_candidate(Ref<StreamPeerTCP> &p_tcp) {
+	// Check if we still need resolving.
+	if (resolver_id != IP::RESOLVER_INVALID_ID) {
+		IP::ResolverStatus ip_status = IP::get_singleton()->get_resolve_item_status(resolver_id);
+		if (ip_status == IP::RESOLVER_STATUS_WAITING) {
+			return;
+		}
+		if (ip_status == IP::RESOLVER_STATUS_DONE) {
+			ip_candidates = IP::get_singleton()->get_resolve_item_addresses(resolver_id);
+		}
+		IP::get_singleton()->erase_resolve_item(resolver_id);
+		resolver_id = IP::RESOLVER_INVALID_ID;
+	}
+
+	// Try the current candidate if we have one.
+	if (p_tcp->get_status() != StreamPeerTCP::STATUS_NONE) {
+		p_tcp->poll();
+		StreamPeerTCP::Status status = p_tcp->get_status();
+		if (status == StreamPeerTCP::STATUS_CONNECTED) {
+			ip_candidates.clear();
+			return;
+		} else {
+			p_tcp->disconnect_from_host();
+		}
+	}
+
+	// Keep trying next candidate.
+	while (ip_candidates.size()) {
+		Error err = p_tcp->connect_to_host(ip_candidates.pop_front(), port);
+		if (err == OK) {
+			return;
+		} else {
+			p_tcp->disconnect_from_host();
+		}
+	}
+}
+
 Error WSLPeer::connect_to_url(String p_url, const Vector<String> p_protocols, const Vector<String> p_custom_headers, bool p_verify_tls, Ref<X509Certificate> p_cert) {
 	ERR_FAIL_COND_V(connection.is_valid(), ERR_ALREADY_IN_USE);
 	ERR_FAIL_COND_V(p_url.is_empty(), ERR_INVALID_PARAMETER);
@@ -464,36 +470,20 @@ Error WSLPeer::connect_to_url(String p_url, const Vector<String> p_protocols, co
 	}
 
 	requested_url = p_url;
+	requested_host = host;
 	verify_tls = p_verify_tls;
 	tls_cert = p_cert;
-	if (host.is_valid_ip_address()) {
-		ip_candidates.push_back(IPAddress(host));
-	} else {
-		// Queue hostname for resolution.
-		resolver_id = IP::get_singleton()->resolve_hostname_queue_item(host);
-		ERR_FAIL_COND_V(resolver_id == IP::RESOLVER_INVALID_ID, ERR_INVALID_PARAMETER);
-		// Check if it was found in cache.
-		IP::ResolverStatus ip_status = IP::get_singleton()->get_resolve_item_status(resolver_id);
-		if (ip_status == IP::RESOLVER_STATUS_DONE) {
-			ip_candidates = IP::get_singleton()->get_resolve_item_addresses(resolver_id);
-			IP::get_singleton()->erase_resolve_item(resolver_id);
-			resolver_id = IP::RESOLVER_INVALID_ID;
-		}
-	}
+	tcp.instantiate();
 
-	// We assume OK while hostname resolution is pending.
-	err = resolver_id != IP::RESOLVER_INVALID_ID ? OK : FAILED;
-	while (ip_candidates.size()) {
-		err = tcp->connect_to_host(ip_candidates.pop_front(), port);
-		if (err == OK) {
-			break;
-		}
+	resolver = Resolver(host, port);
+	resolver.try_next_candidate(tcp);
+
+	if (tcp->get_status() != StreamPeerTCP::STATUS_CONNECTING && !resolver.has_more_candidates()) {
+		tcp.unref();
+		return FAILED;
 	}
-	if (err != OK) {
-		tcp->disconnect_from_host();
-		return err;
-	}
-	connection = tcp; // TODO double-check.
+	connection = tcp;
+
 	// Strip edges from protocols.
 	supported_protocols.resize(p_protocols.size());
 	for (int i = 0; i < p_protocols.size(); i++) {
@@ -662,7 +652,7 @@ void WSLPeer::poll() {
 		if (is_server) {
 			_do_server_handshake();
 		} else {
-			_client_poll();
+			_do_client_handshake();
 		}
 	}
 

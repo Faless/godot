@@ -192,7 +192,7 @@ void WSLServer::poll() {
 		Ref<WSLPeer> peer = const_cast<WSLPeer *>(static_cast<const WSLPeer *>(E.value.ptr()));
 		peer->poll();
 		if (!peer->is_connected_to_host()) {
-			_on_disconnect(E.key, peer->close_code != -1);
+			_on_disconnect(E.key, peer->get_close_code() != -1);
 			remove_ids.push_back(E.key);
 		}
 	}

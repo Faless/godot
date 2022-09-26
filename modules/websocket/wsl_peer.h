@@ -92,12 +92,23 @@ private:
 	String session_key;
 
 	Vector<String> custom_headers;
-	Array ip_candidates;
-	IP::ResolverID resolver_id = IP::RESOLVER_INVALID_ID;
 
 	bool use_tls = true;
 	bool verify_tls = true;
 	Ref<X509Certificate> tls_cert;
+
+	uint8_t was_string = 0;
+	// Our packet info is just a boolean (is_string), using uint8_t for it.
+	PacketBuffer<uint8_t> in_buffer;
+
+	Vector<uint8_t> packet_buffer;
+
+	int _in_buf_size = DEF_BUF_SHIFT;
+	int _out_buf_size = DEF_BUF_SHIFT;
+
+	WriteMode write_mode = WRITE_MODE_BINARY;
+	int close_code = -1;
+	String close_reason;
 
 	Error _do_server_handshake();
 	bool _parse_client_request();
@@ -105,31 +116,23 @@ private:
 	void _do_client_handshake();
 	bool _verify_server_response();
 
-	uint8_t _is_string = 0;
-	// Our packet info is just a boolean (is_string), using uint8_t for it.
-	PacketBuffer<uint8_t> _in_buffer;
-
-	Vector<uint8_t> _packet_buffer;
-
-	int _in_buf_size = DEF_BUF_SHIFT;
-	int _out_buf_size = DEF_BUF_SHIFT;
-
-	WriteMode write_mode = WRITE_MODE_BINARY;
+	void _clear();
 
 public:
-	WebSocketPeer::State get_state() const { return ready_state; }
 	virtual Error connect_to_url(String p_url, const Vector<String> p_protocols = Vector<String>(), const Vector<String> p_custom_headers = Vector<String>(), bool p_verify_tls = true, Ref<X509Certificate> p_cert = Ref<X509Certificate>()) override;
 	virtual Error accept_stream(Ref<StreamPeer> p_stream, const Vector<String> p_protocols = Vector<String>(), const Vector<String> p_custom_headers = Vector<String>()) override;
 
-	int close_code = -1;
-	String close_reason;
 	void poll(); // Used by client and server.
 
 	virtual int get_available_packet_count() const override;
 	virtual Error get_packet(const uint8_t **r_buffer, int &r_buffer_size) override;
 	virtual Error put_packet(const uint8_t *p_buffer, int p_buffer_size) override;
-	virtual int get_max_packet_size() const override { return _packet_buffer.size(); };
+	virtual int get_max_packet_size() const override { return packet_buffer.size(); };
 	virtual int get_current_outbound_buffered_amount() const override;
+
+	virtual State get_state() const override { return ready_state; }
+	virtual int get_close_code() const override { return close_code; }
+	virtual String get_close_reason() const override { return close_reason; }
 
 	virtual void close_now();
 	virtual void close(int p_code = 1000, String p_reason = "") override;

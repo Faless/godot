@@ -51,6 +51,15 @@ void WebSocketPeer::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_no_delay", "enabled"), &WebSocketPeer::set_no_delay);
 	ClassDB::bind_method(D_METHOD("get_current_outbound_buffered_amount"), &WebSocketPeer::get_current_outbound_buffered_amount);
 
+	ClassDB::bind_method(D_METHOD("get_state"), &WebSocketPeer::get_state);
+	ClassDB::bind_method(D_METHOD("get_close_code"), &WebSocketPeer::get_close_code);
+	ClassDB::bind_method(D_METHOD("get_close_reason"), &WebSocketPeer::get_close_reason);
+
 	BIND_ENUM_CONSTANT(WRITE_MODE_TEXT);
 	BIND_ENUM_CONSTANT(WRITE_MODE_BINARY);
+
+	BIND_ENUM_CONSTANT(STATE_CONNECTING);
+	BIND_ENUM_CONSTANT(STATE_OPEN);
+	BIND_ENUM_CONSTANT(STATE_CLOSING);
+	BIND_ENUM_CONSTANT(STATE_CLOSED);
 }

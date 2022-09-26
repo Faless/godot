@@ -271,7 +271,7 @@ void WSLClient::poll() {
 		_peer->poll();
 		if (!_peer->is_connected_to_host()) {
 			disconnect_from_host();
-			_on_disconnect(_peer->close_code != -1);
+			_on_disconnect(_peer->get_close_code() != -1);
 		}
 		return;
 	}

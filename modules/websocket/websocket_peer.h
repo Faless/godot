@@ -72,10 +72,15 @@ public:
 	virtual void set_no_delay(bool p_enabled) = 0;
 	virtual int get_current_outbound_buffered_amount() const = 0;
 
+	virtual State get_state() const = 0;
+	virtual int get_close_code() const = 0;
+	virtual String get_close_reason() const = 0;
+
 	WebSocketPeer();
 	~WebSocketPeer();
 };
 
 VARIANT_ENUM_CAST(WebSocketPeer::WriteMode);
+VARIANT_ENUM_CAST(WebSocketPeer::State);
 
 #endif // WEBSOCKET_PEER_H

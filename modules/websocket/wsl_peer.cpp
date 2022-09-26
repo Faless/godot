@@ -107,8 +107,10 @@ void WSLPeer::Resolver::try_next_candidate(Ref<StreamPeerTCP> &p_tcp) {
 /// Server functions
 ///
 Error WSLPeer::accept_stream(Ref<StreamPeer> p_stream, const Vector<String> p_protocols, const Vector<String> p_custom_headers) {
-	ERR_FAIL_COND_V(tcp.is_valid(), ERR_ALREADY_IN_USE);
+	ERR_FAIL_COND_V(wsl_ctx || tcp.is_valid(), ERR_ALREADY_IN_USE);
 	ERR_FAIL_COND_V(p_stream.is_null(), ERR_INVALID_PARAMETER);
+
+	_clear();
 
 	if (p_stream->is_class_ptr(StreamPeerTCP::get_class_ptr_static())) {
 		tcp = p_stream;
@@ -126,7 +128,7 @@ Error WSLPeer::accept_stream(Ref<StreamPeer> p_stream, const Vector<String> p_pr
 	supported_protocols = p_protocols;
 	custom_headers = p_custom_headers;
 	is_server = true;
-	ready_state = WebSocketPeer::STATE_CONNECTING;
+	ready_state = STATE_CONNECTING;
 	return OK;
 }
 
@@ -276,9 +278,9 @@ Error WSLPeer::_do_server_handshake() {
 			// Response sent, initialize wslay context.
 			wslay_event_context_server_init(&wsl_ctx, &_wsl_callbacks, this);
 			wslay_event_config_set_max_recv_msg_length(wsl_ctx, (1ULL << _in_buf_size));
-			_in_buffer.resize(11, _in_buf_size);
-			_packet_buffer.resize(1 << _in_buf_size);
-			ready_state = WebSocketPeer::STATE_OPEN;
+			in_buffer.resize(11, _in_buf_size);
+			packet_buffer.resize(1 << _in_buf_size);
+			ready_state = STATE_OPEN;
 		}
 	}
 
@@ -390,9 +392,9 @@ void WSLPeer::_do_client_handshake() {
 				}
 				wslay_event_context_client_init(&wsl_ctx, &_wsl_callbacks, this);
 				wslay_event_config_set_max_recv_msg_length(wsl_ctx, (1ULL << _in_buf_size));
-				_in_buffer.resize(11, _in_buf_size);
-				_packet_buffer.resize(1 << _in_buf_size);
-				ready_state = WebSocketPeer::STATE_OPEN;
+				in_buffer.resize(11, _in_buf_size);
+				packet_buffer.resize(1 << _in_buf_size);
+				ready_state = STATE_OPEN;
 				break;
 			}
 		}
@@ -462,8 +464,10 @@ bool WSLPeer::_verify_server_response() {
 }
 
 Error WSLPeer::connect_to_url(String p_url, const Vector<String> p_protocols, const Vector<String> p_custom_headers, bool p_verify_tls, Ref<X509Certificate> p_cert) {
-	ERR_FAIL_COND_V(connection.is_valid(), ERR_ALREADY_IN_USE);
+	ERR_FAIL_COND_V(wsl_ctx || tcp.is_valid(), ERR_ALREADY_IN_USE);
 	ERR_FAIL_COND_V(p_url.is_empty(), ERR_INVALID_PARAMETER);
+
+	_clear();
 
 	String host;
 	String path;
@@ -532,7 +536,7 @@ Error WSLPeer::connect_to_url(String p_url, const Vector<String> p_protocols, co
 	request += "\r\n";
 	CharString cs = request.utf8();
 	handshake_buffer->put_data((const uint8_t *)cs.get_data(), cs.size());
-	ready_state = WebSocketPeer::STATE_CONNECTING;
+	ready_state = STATE_CONNECTING;
 	is_server = false;
 	return OK;
 }
@@ -593,7 +597,7 @@ int WSLPeer::_wsl_genmask_callback(wslay_event_context_ptr ctx, uint8_t *buf, si
 
 void WSLPeer::_wsl_msg_recv_callback(wslay_event_context_ptr ctx, const struct wslay_event_on_msg_recv_arg *arg, void *user_data) {
 	WSLPeer *peer = (WSLPeer *)user_data;
-	if (peer->ready_state == WebSocketPeer::STATE_CLOSING) {
+	if (peer->ready_state == STATE_CLOSING) {
 		return;
 	}
 
@@ -601,7 +605,7 @@ void WSLPeer::_wsl_msg_recv_callback(wslay_event_context_ptr ctx, const struct w
 	if (op == WSLAY_TEXT_FRAME || op == WSLAY_BINARY_FRAME) {
 		// Message.
 		uint8_t is_string = arg->opcode == WSLAY_TEXT_FRAME ? 1 : 0;
-		peer->_in_buffer.write_packet(arg->msg, arg->msg_length, &is_string);
+		peer->in_buffer.write_packet(arg->msg, arg->msg_length, &is_string);
 	} else if (op == WSLAY_CONNECTION_CLOSE) {
 		// Close request.
 		peer->close_code = arg->status_code;
@@ -710,13 +714,13 @@ Error WSLPeer::get_packet(const uint8_t **r_buffer, int &r_buffer_size) {
 
 	ERR_FAIL_COND_V(!is_connected_to_host(), FAILED);
 
-	if (_in_buffer.packets_left() == 0) {
+	if (in_buffer.packets_left() == 0) {
 		return ERR_UNAVAILABLE;
 	}
 
 	int read = 0;
-	uint8_t *rw = _packet_buffer.ptrw();
-	_in_buffer.read_packet(rw, _packet_buffer.size(), &_is_string, read);
+	uint8_t *rw = packet_buffer.ptrw();
+	in_buffer.read_packet(rw, packet_buffer.size(), &was_string, read);
 
 	*r_buffer = rw;
 	r_buffer_size = read;
@@ -729,7 +733,7 @@ int WSLPeer::get_available_packet_count() const {
 		return 0;
 	}
 
-	return _in_buffer.packets_left();
+	return in_buffer.packets_left();
 }
 
 int WSLPeer::get_current_outbound_buffered_amount() const {
@@ -741,7 +745,7 @@ int WSLPeer::get_current_outbound_buffered_amount() const {
 }
 
 bool WSLPeer::was_string_packet() const {
-	return _is_string;
+	return was_string;
 }
 
 bool WSLPeer::is_connected_to_host() const {
@@ -765,8 +769,8 @@ void WSLPeer::close(int p_code, String p_reason) {
 		connection.unref();
 	}
 
-	_in_buffer.clear();
-	_packet_buffer.resize(0);
+	in_buffer.clear();
+	packet_buffer.resize(0);
 }
 
 IPAddress WSLPeer::get_connected_host() const {
@@ -782,6 +786,38 @@ uint16_t WSLPeer::get_connected_port() const {
 void WSLPeer::set_no_delay(bool p_enabled) {
 	ERR_FAIL_COND(tcp.is_null());
 	tcp->set_no_delay(p_enabled);
+}
+
+void WSLPeer::_clear() {
+	// Connection info.
+	ready_state = STATE_CLOSED;
+	is_server = false;
+	tcp.unref();
+	connection.unref();
+	if (wsl_ctx) {
+		wslay_event_context_free(wsl_ctx);
+		wsl_ctx = nullptr;
+	}
+
+	resolver = Resolver();
+	requested_url = "";
+	requested_host = "";
+	pending_request = true;
+	handshake_buffer->clear();
+	supported_protocols.clear();
+	selected_protocol = "";
+	session_key = "";
+
+	custom_headers.clear();
+
+	// Pending packets info.
+	was_string = 0;
+	in_buffer.clear();
+	packet_buffer.clear();
+
+	// Close code info.
+	close_code = -1;
+	close_reason = "";
 }
 
 WSLPeer::WSLPeer() {

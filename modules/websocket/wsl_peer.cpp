@@ -35,8 +35,22 @@
 #include "wsl_client.h"
 #include "wsl_server.h"
 
-#include "core/crypto/crypto_core.h"
 #include "core/math/random_number_generator.h"
+
+CryptoCore::RandomGenerator *WSLPeer::_static_rng = nullptr;
+
+void WSLPeer::initialize() {
+	WebSocketPeer::_create = WSLPeer::_create;
+	_static_rng = memnew(CryptoCore::RandomGenerator);
+	_static_rng->init();
+}
+
+void WSLPeer::deinitialize() {
+	if (_static_rng) {
+		memdelete(_static_rng);
+		_static_rng = nullptr;
+	}
+}
 
 ///
 /// Resolver
@@ -585,10 +599,8 @@ ssize_t WSLPeer::_wsl_send_callback(wslay_event_context_ptr ctx, const uint8_t *
 }
 
 int WSLPeer::_wsl_genmask_callback(wslay_event_context_ptr ctx, uint8_t *buf, size_t len, void *user_data) {
-	CryptoCore::RandomGenerator rng;
-	Error err = rng.init();
-	ERR_FAIL_COND_V(err != OK, WSLAY_ERR_CALLBACK_FAILURE);
-	err = rng.get_random_bytes(buf, len);
+	ERR_FAIL_COND_V(!_static_rng, WSLAY_ERR_CALLBACK_FAILURE);
+	Error err = _static_rng->get_random_bytes(buf, len);
 	ERR_FAIL_COND_V(err != OK, WSLAY_ERR_CALLBACK_FAILURE);
 	return 0;
 }

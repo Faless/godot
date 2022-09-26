@@ -33,12 +33,15 @@
 
 #ifndef WEB_ENABLED
 
+#include "websocket_peer.h"
+
+#include "packet_buffer.h"
+
+#include "core/crypto/crypto_core.h"
 #include "core/error/error_list.h"
 #include "core/io/packet_peer.h"
 #include "core/io/stream_peer_tcp.h"
 #include "core/templates/ring_buffer.h"
-#include "packet_buffer.h"
-#include "websocket_peer.h"
 #include "wslay/wslay.h"
 
 #define WSL_MAX_HEADER_SIZE 4096
@@ -47,13 +50,12 @@ class WSLPeer : public WebSocketPeer {
 public:
 	// Custom instance implementation.
 	static WebSocketPeer *_create() { return memnew(WSLPeer); }
-	static void initialize() {
-		WebSocketPeer::_create = WSLPeer::_create;
-	}
-	static void deinitialize() {
-	}
+	static void initialize();
+	static void deinitialize();
 
 private:
+	static CryptoCore::RandomGenerator *_static_rng;
+
 	// Callbacks.
 	static ssize_t _wsl_recv_callback(wslay_event_context_ptr ctx, uint8_t *data, size_t len, int flags, void *user_data);
 	static ssize_t _wsl_send_callback(wslay_event_context_ptr ctx, const uint8_t *data, size_t len, int flags, void *user_data);

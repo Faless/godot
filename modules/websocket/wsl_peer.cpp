@@ -826,6 +826,7 @@ void WSLPeer::_clear() {
 }
 
 WSLPeer::WSLPeer() {
+	handshake_buffer.instantiate();
 }
 
 WSLPeer::~WSLPeer() {

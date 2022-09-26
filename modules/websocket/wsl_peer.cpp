@@ -40,6 +40,70 @@
 #include "core/os/os.h"
 
 ///
+/// Resolver
+///
+WSLPeer::Resolver::Resolver(const String &p_host, int p_port) {
+	port = p_port;
+	if (p_host.is_valid_ip_address()) {
+		ip_candidates.push_back(IPAddress(p_host));
+	} else {
+		// Queue hostname for resolution.
+		resolver_id = IP::get_singleton()->resolve_hostname_queue_item(p_host);
+		ERR_FAIL_COND(resolver_id == IP::RESOLVER_INVALID_ID);
+		// Check if it was found in cache.
+		IP::ResolverStatus ip_status = IP::get_singleton()->get_resolve_item_status(resolver_id);
+		if (ip_status == IP::RESOLVER_STATUS_DONE) {
+			ip_candidates = IP::get_singleton()->get_resolve_item_addresses(resolver_id);
+			IP::get_singleton()->erase_resolve_item(resolver_id);
+			resolver_id = IP::RESOLVER_INVALID_ID;
+		}
+	}
+}
+
+WSLPeer::Resolver::~Resolver() {
+	if (resolver_id != IP::RESOLVER_INVALID_ID) {
+		IP::get_singleton()->erase_resolve_item(resolver_id);
+	}
+}
+
+void WSLPeer::Resolver::try_next_candidate(Ref<StreamPeerTCP> &p_tcp) {
+	// Check if we still need resolving.
+	if (resolver_id != IP::RESOLVER_INVALID_ID) {
+		IP::ResolverStatus ip_status = IP::get_singleton()->get_resolve_item_status(resolver_id);
+		if (ip_status == IP::RESOLVER_STATUS_WAITING) {
+			return;
+		}
+		if (ip_status == IP::RESOLVER_STATUS_DONE) {
+			ip_candidates = IP::get_singleton()->get_resolve_item_addresses(resolver_id);
+		}
+		IP::get_singleton()->erase_resolve_item(resolver_id);
+		resolver_id = IP::RESOLVER_INVALID_ID;
+	}
+
+	// Try the current candidate if we have one.
+	if (p_tcp->get_status() != StreamPeerTCP::STATUS_NONE) {
+		p_tcp->poll();
+		StreamPeerTCP::Status status = p_tcp->get_status();
+		if (status == StreamPeerTCP::STATUS_CONNECTED) {
+			ip_candidates.clear();
+			return;
+		} else {
+			p_tcp->disconnect_from_host();
+		}
+	}
+
+	// Keep trying next candidate.
+	while (ip_candidates.size()) {
+		Error err = p_tcp->connect_to_host(ip_candidates.pop_front(), port);
+		if (err == OK) {
+			return;
+		} else {
+			p_tcp->disconnect_from_host();
+		}
+	}
+}
+
+///
 /// Server functions
 ///
 Error WSLPeer::accept_stream(Ref<StreamPeer> p_stream, const Vector<String> p_protocols, const Vector<String> p_custom_headers) {
@@ -390,61 +454,6 @@ bool WSLPeer::_verify_server_response() {
 		}
 	}
 	return true;
-}
-
-WSLPeer::Resolver::Resolver(const String &p_host, int p_port) {
-	port = p_port;
-	if (p_host.is_valid_ip_address()) {
-		ip_candidates.push_back(IPAddress(p_host));
-	} else {
-		// Queue hostname for resolution.
-		resolver_id = IP::get_singleton()->resolve_hostname_queue_item(p_host);
-		ERR_FAIL_COND(resolver_id == IP::RESOLVER_INVALID_ID);
-		// Check if it was found in cache.
-		IP::ResolverStatus ip_status = IP::get_singleton()->get_resolve_item_status(resolver_id);
-		if (ip_status == IP::RESOLVER_STATUS_DONE) {
-			ip_candidates = IP::get_singleton()->get_resolve_item_addresses(resolver_id);
-			IP::get_singleton()->erase_resolve_item(resolver_id);
-			resolver_id = IP::RESOLVER_INVALID_ID;
-		}
-	}
-}
-
-void WSLPeer::Resolver::try_next_candidate(Ref<StreamPeerTCP> &p_tcp) {
-	// Check if we still need resolving.
-	if (resolver_id != IP::RESOLVER_INVALID_ID) {
-		IP::ResolverStatus ip_status = IP::get_singleton()->get_resolve_item_status(resolver_id);
-		if (ip_status == IP::RESOLVER_STATUS_WAITING) {
-			return;
-		}
-		if (ip_status == IP::RESOLVER_STATUS_DONE) {
-			ip_candidates = IP::get_singleton()->get_resolve_item_addresses(resolver_id);
-		}
-		IP::get_singleton()->erase_resolve_item(resolver_id);
-		resolver_id = IP::RESOLVER_INVALID_ID;
-	}
-
-	// Try the current candidate if we have one.
-	if (p_tcp->get_status() != StreamPeerTCP::STATUS_NONE) {
-		p_tcp->poll();
-		StreamPeerTCP::Status status = p_tcp->get_status();
-		if (status == StreamPeerTCP::STATUS_CONNECTED) {
-			ip_candidates.clear();
-			return;
-		} else {
-			p_tcp->disconnect_from_host();
-		}
-	}
-
-	// Keep trying next candidate.
-	while (ip_candidates.size()) {
-		Error err = p_tcp->connect_to_host(ip_candidates.pop_front(), port);
-		if (err == OK) {
-			return;
-		} else {
-			p_tcp->disconnect_from_host();
-		}
-	}
 }
 
 Error WSLPeer::connect_to_url(String p_url, const Vector<String> p_protocols, const Vector<String> p_custom_headers, bool p_verify_tls, Ref<X509Certificate> p_cert) {

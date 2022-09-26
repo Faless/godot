@@ -64,6 +64,7 @@ private:
 		void try_next_candidate(Ref<StreamPeerTCP> &p_tcp);
 		Resolver() {}
 		Resolver(const String &p_host, int p_port);
+		~Resolver();
 	};
 
 	Resolver resolver;

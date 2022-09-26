@@ -37,7 +37,6 @@
 
 #include "core/crypto/crypto_core.h"
 #include "core/math/random_number_generator.h"
-#include "core/os/os.h"
 
 ///
 /// Resolver
@@ -586,12 +585,11 @@ ssize_t WSLPeer::_wsl_send_callback(wslay_event_context_ptr ctx, const uint8_t *
 }
 
 int WSLPeer::_wsl_genmask_callback(wslay_event_context_ptr ctx, uint8_t *buf, size_t len, void *user_data) {
-	RandomNumberGenerator rng;
-	// TODO maybe use crypto in the future?
-	rng.set_seed(OS::get_singleton()->get_unix_time());
-	for (unsigned int i = 0; i < len; i++) {
-		buf[i] = (uint8_t)rng.randi_range(0, 255);
-	}
+	CryptoCore::RandomGenerator rng;
+	Error err = rng.init();
+	ERR_FAIL_COND_V(err != OK, WSLAY_ERR_CALLBACK_FAILURE);
+	err = rng.get_random_bytes(buf, len);
+	ERR_FAIL_COND_V(err != OK, WSLAY_ERR_CALLBACK_FAILURE);
 	return 0;
 }
 
@@ -630,16 +628,11 @@ wslay_event_callbacks WSLPeer::_wsl_callbacks = {
 
 String WSLPeer::generate_key() {
 	// Random key
-	RandomNumberGenerator rng;
-	rng.set_seed(OS::get_singleton()->get_unix_time());
 	Vector<uint8_t> bkey;
 	int len = 16; // 16 bytes, as per RFC
 	bkey.resize(len);
-	uint8_t *w = bkey.ptrw();
-	for (int i = 0; i < len; i++) {
-		w[i] = (uint8_t)rng.randi_range(0, 255);
-	}
-	return CryptoCore::b64_encode_str(&w[0], len);
+	_wsl_genmask_callback(nullptr, bkey.ptrw(), len, nullptr);
+	return CryptoCore::b64_encode_str(bkey.ptrw(), len);
 }
 
 String WSLPeer::compute_key_response(String p_key) {

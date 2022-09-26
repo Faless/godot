@@ -61,6 +61,7 @@ Error WSLPeer::accept_stream(Ref<StreamPeer> p_stream, const Vector<String> p_pr
 	pending_request = true;
 	supported_protocols = p_protocols;
 	custom_headers = p_custom_headers;
+	is_server = true;
 	ready_state = WebSocketPeer::STATE_CONNECTING;
 	return OK;
 }
@@ -132,7 +133,7 @@ Error WSLPeer::_do_server_handshake() {
 		Ref<StreamPeerTLS> tls = static_cast<Ref<StreamPeerTLS>>(connection);
 		if (tls.is_null()) {
 			ERR_FAIL_V_MSG(ERR_BUG, "Couldn't get StreamPeerTLS for WebSocket handshake.");
-			ready_state = WebSocketPeer::STATE_CLOSED;
+			close_now();
 			return FAILED;
 		}
 		tls->poll();
@@ -140,7 +141,7 @@ Error WSLPeer::_do_server_handshake() {
 			return OK; // Pending handshake
 		} else if (tls->get_status() != StreamPeerTLS::STATUS_CONNECTED) {
 			print_verbose(vformat("WebSocket SSL connection error during handshake (StreamPeerTLS status code %d).", tls->get_status()));
-			ready_state = WebSocketPeer::STATE_CLOSED;
+			close_now();
 			return FAILED;
 		}
 	}
@@ -154,7 +155,7 @@ Error WSLPeer::_do_server_handshake() {
 			Error err = connection->get_partial_data(data.ptrw() + pos, 1, read);
 			if (err != OK) { // Got an error
 				print_verbose(vformat("WebSocket error while getting partial data (StreamPeer error code %d).", err));
-				ready_state = WebSocketPeer::STATE_CLOSED;
+				close_now();
 				return FAILED;
 			} else if (read != 1) { // Busy, wait next poll
 				return OK;
@@ -164,7 +165,7 @@ Error WSLPeer::_do_server_handshake() {
 			if (l > 3 && r[l] == '\n' && r[l - 1] == '\r' && r[l - 2] == '\n' && r[l - 3] == '\r') {
 				r[l - 3] = '\0';
 				if (!_parse_client_request()) {
-					ready_state = WebSocketPeer::STATE_CLOSED;
+					close_now();
 					return FAILED;
 				}
 				String s = "HTTP/1.1 101 Switching Protocols\r\n";
@@ -201,12 +202,15 @@ Error WSLPeer::_do_server_handshake() {
 		Error err = connection->put_partial_data(data.ptr() + pos, left, sent);
 		if (err != OK) {
 			print_verbose(vformat("WebSocket error while putting partial data (StreamPeer error code %d).", err));
-			ready_state = WebSocketPeer::STATE_CLOSED;
+			close_now();
 			return err;
 		}
 		handshake_buffer->seek(pos + sent);
 		left -= sent;
 		if (left == 0) {
+			// Response sent, initialize wslay context.
+			wslay_event_context_server_init(&wsl_ctx, &_wsl_callbacks, this);
+			wslay_event_config_set_max_recv_msg_length(wsl_ctx, (1ULL << _in_buf_size));
 			ready_state = WebSocketPeer::STATE_OPEN;
 		}
 	}
@@ -247,7 +251,7 @@ Error WSLPeer::_client_poll() {
 		IP::get_singleton()->erase_resolve_item(resolver_id);
 		resolver_id = IP::RESOLVER_INVALID_ID;
 		if (err != OK) {
-			ready_state = WebSocketPeer::STATE_CLOSED;
+			close_now();
 			return FAILED;
 		}
 	}
@@ -272,7 +276,7 @@ Error WSLPeer::_client_poll() {
 					ERR_FAIL_COND_V_MSG(tls.is_null(), ERR_BUG, "SSL is not available in this build.");
 					tls->set_blocking_handshake_enabled(false);
 					if (tls->connect_to_stream(tcp, verify_tls, host, tls_cert) != OK) {
-						ready_state = WebSocketPeer::STATE_CLOSED;
+						close_now();
 						return FAILED;
 					}
 					connection = tls;
@@ -284,7 +288,7 @@ Error WSLPeer::_client_poll() {
 				if (tls->get_status() == StreamPeerTLS::STATUS_HANDSHAKING) {
 					return OK; // Need more polling.
 				} else if (tls->get_status() != StreamPeerTLS::STATUS_CONNECTED) {
-					ready_state = WebSocketPeer::STATE_CLOSED;
+					close_now();
 					return FAILED; // Error.
 				}
 			}
@@ -299,7 +303,7 @@ Error WSLPeer::_client_poll() {
 					return OK;
 				}
 			}
-			ready_state = WebSocketPeer::STATE_CLOSED;
+			close_now();
 			return FAILED;
 		case StreamPeerTCP::STATUS_CONNECTING:
 			return OK;
@@ -317,7 +321,7 @@ void WSLPeer::_do_client_handshake() {
 		// Sending handshake failed
 		if (err != OK) {
 			// TODO err
-			ready_state = WebSocketPeer::STATE_CLOSED;
+			close_now();
 			return;
 		}
 		handshake_buffer->seek(pos + sent);
@@ -335,7 +339,7 @@ void WSLPeer::_do_client_handshake() {
 			Vector<uint8_t> data = handshake_buffer->get_data_array();
 			if (left == 0) {
 				// Header is too big
-				ready_state = WebSocketPeer::STATE_CLOSED;
+				close_now();
 				ERR_FAIL_MSG("Response headers too big.");
 				return;
 			}
@@ -343,11 +347,11 @@ void WSLPeer::_do_client_handshake() {
 			Error err = connection->get_partial_data(data.ptrw() + pos, 1, read);
 			if (err == ERR_FILE_EOF) {
 				// We got a disconnect.
-				ready_state = WebSocketPeer::STATE_CLOSED;
+				close_now();
 				return;
 			} else if (err != OK) {
 				// Got some error.
-				ready_state = WebSocketPeer::STATE_CLOSED;
+				close_now();
 				return;
 			} else if (read != 1) {
 				// Busy, wait next poll.
@@ -360,12 +364,14 @@ void WSLPeer::_do_client_handshake() {
 			int l = pos;
 			if (l > 3 && r[l] == '\n' && r[l - 1] == '\r' && r[l - 2] == '\n' && r[l - 3] == '\r') {
 				r[l - 3] = '\0';
-				// Response is over, verify headers and create peer.
+				// Response is over, verify headers and initialize wslay context/
 				if (!_verify_server_response()) {
-					ready_state = WebSocketPeer::STATE_CLOSED;
+					close_now();
 					ERR_FAIL_MSG("Invalid response headers.");
+					return;
 				}
-				// Create peer. TODO check
+				wslay_event_context_client_init(&wsl_ctx, &_wsl_callbacks, this);
+				wslay_event_config_set_max_recv_msg_length(wsl_ctx, (1ULL << _in_buf_size));
 				ready_state = WebSocketPeer::STATE_OPEN;
 				break;
 			}
@@ -521,10 +527,9 @@ Error WSLPeer::connect_to_url(String p_url, const Vector<String> p_protocols, co
 	}
 	request += "\r\n";
 	CharString cs = request.utf8();
-
 	handshake_buffer->put_data((const uint8_t *)cs.get_data(), cs.size());
 	ready_state = WebSocketPeer::STATE_CONNECTING;
-
+	is_server = false;
 	return OK;
 }
 
@@ -603,16 +608,7 @@ void WSLPeer::_wsl_msg_recv_callback(wslay_event_context_ptr ctx, const struct w
 			peer->close_reason.parse_utf8((char *)arg->msg + 2, len - 2);
 		}
 		if (!wslay_event_get_close_sent(peer->wsl_ctx)) {
-			// TODO FIXME close request
-#if 0
-			if (_data->is_server) {
-				WSLServer *helper = static_cast<WSLServer *>(_data->obj);
-				helper->_on_close_request(_data->id, close_code, close_reason);
-			} else {
-				WSLClient *helper = static_cast<WSLClient *>(_data->obj);
-				helper->_on_close_request(close_code, close_reason);
-			}
-#endif
+			// TODO Do we have to reply?
 		}
 	}
 	// Ping or pong.
@@ -627,17 +623,6 @@ wslay_event_callbacks WSLPeer::_wsl_callbacks = {
 	nullptr, /* on_frame_recv_end_callback */
 	_wsl_msg_recv_callback
 };
-
-void WSLPeer::make_context(unsigned int p_max_recv_msg_length) {
-	ERR_FAIL_COND(wsl_ctx != nullptr);
-
-	if (is_server) {
-		wslay_event_context_server_init(&wsl_ctx, &_wsl_callbacks, this);
-	} else {
-		wslay_event_context_client_init(&wsl_ctx, &_wsl_callbacks, this);
-	}
-	wslay_event_config_set_max_recv_msg_length(wsl_ctx, (1ULL << _in_buf_size));
-}
 
 String WSLPeer::generate_key() {
 	// Random key

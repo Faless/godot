@@ -98,8 +98,6 @@ private:
 
 	WriteMode write_mode = WRITE_MODE_BINARY;
 
-	void make_context(unsigned int p_max_recv_msg_length);
-
 public:
 	WebSocketPeer::State get_state() const { return ready_state; }
 	virtual Error connect_to_url(String p_url, const Vector<String> p_protocols = Vector<String>(), const Vector<String> p_custom_headers = Vector<String>(), bool p_verify_tls = true, Ref<X509Certificate> p_cert = Ref<X509Certificate>()) override;

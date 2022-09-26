@@ -44,13 +44,29 @@
 #define WSL_MAX_HEADER_SIZE 4096
 
 class WSLPeer : public WebSocketPeer {
-	GDCIIMPL(WSLPeer, WebSocketPeer);
-
 public:
-	static String compute_key_response(String p_key);
-	static String generate_key();
+	// Custom instance implementation.
+	static WebSocketPeer *_create() { return memnew(WSLPeer); }
+	static void initialize() {
+		WebSocketPeer::_create = WSLPeer::_create;
+	}
+	static void deinitialize() {
+	}
 
 private:
+	// Callbacks.
+	static ssize_t _wsl_recv_callback(wslay_event_context_ptr ctx, uint8_t *data, size_t len, int flags, void *user_data);
+	static ssize_t _wsl_send_callback(wslay_event_context_ptr ctx, const uint8_t *data, size_t len, int flags, void *user_data);
+	static int _wsl_genmask_callback(wslay_event_context_ptr ctx, uint8_t *buf, size_t len, void *user_data);
+	static void _wsl_msg_recv_callback(wslay_event_context_ptr ctx, const struct wslay_event_on_msg_recv_arg *arg, void *user_data);
+
+	static wslay_event_callbacks _wsl_callbacks;
+
+	// Helpers
+	static String _compute_key_response(String p_key);
+	static String _generate_key();
+
+	// Client IP resolver.
 	class Resolver {
 		Array ip_candidates;
 		IP::ResolverID resolver_id = IP::RESOLVER_INVALID_ID;
@@ -69,14 +85,7 @@ private:
 
 	Resolver resolver;
 
-	Error connect_to_host(String p_host, String p_path, uint16_t p_port, bool p_tls, const Vector<String> p_protocol = Vector<String>(), const Vector<String> p_custom_headers = Vector<String>(), bool p_verify_tls = true, Ref<X509Certificate> p_cert = Ref<X509Certificate>());
-
-	static ssize_t _wsl_recv_callback(wslay_event_context_ptr ctx, uint8_t *data, size_t len, int flags, void *user_data);
-	static ssize_t _wsl_send_callback(wslay_event_context_ptr ctx, const uint8_t *data, size_t len, int flags, void *user_data);
-	static int _wsl_genmask_callback(wslay_event_context_ptr ctx, uint8_t *buf, size_t len, void *user_data);
-	static void _wsl_msg_recv_callback(wslay_event_context_ptr ctx, const struct wslay_event_on_msg_recv_arg *arg, void *user_data);
-	static wslay_event_callbacks _wsl_callbacks;
-
+	// WebSocket connection state.
 	WebSocketPeer::State ready_state = WebSocketPeer::STATE_CLOSED;
 	bool is_server = false;
 	Ref<StreamPeerTCP> tcp;
@@ -91,24 +100,24 @@ private:
 	String selected_protocol;
 	String session_key;
 
-	Vector<String> custom_headers;
+	int close_code = -1;
+	String close_reason;
+	uint8_t was_string = 0;
 
+	// WebSocket configuration.
+	Vector<String> custom_headers;
 	bool use_tls = true;
 	bool verify_tls = true;
 	Ref<X509Certificate> tls_cert;
+	WriteMode write_mode = WRITE_MODE_BINARY;
 
-	uint8_t was_string = 0;
-	// Our packet info is just a boolean (is_string), using uint8_t for it.
-	PacketBuffer<uint8_t> in_buffer;
-
-	Vector<uint8_t> packet_buffer;
-
+	// Packet buffers.
 	int _in_buf_size = DEF_BUF_SHIFT;
 	int _out_buf_size = DEF_BUF_SHIFT;
 
-	WriteMode write_mode = WRITE_MODE_BINARY;
-	int close_code = -1;
-	String close_reason;
+	Vector<uint8_t> packet_buffer;
+	// Our packet info is just a boolean (is_string), using uint8_t for it.
+	PacketBuffer<uint8_t> in_buffer;
 
 	Error _do_server_handshake();
 	bool _parse_client_request();

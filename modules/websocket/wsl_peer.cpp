@@ -237,7 +237,7 @@ Error WSLPeer::_do_server_handshake() {
 				String s = "HTTP/1.1 101 Switching Protocols\r\n";
 				s += "Upgrade: websocket\r\n";
 				s += "Connection: Upgrade\r\n";
-				s += "Sec-WebSocket-Accept: " + WSLPeer::compute_key_response(session_key) + "\r\n";
+				s += "Sec-WebSocket-Accept: " + _compute_key_response(session_key) + "\r\n";
 				if (!selected_protocol.is_empty()) {
 					s += "Sec-WebSocket-Protocol: " + selected_protocol + "\r\n";
 				}
@@ -435,7 +435,7 @@ bool WSLPeer::_verify_server_response() {
 			"Missing or invalid header '" + String(NAME) + "'. Expected value '" + VALUE + "'.");
 	WSL_CHECK("connection", "upgrade");
 	WSL_CHECK("upgrade", "websocket");
-	WSL_CHECK_NC("sec-websocket-accept", WSLPeer::compute_key_response(session_key));
+	WSL_CHECK_NC("sec-websocket-accept", _compute_key_response(session_key));
 #undef WSL_CHECK_NC
 #undef WSL_CHECK
 	if (supported_protocols.size() == 0) {
@@ -508,7 +508,7 @@ Error WSLPeer::connect_to_url(String p_url, const Vector<String> p_protocols, co
 	}
 
 	// Prepare handshake request.
-	session_key = WSLPeer::generate_key();
+	session_key = _generate_key();
 	String request = "GET " + path + " HTTP/1.1\r\n";
 	String port_string;
 	if ((port != 80 && !use_tls) || (port != 443 && use_tls)) {
@@ -626,7 +626,7 @@ wslay_event_callbacks WSLPeer::_wsl_callbacks = {
 	_wsl_msg_recv_callback
 };
 
-String WSLPeer::generate_key() {
+String WSLPeer::_generate_key() {
 	// Random key
 	Vector<uint8_t> bkey;
 	int len = 16; // 16 bytes, as per RFC
@@ -635,7 +635,7 @@ String WSLPeer::generate_key() {
 	return CryptoCore::b64_encode_str(bkey.ptrw(), len);
 }
 
-String WSLPeer::compute_key_response(String p_key) {
+String WSLPeer::_compute_key_response(String p_key) {
 	String key = p_key + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"; // Magic UUID as per RFC
 	Vector<uint8_t> sha = key.sha1_buffer();
 	return CryptoCore::b64_encode_str(sha.ptr(), sha.size());

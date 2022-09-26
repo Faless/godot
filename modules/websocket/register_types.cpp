@@ -63,14 +63,10 @@ void initialize_websocket_module(ModuleInitializationLevel p_level) {
 		EMWSPeer::make_default();
 		EMWSClient::make_default();
 #else
-		WSLPeer::make_default();
-		WSLClient::make_default();
-		WSLServer::make_default();
+		WSLPeer::initialize();
 #endif
 
 		GDREGISTER_ABSTRACT_CLASS(WebSocketMultiplayerPeer);
-		ClassDB::register_custom_instance_class<WebSocketServer>();
-		ClassDB::register_custom_instance_class<WebSocketClient>();
 		ClassDB::register_custom_instance_class<WebSocketPeer>();
 	}
 
@@ -85,4 +81,7 @@ void uninitialize_websocket_module(ModuleInitializationLevel p_level) {
 	if (p_level != MODULE_INITIALIZATION_LEVEL_SCENE) {
 		return;
 	}
+#ifndef WEB_ENABLED
+	WSLPeer::deinitialize();
+#endif
 }

@@ -137,7 +137,7 @@ Error WSLServer::PendingPeer::do_handshake(const Vector<String> p_protocols, uin
 				String s = "HTTP/1.1 101 Switching Protocols\r\n";
 				s += "Upgrade: websocket\r\n";
 				s += "Connection: Upgrade\r\n";
-				s += "Sec-WebSocket-Accept: " + WSLPeer::compute_key_response(key) + "\r\n";
+				//s += "Sec-WebSocket-Accept: " + WSLPeer::compute_key_response(key) + "\r\n";
 				if (!protocol.is_empty()) {
 					s += "Sec-WebSocket-Protocol: " + protocol + "\r\n";
 				}

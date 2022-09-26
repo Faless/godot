@@ -135,7 +135,7 @@ bool WSLClient::_verify_headers(String &r_protocol) {
 			"Missing or invalid header '" + String(NAME) + "'. Expected value '" + VALUE + "'.");
 	WSL_CHECK("connection", "upgrade");
 	WSL_CHECK("upgrade", "websocket");
-	WSL_CHECK_NC("sec-websocket-accept", WSLPeer::compute_key_response(_key));
+	//WSL_CHECK_NC("sec-websocket-accept", WSLPeer::compute_key_response(_key));
 #undef WSL_CHECK_NC
 #undef WSL_CHECK
 	if (_protocols.size() == 0) {
@@ -207,7 +207,7 @@ Error WSLClient::connect_to_host(String p_host, String p_path, uint16_t p_port, 
 		pw[i] = p_protocols[i].strip_edges();
 	}
 
-	_key = WSLPeer::generate_key();
+	//_key = WSLPeer::generate_key();
 	String request = "GET " + p_path + " HTTP/1.1\r\n";
 	String port = "";
 	if ((p_port != 80 && !p_tls) || (p_port != 443 && p_tls)) {

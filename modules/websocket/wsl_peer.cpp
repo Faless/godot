@@ -141,7 +141,6 @@ bool WSLPeer::_parse_client_request() {
 	// Wrong protocol
 	ERR_FAIL_COND_V_MSG(req[0] != "GET" || req[2] != "HTTP/1.1", false, "Invalid method or HTTP version.");
 
-	requested_url = req[1]; // TODO compose url from Host header + use_tls
 	HashMap<String, String> headers;
 	for (int i = 1; i < len; i++) {
 		Vector<String> header = psa[i].split(":", false, 1);
@@ -154,6 +153,8 @@ bool WSLPeer::_parse_client_request() {
 			headers[name] = value;
 		}
 	}
+	requested_host = headers.has("host") ? headers.get("host") : "";
+	requested_url = (use_tls ? "wss://" : "ws://") + requested_host + req[1];
 #define WSL_CHECK(NAME, VALUE)                                                          \
 	ERR_FAIL_COND_V_MSG(!headers.has(NAME) || headers[NAME].to_lower() != VALUE, false, \
 			"Missing or invalid header '" + String(NAME) + "'. Expected value '" + VALUE + "'.");
@@ -275,6 +276,8 @@ Error WSLPeer::_do_server_handshake() {
 			// Response sent, initialize wslay context.
 			wslay_event_context_server_init(&wsl_ctx, &_wsl_callbacks, this);
 			wslay_event_config_set_max_recv_msg_length(wsl_ctx, (1ULL << _in_buf_size));
+			_in_buffer.resize(11, _in_buf_size);
+			_packet_buffer.resize(1 << _in_buf_size);
 			ready_state = WebSocketPeer::STATE_OPEN;
 		}
 	}
@@ -387,6 +390,8 @@ void WSLPeer::_do_client_handshake() {
 				}
 				wslay_event_context_client_init(&wsl_ctx, &_wsl_callbacks, this);
 				wslay_event_config_set_max_recv_msg_length(wsl_ctx, (1ULL << _in_buf_size));
+				_in_buffer.resize(11, _in_buf_size);
+				_packet_buffer.resize(1 << _in_buf_size);
 				ready_state = WebSocketPeer::STATE_OPEN;
 				break;
 			}
@@ -589,7 +594,6 @@ int WSLPeer::_wsl_genmask_callback(wslay_event_context_ptr ctx, uint8_t *buf, si
 void WSLPeer::_wsl_msg_recv_callback(wslay_event_context_ptr ctx, const struct wslay_event_on_msg_recv_arg *arg, void *user_data) {
 	WSLPeer *peer = (WSLPeer *)user_data;
 	if (peer->ready_state == WebSocketPeer::STATE_CLOSING) {
-		// TODO FIXME Handle close.
 		return;
 	}
 
@@ -605,9 +609,6 @@ void WSLPeer::_wsl_msg_recv_callback(wslay_event_context_ptr ctx, const struct w
 		peer->close_reason = "";
 		if (len > 2 /* first 2 bytes = close code */) {
 			peer->close_reason.parse_utf8((char *)arg->msg + 2, len - 2);
-		}
-		if (!wslay_event_get_close_sent(peer->wsl_ctx)) {
-			// TODO Do we have to reply?
 		}
 	}
 	// Ping or pong.

@@ -132,6 +132,7 @@ Error WebSocketMultiplayerPeer::create_client(const String &p_url, bool p_verify
 		return err;
 	}
 	_peer_map[1] = peer;
+	_is_server = false;
 	_status = CONNECTION_CONNECTING;
 	return OK;
 }
@@ -141,24 +142,22 @@ bool WebSocketMultiplayerPeer::is_server() const {
 }
 
 void WebSocketMultiplayerPeer::_poll_client() {
+	ERR_FAIL_COND(_status == CONNECTION_DISCONNECTED); // Bug.
 	ERR_FAIL_COND(_is_server || !_peer_map.has(1) || _peer_map[1].is_null()); // Bug.
 	Ref<WebSocketPeer> peer = _peer_map[1];
+	peer->poll(); // Update state and fetch packets.
 	WebSocketPeer::State ready_state = peer->get_ready_state();
-	if (ready_state == WebSocketPeer::STATE_CONNECTING) {
-		peer->poll();
-	} else if (ready_state == WebSocketPeer::STATE_OPEN) {
+	if (ready_state == WebSocketPeer::STATE_OPEN) {
 		while (peer->get_available_packet_count()) {
 			_process_multiplayer(peer, 1);
 		}
-	} else {
+	} else if (peer->get_ready_state() == WebSocketPeer::STATE_CLOSED) {
 		if (_peer_id > 1) {
 			emit_signal(SNAME("server_disconnected"));
 		} else {
 			emit_signal(SNAME("connection_failed"));
 		}
-		_status = CONNECTION_DISCONNECTED;
 		_clear();
-		return;
 	}
 }
 
@@ -319,8 +318,8 @@ void WebSocketMultiplayerPeer::_process_multiplayer(Ref<WebSocketPeer> p_peer, u
 		ERR_FAIL_COND(type != SYS_NONE); // Only server sends sys messages
 		ERR_FAIL_COND(from != p_peer_id); // Someone is cheating
 
-		if (to == 1) { // This is for the server
-
+		if (to == 1) {
+			// This is for the server
 			_store_pkt(from, to, in_buffer, data_size);
 
 		} else if (to == 0) {
@@ -337,8 +336,8 @@ void WebSocketMultiplayerPeer::_process_multiplayer(Ref<WebSocketPeer> p_peer, u
 		_server_relay(from, to, in_buffer, size);
 
 	} else {
-		if (type == SYS_NONE) { // Payload message
-
+		if (type == SYS_NONE) {
+			// Payload message
 			_store_pkt(from, to, in_buffer, data_size);
 			return;
 		}
@@ -350,7 +349,11 @@ void WebSocketMultiplayerPeer::_process_multiplayer(Ref<WebSocketPeer> p_peer, u
 
 		switch (type) {
 			case SYS_ADD: // Add peer
-				_peer_map[id] = Ref<WebSocketPeer>();
+				if (id != 1) {
+					_peer_map[id] = Ref<WebSocketPeer>();
+				} else {
+					_status = CONNECTION_CONNECTED;
+				}
 				emit_signal(SNAME("peer_connected"), id);
 				if (id == 1) { // We just connected to the server
 					emit_signal(SNAME("connection_succeeded"));

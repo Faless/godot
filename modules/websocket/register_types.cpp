@@ -66,7 +66,7 @@ void initialize_websocket_module(ModuleInitializationLevel p_level) {
 		WSLPeer::initialize();
 #endif
 
-		GDREGISTER_ABSTRACT_CLASS(WebSocketMultiplayerPeer);
+		GDREGISTER_CLASS(WebSocketMultiplayerPeer);
 		ClassDB::register_custom_instance_class<WebSocketPeer>();
 	}
 

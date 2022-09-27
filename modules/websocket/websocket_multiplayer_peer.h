@@ -81,14 +81,19 @@ public:
 	int get_packet_peer() const override;
 	int get_unique_id() const override;
 
+	virtual int get_max_packet_size() const override { return 0; }
+	virtual bool is_server() const override { return false; }
+	virtual void poll() override {}
+	virtual ConnectionStatus get_connection_status() const override { return CONNECTION_DISCONNECTED; }
+
 	/* PacketPeer */
 	virtual int get_available_packet_count() const override;
 	virtual Error get_packet(const uint8_t **r_buffer, int &r_buffer_size) override;
 	virtual Error put_packet(const uint8_t *p_buffer, int p_buffer_size) override;
 
 	/* WebSocketPeer */
-	virtual Error set_buffers(int p_in_buffer, int p_in_packets, int p_out_buffer, int p_out_packets) = 0;
-	virtual Ref<WebSocketPeer> get_peer(int p_peer_id) const = 0;
+	virtual Error set_buffers(int p_in_buffer, int p_in_packets, int p_out_buffer, int p_out_packets) { return OK; } // TODO remove
+	virtual Ref<WebSocketPeer> get_peer(int p_peer_id) const;
 
 	void _process_multiplayer(Ref<WebSocketPeer> p_peer, uint32_t p_peer_id);
 	void _clear();

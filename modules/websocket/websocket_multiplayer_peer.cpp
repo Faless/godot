@@ -120,6 +120,11 @@ int WebSocketMultiplayerPeer::get_unique_id() const {
 	return _peer_id;
 }
 
+Ref<WebSocketPeer> WebSocketMultiplayerPeer::get_peer(int p_id) const {
+	ERR_FAIL_COND_V(!_peer_map.has(p_id), Ref<WebSocketPeer>());
+	return _peer_map[p_id];
+}
+
 void WebSocketMultiplayerPeer::_send_sys(Ref<WebSocketPeer> p_peer, uint8_t p_type, int32_t p_peer_id) {
 	ERR_FAIL_COND(!p_peer.is_valid());
 	ERR_FAIL_COND(!p_peer->is_connected_to_host());

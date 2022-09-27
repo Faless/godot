@@ -382,11 +382,8 @@ void WSLPeer::_do_client_handshake() {
 			}
 
 			Error err = connection->get_partial_data(data.ptrw() + pos, 1, read);
-			if (err == ERR_FILE_EOF) {
-				// We got a disconnect.
-				close_now();
-				return;
-			} else if (err != OK) {
+			handshake_buffer->set_data_array(data); // TODO COW at its worst.
+			if (err != OK) {
 				// Got some error.
 				close_now();
 				return;

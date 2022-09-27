@@ -102,6 +102,7 @@ void WSLPeer::Resolver::try_next_candidate(Ref<StreamPeerTCP> &p_tcp) {
 		p_tcp->poll();
 		StreamPeerTCP::Status status = p_tcp->get_status();
 		if (status == StreamPeerTCP::STATUS_CONNECTED) {
+			p_tcp->set_no_delay(true);
 			ip_candidates.clear();
 			return;
 		} else {
@@ -264,7 +265,7 @@ Error WSLPeer::_do_server_handshake() {
 				s += "\r\n";
 				CharString cs = s.utf8();
 				handshake_buffer->clear();
-				handshake_buffer->put_data((const uint8_t *)cs.get_data(), cs.size());
+				handshake_buffer->put_data((const uint8_t *)cs.get_data(), cs.size() - 1);
 				handshake_buffer->seek(0);
 				pending_request = false;
 				break;
@@ -290,12 +291,12 @@ Error WSLPeer::_do_server_handshake() {
 		handshake_buffer->seek(pos + sent);
 		left -= sent;
 		if (left == 0) {
+			resolver.stop();
 			// Response sent, initialize wslay context.
 			wslay_event_context_server_init(&wsl_ctx, &_wsl_callbacks, this);
 			wslay_event_config_set_max_recv_msg_length(wsl_ctx, (1ULL << _in_buf_size));
 			in_buffer.resize(11, _in_buf_size);
 			packet_buffer.resize(1 << _in_buf_size);
-			resolver.stop();
 			ready_state = STATE_OPEN;
 		}
 	}
@@ -506,7 +507,7 @@ Error WSLPeer::connect_to_url(String p_url, const Vector<String> p_protocols, co
 	resolver.try_next_candidate(tcp);
 
 	if (tcp->get_status() != StreamPeerTCP::STATUS_CONNECTING && !resolver.has_more_candidates()) {
-		tcp.unref();
+		_clear();
 		return FAILED;
 	}
 	connection = tcp;
@@ -544,7 +545,7 @@ Error WSLPeer::connect_to_url(String p_url, const Vector<String> p_protocols, co
 	}
 	request += "\r\n";
 	CharString cs = request.utf8();
-	handshake_buffer->put_data((const uint8_t *)cs.get_data(), cs.size());
+	handshake_buffer->put_data((const uint8_t *)cs.get_data(), cs.size() - 1);
 	handshake_buffer->seek(0);
 	ready_state = STATE_CONNECTING;
 	is_server = false;
@@ -770,8 +771,11 @@ void WSLPeer::close(int p_code, String p_reason) {
 		ready_state = STATE_CLOSING;
 	} else if (ready_state == STATE_CONNECTING || ready_state == STATE_CLOSED) {
 		ready_state = STATE_CLOSED;
-		tcp.unref();
 		connection.unref();
+		if (tcp.is_valid()) {
+			tcp->disconnect_from_host();
+			tcp.unref();
+		}
 	}
 
 	in_buffer.clear();
@@ -797,8 +801,11 @@ void WSLPeer::_clear() {
 	// Connection info.
 	ready_state = STATE_CLOSED;
 	is_server = false;
-	tcp.unref();
 	connection.unref();
+	if (tcp.is_valid()) {
+		tcp->disconnect_from_host();
+		tcp.unref();
+	}
 	if (wsl_ctx) {
 		wslay_event_context_free(wsl_ctx);
 		wsl_ctx = nullptr;

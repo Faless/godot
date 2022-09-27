@@ -621,6 +621,9 @@ void WSLPeer::_wsl_msg_recv_callback(wslay_event_context_ptr ctx, const struct w
 		if (len > 2 /* first 2 bytes = close code */) {
 			peer->close_reason.parse_utf8((char *)arg->msg + 2, len - 2);
 		}
+		if (peer->ready_state == STATE_OPEN) {
+			peer->ready_state = STATE_CLOSING;
+		}
 	}
 	// Ping or pong.
 }

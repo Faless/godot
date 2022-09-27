@@ -604,17 +604,10 @@ int WSLPeer::_wsl_genmask_callback(wslay_event_context_ptr ctx, uint8_t *buf, si
 
 void WSLPeer::_wsl_msg_recv_callback(wslay_event_context_ptr ctx, const struct wslay_event_on_msg_recv_arg *arg, void *user_data) {
 	WSLPeer *peer = (WSLPeer *)user_data;
-	if (peer->ready_state == STATE_CLOSING) {
-		return;
-	}
-
 	uint8_t op = arg->opcode;
-	if (op == WSLAY_TEXT_FRAME || op == WSLAY_BINARY_FRAME) {
-		// Message.
-		uint8_t is_string = arg->opcode == WSLAY_TEXT_FRAME ? 1 : 0;
-		peer->in_buffer.write_packet(arg->msg, arg->msg_length, &is_string);
-	} else if (op == WSLAY_CONNECTION_CLOSE) {
-		// Close request.
+
+	if (op == WSLAY_CONNECTION_CLOSE) {
+		// Close request or confirmation.
 		peer->close_code = arg->status_code;
 		size_t len = arg->msg_length;
 		peer->close_reason = "";
@@ -624,6 +617,17 @@ void WSLPeer::_wsl_msg_recv_callback(wslay_event_context_ptr ctx, const struct w
 		if (peer->ready_state == STATE_OPEN) {
 			peer->ready_state = STATE_CLOSING;
 		}
+		return;
+	}
+
+	if (peer->ready_state == STATE_CLOSING) {
+		return;
+	}
+
+	if (op == WSLAY_TEXT_FRAME || op == WSLAY_BINARY_FRAME) {
+		// Message.
+		uint8_t is_string = arg->opcode == WSLAY_TEXT_FRAME ? 1 : 0;
+		peer->in_buffer.write_packet(arg->msg, arg->msg_length, &is_string);
 	}
 	// Ping or pong.
 }
@@ -747,10 +751,6 @@ int WSLPeer::get_current_outbound_buffered_amount() const {
 	}
 
 	return wslay_event_get_queued_msg_length(wsl_ctx);
-}
-
-bool WSLPeer::was_string_packet() const {
-	return was_string;
 }
 
 bool WSLPeer::is_connected_to_host() const {

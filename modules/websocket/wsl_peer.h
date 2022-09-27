@@ -153,7 +153,7 @@ public:
 
 	virtual WriteMode get_write_mode() const override;
 	virtual void set_write_mode(WriteMode p_mode) override;
-	virtual bool was_string_packet() const override;
+	virtual bool was_string_packet() const override { return was_string; }
 	virtual void set_no_delay(bool p_enabled) override;
 
 	WSLPeer();

@@ -200,8 +200,10 @@ void WebSocketMultiplayerPeer::_poll_server() {
 			WebSocketPeer::State state = peer.ws->get_ready_state();
 			if (state == WebSocketPeer::STATE_OPEN) {
 				// Connected.
-				_peer_map[E.key] = peer.ws;
 				to_remove.insert(id);
+				_peer_map[id] = peer.ws;
+				_send_add(id);
+				emit_signal("peer_connected", id);
 				continue;
 			} else if (state == WebSocketPeer::STATE_CONNECTING) {
 				continue; // Still connecting.

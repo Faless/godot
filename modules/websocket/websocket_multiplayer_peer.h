@@ -32,7 +32,6 @@
 #define WEBSOCKET_MULTIPLAYER_PEER_H
 
 #include "core/error/error_list.h"
-#include "core/io/tcp_server.h"
 #include "core/templates/list.h"
 #include "scene/main/multiplayer_peer.h"
 #include "websocket_peer.h"
@@ -62,7 +61,8 @@ protected:
 		uint32_t size = 0;
 	};
 
-	Ref<TCPServer> _tcp_server;
+	int _out_buf_size = DEF_BUF_SHIFT;
+	ConnectionStatus _status = CONNECTION_DISCONNECTED;
 	bool _is_server = false;
 
 	List<Packet> _incoming_packets;
@@ -77,6 +77,8 @@ protected:
 	void _send_add(int32_t p_peer_id);
 	void _send_sys(Ref<WebSocketPeer> p_peer, uint8_t p_type, int32_t p_peer_id);
 	void _send_del(int32_t p_peer_id);
+
+	void _poll_client();
 
 public:
 	/* MultiplayerPeer */

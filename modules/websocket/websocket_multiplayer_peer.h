@@ -98,6 +98,8 @@ public:
 	virtual Error set_buffers(int p_in_buffer, int p_in_packets, int p_out_buffer, int p_out_packets) { return OK; } // TODO remove
 	virtual Ref<WebSocketPeer> get_peer(int p_peer_id) const;
 
+	Error create_client(const String &p_url, bool p_verify_tls, Ref<X509Certificate> p_tls_certificate);
+
 	void _process_multiplayer(Ref<WebSocketPeer> p_peer, uint32_t p_peer_id);
 	void _clear();
 

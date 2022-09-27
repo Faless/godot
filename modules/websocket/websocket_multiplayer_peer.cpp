@@ -121,13 +121,31 @@ int WebSocketMultiplayerPeer::get_max_packet_size() const {
 	return 1024;
 }
 
+Error WebSocketMultiplayerPeer::create_client(const String &p_url, bool p_verify_tls, Ref<X509Certificate> p_tls_certificate) {
+	ERR_FAIL_COND_V(get_connection_status() != CONNECTION_DISCONNECTED, ERR_ALREADY_IN_USE);
+	_clear();
+	Ref<WebSocketPeer> peer = Ref<WebSocketPeer>(WebSocketPeer::create());
+	ERR_FAIL_COND_V(peer.is_null(), ERR_UNAVAILABLE);
+	Error err = peer->connect_to_url(p_url, Vector<String>(), Vector<String>(), p_verify_tls, p_tls_certificate);
+	if (err != OK) {
+		return err;
+	}
+	_peer_map[1] = peer;
+	return OK;
+}
+
 bool WebSocketMultiplayerPeer::is_server() const {
 	return _is_server;
 }
 
 void WebSocketMultiplayerPeer::poll() {
+	if (get_connection_status() == CONNECTION_CONNECTING) {
+		// Client connecting.
+		ERR_FAIL_COND(_is_server || !_peer_map.has(1) || _peer_map[1].is_null()); // Bug.
+		_peer_map[1]->poll();
+	}
 	if (get_connection_status() != CONNECTION_CONNECTED) {
-		// TODO client connecting.
+		// Still connecting or disconnected.
 		return;
 	}
 

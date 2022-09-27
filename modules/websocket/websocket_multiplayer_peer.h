@@ -32,6 +32,7 @@
 #define WEBSOCKET_MULTIPLAYER_PEER_H
 
 #include "core/error/error_list.h"
+#include "core/io/tcp_server.h"
 #include "core/templates/list.h"
 #include "scene/main/multiplayer_peer.h"
 #include "websocket_peer.h"
@@ -61,11 +62,13 @@ protected:
 		uint32_t size = 0;
 	};
 
+	Ref<TCPServer> _tcp_server;
+	bool _is_server = false;
+
 	List<Packet> _incoming_packets;
 	HashMap<int, Ref<WebSocketPeer>> _peer_map;
 	Packet _current_packet;
 
-	bool _is_multiplayer = false;
 	int _target_peer = 0;
 	int _peer_id = 0;
 
@@ -81,10 +84,10 @@ public:
 	int get_packet_peer() const override;
 	int get_unique_id() const override;
 
-	virtual int get_max_packet_size() const override { return 0; }
-	virtual bool is_server() const override { return false; }
-	virtual void poll() override {}
-	virtual ConnectionStatus get_connection_status() const override { return CONNECTION_DISCONNECTED; }
+	virtual int get_max_packet_size() const override;
+	virtual bool is_server() const override;
+	virtual void poll() override;
+	virtual ConnectionStatus get_connection_status() const override;
 
 	/* PacketPeer */
 	virtual int get_available_packet_count() const override;

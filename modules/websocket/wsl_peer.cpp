@@ -149,7 +149,7 @@ Error WSLPeer::accept_stream(Ref<StreamPeer> p_stream, const Vector<String> p_pr
 }
 
 bool WSLPeer::_parse_client_request() {
-	Vector<String> psa = String((const char *)handshake_buffer->get_data_array().ptr()).split("\r\n");
+	Vector<String> psa = String((const char *)handshake_buffer->get_data_array().ptr(), handshake_buffer->get_position() - 4).split("\r\n");
 	int len = psa.size();
 	ERR_FAIL_COND_V_MSG(len < 4, false, "Not enough response headers, got: " + itos(len) + ", expected >= 4.");
 
@@ -234,8 +234,8 @@ Error WSLPeer::_do_server_handshake() {
 		while (true) {
 			ERR_FAIL_COND_V_MSG(handshake_buffer->get_available_bytes() < 1, ERR_OUT_OF_MEMORY, "WebSocket response headers are too big.");
 			int pos = handshake_buffer->get_position();
-			Vector<uint8_t> data = handshake_buffer->get_data_array();
-			Error err = connection->get_partial_data(data.ptrw() + pos, 1, read);
+			uint8_t byte;
+			Error err = connection->get_partial_data(&byte, 1, read);
 			if (err != OK) { // Got an error
 				print_verbose(vformat("WebSocket error while getting partial data (StreamPeer error code %d).", err));
 				close_now();
@@ -243,10 +243,10 @@ Error WSLPeer::_do_server_handshake() {
 			} else if (read != 1) { // Busy, wait next poll
 				return OK;
 			}
-			char *r = (char *)data.ptr();
+			handshake_buffer->put_u8(byte);
+			const char *r = (const char *)handshake_buffer->get_data_array().ptr();
 			int l = pos;
 			if (l > 3 && r[l] == '\n' && r[l - 1] == '\r' && r[l - 2] == '\n' && r[l - 3] == '\r') {
-				r[l - 3] = '\0';
 				if (!_parse_client_request()) {
 					close_now();
 					return FAILED;
@@ -269,7 +269,6 @@ Error WSLPeer::_do_server_handshake() {
 				pending_request = false;
 				break;
 			}
-			handshake_buffer->seek(pos + 1);
 		}
 	}
 
@@ -373,7 +372,6 @@ void WSLPeer::_do_client_handshake() {
 		while (true) {
 			int left = handshake_buffer->get_available_bytes();
 			int pos = handshake_buffer->get_position();
-			Vector<uint8_t> data = handshake_buffer->get_data_array();
 			if (left == 0) {
 				// Header is too big
 				close_now();
@@ -381,8 +379,8 @@ void WSLPeer::_do_client_handshake() {
 				return;
 			}
 
-			Error err = connection->get_partial_data(data.ptrw() + pos, 1, read);
-			handshake_buffer->set_data_array(data); // TODO COW at its worst.
+			uint8_t byte;
+			Error err = connection->get_partial_data(&byte, 1, read);
 			if (err != OK) {
 				// Got some error.
 				close_now();
@@ -391,13 +389,12 @@ void WSLPeer::_do_client_handshake() {
 				// Busy, wait next poll.
 				break;
 			}
-			handshake_buffer->seek(pos + read);
+			handshake_buffer->put_u8(byte);
 
 			// Check "\r\n\r\n" header terminator
-			char *r = (char *)data.ptrw();
+			const char *r = (const char *)handshake_buffer->get_data_array().ptr();
 			int l = pos;
 			if (l > 3 && r[l] == '\n' && r[l - 1] == '\r' && r[l - 2] == '\n' && r[l - 3] == '\r') {
-				r[l - 3] = '\0';
 				// Response is over, verify headers and initialize wslay context/
 				if (!_verify_server_response()) {
 					close_now();
@@ -416,9 +413,7 @@ void WSLPeer::_do_client_handshake() {
 }
 
 bool WSLPeer::_verify_server_response() {
-	Vector<uint8_t> data = handshake_buffer->get_data_array();
-	String s = (char *)data.ptrw();
-	Vector<String> psa = s.split("\r\n");
+	Vector<String> psa = String((const char *)handshake_buffer->get_data_array().ptr(), handshake_buffer->get_position() - 4).split("\r\n");
 	int len = psa.size();
 	ERR_FAIL_COND_V_MSG(len < 4, false, "Not enough response headers. Got: " + itos(len) + ", expected >= 4.");
 

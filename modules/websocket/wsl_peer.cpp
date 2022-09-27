@@ -141,7 +141,6 @@ Error WSLPeer::accept_stream(Ref<StreamPeer> p_stream, const Vector<String> p_pr
 		use_tls = true;
 	}
 	ERR_FAIL_COND_V(connection.is_null() || tcp.is_null(), ERR_INVALID_PARAMETER);
-	pending_request = true;
 	supported_protocols = p_protocols;
 	custom_headers = p_custom_headers;
 	is_server = true;
@@ -554,6 +553,7 @@ Error WSLPeer::connect_to_url(String p_url, const Vector<String> p_protocols, co
 	request += "\r\n";
 	CharString cs = request.utf8();
 	handshake_buffer->put_data((const uint8_t *)cs.get_data(), cs.size());
+	handshake_buffer->seek(0);
 	ready_state = STATE_CONNECTING;
 	is_server = false;
 	return OK;

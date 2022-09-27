@@ -32,6 +32,7 @@
 #define WEBSOCKET_MULTIPLAYER_PEER_H
 
 #include "core/error/error_list.h"
+#include "core/io/tcp_server.h"
 #include "core/templates/list.h"
 #include "scene/main/multiplayer_peer.h"
 #include "websocket_peer.h"
@@ -61,6 +62,16 @@ protected:
 		uint32_t size = 0;
 	};
 
+	struct PendingPeer {
+		uint64_t time = 0;
+		Ref<StreamPeerTCP> tcp;
+		Ref<StreamPeer> connection;
+		Ref<WebSocketPeer> ws;
+	};
+
+	HashMap<int, PendingPeer> pending_peers;
+	Ref<TCPServer> tcp_server;
+
 	int _out_buf_size = DEF_BUF_SHIFT;
 	ConnectionStatus _status = CONNECTION_DISCONNECTED;
 	bool _is_server = false;
@@ -79,6 +90,7 @@ protected:
 	void _send_del(int32_t p_peer_id);
 
 	void _poll_client();
+	void _poll_server();
 
 public:
 	/* MultiplayerPeer */
@@ -101,6 +113,7 @@ public:
 	virtual Ref<WebSocketPeer> get_peer(int p_peer_id) const;
 
 	Error create_client(const String &p_url, bool p_verify_tls, Ref<X509Certificate> p_tls_certificate);
+	Error create_server(int p_port, Ref<CryptoKey> p_tls_key, Ref<X509Certificate> p_tls_certificate);
 
 	void _process_multiplayer(Ref<WebSocketPeer> p_peer, uint32_t p_peer_id);
 	void _clear();

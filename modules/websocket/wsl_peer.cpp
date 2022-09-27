@@ -146,6 +146,8 @@ Error WSLPeer::accept_stream(Ref<StreamPeer> p_stream, const Vector<String> p_pr
 	custom_headers = p_custom_headers;
 	is_server = true;
 	ready_state = STATE_CONNECTING;
+	handshake_buffer->resize(WSL_MAX_HEADER_SIZE);
+	handshake_buffer->seek(0);
 	return OK;
 }
 

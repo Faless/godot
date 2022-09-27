@@ -141,7 +141,7 @@ public:
 	virtual int get_max_packet_size() const override { return packet_buffer.size(); };
 	virtual int get_current_outbound_buffered_amount() const override;
 
-	virtual State get_state() const override { return ready_state; }
+	virtual State get_ready_state() const override { return ready_state; }
 	virtual int get_close_code() const override { return close_code; }
 	virtual String get_close_reason() const override { return close_reason; }
 

@@ -71,7 +71,12 @@ void WebSocketMultiplayerPeer::_clear() {
 void WebSocketMultiplayerPeer::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("create_client", "url", "verify_tls", "tls_certificate"), &WebSocketMultiplayerPeer::create_client, DEFVAL(true), DEFVAL(Ref<X509Certificate>()));
 	ClassDB::bind_method(D_METHOD("create_server", "port", "bind_address", "tls_key", "tls_certificate"), &WebSocketMultiplayerPeer::create_server, DEFVAL("*"), DEFVAL(Ref<CryptoKey>()), DEFVAL(Ref<X509Certificate>()));
+	ClassDB::bind_method(D_METHOD("close"), &WebSocketMultiplayerPeer::close);
+
 	ClassDB::bind_method(D_METHOD("get_peer", "peer_id"), &WebSocketMultiplayerPeer::get_peer);
+	ClassDB::bind_method(D_METHOD("get_peer_address", "id"), &WebSocketMultiplayerPeer::get_peer_address);
+	ClassDB::bind_method(D_METHOD("get_peer_port", "id"), &WebSocketMultiplayerPeer::get_peer_port);
+	ClassDB::bind_method(D_METHOD("disconnect_peer", "id", "code", "reason"), &WebSocketMultiplayerPeer::disconnect_peer, DEFVAL(1000), DEFVAL(""));
 
 	ClassDB::bind_method(D_METHOD("get_supported_protocols"), &WebSocketMultiplayerPeer::get_supported_protocols);
 	ClassDB::bind_method(D_METHOD("set_supported_protocols", "protocols"), &WebSocketMultiplayerPeer::set_supported_protocols);
@@ -567,4 +572,23 @@ float WebSocketMultiplayerPeer::get_handshake_timeout() const {
 void WebSocketMultiplayerPeer::set_handshake_timeout(float p_timeout) {
 	ERR_FAIL_COND(p_timeout <= 0.0);
 	handshake_timeout = p_timeout * 1000;
+}
+
+IPAddress WebSocketMultiplayerPeer::get_peer_address(int p_peer_id) const {
+	ERR_FAIL_COND_V(!peers_map.has(p_peer_id), IPAddress());
+	return peers_map[p_peer_id]->get_connected_host();
+}
+
+int WebSocketMultiplayerPeer::get_peer_port(int p_peer_id) const {
+	ERR_FAIL_COND_V(!peers_map.has(p_peer_id), 0);
+	return peers_map[p_peer_id]->get_connected_port();
+}
+
+void WebSocketMultiplayerPeer::disconnect_peer(int p_peer_id, int p_code, String p_reason) {
+	ERR_FAIL_COND(!peers_map.has(p_peer_id));
+	peers_map[p_peer_id]->close(p_code, p_reason);
+}
+
+void WebSocketMultiplayerPeer::close() {
+	_clear();
 }

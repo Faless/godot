@@ -134,6 +134,11 @@ public:
 	float get_handshake_timeout() const;
 	void set_handshake_timeout(float p_timeout);
 
+	IPAddress get_peer_address(int p_peer_id) const;
+	int get_peer_port(int p_peer_id) const;
+	void disconnect_peer(int p_peer_id, int p_code = 1000, String p_reason = "");
+	void close();
+
 	void _process_multiplayer(Ref<WebSocketPeer> p_peer, uint32_t p_peer_id);
 	void _clear();
 

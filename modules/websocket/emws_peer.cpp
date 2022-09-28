@@ -62,6 +62,18 @@ Error EMWSPeer::connect_to_url(const String &p_url, bool p_verify_tls, Ref<X509C
 	ERR_FAIL_COND_V(ready_state != STATE_CLOSED, ERR_ALREADY_IN_USE);
 	_clear();
 
+	String host;
+	String path;
+	String scheme;
+	int port = 0;
+	Error err = p_url.parse_url(scheme, host, port, path);
+	ERR_FAIL_COND_V_MSG(err != OK, err, "Invalid URL: " + p_url);
+
+	if (scheme.is_empty()) {
+		scheme = "ws://";
+	}
+	ERR_FAIL_COND_V_MSG(scheme != "ws://" && scheme != "wss://", ERR_INVALID_PARAMETER, vformat("Invalid protocol: \"%s\" (must be either \"ws://\" or \"wss://\").", scheme));
+
 	String proto_string;
 	for (int i = 0; i < supported_protocols.size(); i++) {
 		if (i != 0) {
@@ -77,14 +89,13 @@ Error EMWSPeer::connect_to_url(const String &p_url, bool p_verify_tls, Ref<X509C
 		WARN_PRINT_ONCE("Custom SSL certificates are not supported in Web platform.");
 	}
 
-	String connect_string = p_url;
+	requested_url = scheme + host;
 
-	String lower = p_url.to_lower();
-	if (!lower.begins_with("wss://") && !lower.begins_with("ws://")) {
-		connect_string = "ws://" + connect_string;
+	if (port && ((scheme == "ws://" && port != 80) || (scheme == "wss://" && port != 443))) {
+		requested_url += ":" + String::num(port);
 	}
 
-	peer_sock = godot_js_websocket_create(this, connect_string.utf8().get_data(), proto_string.utf8().get_data(), &_esws_on_connect, &_esws_on_message, &_esws_on_error, &_esws_on_close);
+	peer_sock = godot_js_websocket_create(this, requested_url.utf8().get_data(), proto_string.utf8().get_data(), &_esws_on_connect, &_esws_on_message, &_esws_on_error, &_esws_on_close);
 	if (peer_sock == -1) {
 		return FAILED;
 	}
@@ -155,8 +166,9 @@ void EMWSPeer::_clear() {
 	ready_state = STATE_CLOSED;
 	was_string = 0;
 	close_code = -1;
-	close_reason = "";
-	selected_protocol = "";
+	close_reason.clear();
+	selected_protocol.clear();
+	requested_url.clear();
 	in_buffer.clear();
 	packet_buffer.clear();
 }
@@ -199,6 +211,10 @@ String EMWSPeer::get_close_reason() const {
 
 String EMWSPeer::get_selected_protocol() const {
 	return selected_protocol;
+}
+
+String EMWSPeer::get_requested_url() const {
+	return requested_url;
 }
 
 IPAddress EMWSPeer::get_connected_host() const {

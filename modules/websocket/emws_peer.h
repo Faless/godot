@@ -64,6 +64,7 @@ private:
 	int close_code = -1;
 	String close_reason;
 	String selected_protocol;
+	String requested_url;
 
 	static WebSocketPeer *_create() { return memnew(EMWSPeer); }
 	static void _esws_on_connect(void *obj, char *proto);
@@ -98,6 +99,7 @@ public:
 	virtual IPAddress get_connected_host() const override;
 	virtual uint16_t get_connected_port() const override;
 	virtual String get_selected_protocol() const override;
+	virtual String get_requested_url() const override;
 
 	virtual bool was_string_packet() const override;
 	virtual void set_no_delay(bool p_enabled) override;

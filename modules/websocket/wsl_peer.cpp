@@ -484,6 +484,10 @@ Error WSLPeer::connect_to_url(const String &p_url, bool p_verify_tls, Ref<X509Ce
 	int port = 0;
 	Error err = p_url.parse_url(scheme, host, port, path);
 	ERR_FAIL_COND_V_MSG(err != OK, err, "Invalid URL: " + p_url);
+	if (scheme.is_empty()) {
+		scheme = "ws://";
+	}
+	ERR_FAIL_COND_V_MSG(scheme != "ws://" && scheme != "wss://", ERR_INVALID_PARAMETER, vformat("Invalid protocol: \"%s\" (must be either \"ws://\" or \"wss://\").", scheme));
 
 	use_tls = false;
 	if (scheme == "wss://") {
@@ -786,6 +790,10 @@ String WSLPeer::get_selected_protocol() const {
 	return selected_protocol;
 }
 
+String WSLPeer::get_requested_url() const {
+	return requested_url;
+}
+
 void WSLPeer::set_no_delay(bool p_enabled) {
 	ERR_FAIL_COND(tcp.is_null());
 	tcp->set_no_delay(p_enabled);
@@ -806,12 +814,12 @@ void WSLPeer::_clear() {
 	}
 
 	resolver.stop();
-	requested_url = "";
-	requested_host = "";
+	requested_url.clear();
+	requested_host.clear();
 	pending_request = true;
 	handshake_buffer->clear();
-	selected_protocol = "";
-	session_key = "";
+	selected_protocol.clear();
+	session_key.clear();
 
 	// Pending packets info.
 	was_string = 0;
@@ -820,7 +828,7 @@ void WSLPeer::_clear() {
 
 	// Close code info.
 	close_code = -1;
-	close_reason = "";
+	close_reason.clear();
 }
 
 WSLPeer::WSLPeer() {

@@ -146,6 +146,7 @@ public:
 	virtual IPAddress get_connected_host() const override;
 	virtual uint16_t get_connected_port() const override;
 	virtual String get_selected_protocol() const override;
+	virtual String get_requested_url() const override;
 
 	virtual bool was_string_packet() const override { return was_string; }
 	virtual void set_no_delay(bool p_enabled) override;

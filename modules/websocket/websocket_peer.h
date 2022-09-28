@@ -34,11 +34,9 @@
 #include "core/crypto/crypto.h"
 #include "core/error/error_list.h"
 #include "core/io/packet_peer.h"
-#include "websocket_macros.h"
 
 class WebSocketPeer : public PacketPeer {
 	GDCLASS(WebSocketPeer, PacketPeer);
-	GDCICLASS(WebSocketPeer);
 
 public:
 	enum State {
@@ -58,6 +56,8 @@ public:
 	};
 
 protected:
+	static WebSocketPeer *(*_create)();
+
 	static void _bind_methods();
 
 	Vector<String> supported_protocols;
@@ -71,6 +71,13 @@ protected:
 	int max_queued_packets = 2048;
 
 public:
+	static WebSocketPeer *create() {
+		if (!_create) {
+			return nullptr;
+		}
+		return _create();
+	}
+
 	virtual Error connect_to_url(String p_url, bool p_verify_tls = true, Ref<X509Certificate> p_cert = Ref<X509Certificate>()) { return ERR_UNAVAILABLE; };
 	virtual Error accept_stream(Ref<StreamPeer> p_stream) = 0;
 

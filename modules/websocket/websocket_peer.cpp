@@ -30,7 +30,7 @@
 
 #include "websocket_peer.h"
 
-GDCINULL(WebSocketPeer);
+WebSocketPeer *(*WebSocketPeer::_create)() = nullptr;
 
 WebSocketPeer::WebSocketPeer() {
 }

@@ -481,11 +481,9 @@ void WebSocketMultiplayerPeer::_process_multiplayer(Ref<WebSocketPeer> p_peer, u
 			// Broadcast, for us too
 			_store_pkt(from, to, in_buffer, data_size);
 
-		} else if (to < 0) {
+		} else if (to < -1) {
 			// All but one, for us if not excluded
-			if (unique_id != -(int32_t)p_peer_id) {
-				_store_pkt(from, to, in_buffer, data_size);
-			}
+			_store_pkt(from, to, in_buffer, data_size);
 		}
 		// Relay if needed (i.e. "to" includes a peer that is not the server)
 		_server_relay(from, to, in_buffer, size);

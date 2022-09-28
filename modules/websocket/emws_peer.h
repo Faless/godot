@@ -72,6 +72,7 @@ private:
 	static void _esws_on_close(void *obj, int code, const char *reason, int was_clean);
 
 	void _clear();
+	Error _send(const uint8_t *p_buffer, int p_buffer_size, bool p_binary);
 
 public:
 	static void initialize() { WebSocketPeer::_create = EMWSPeer::_create; }

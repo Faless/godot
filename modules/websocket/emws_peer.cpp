@@ -37,6 +37,7 @@
 void EMWSPeer::_esws_on_connect(void *p_obj, char *p_proto) {
 	EMWSPeer *peer = static_cast<EMWSPeer *>(p_obj);
 	peer->ready_state = STATE_OPEN;
+	peer->selected_protocol.parse_utf8(p_proto);
 }
 
 void EMWSPeer::_esws_on_message(void *p_obj, const uint8_t *p_data, int p_data_size, int p_is_string) {
@@ -98,23 +99,22 @@ Error EMWSPeer::accept_stream(Ref<StreamPeer> p_stream) {
 	return ERR_UNAVAILABLE;
 }
 
-Error EMWSPeer::send(const String &p_text) {
-	const CharString cs = p_text.utf8();
-	ERR_FAIL_COND_V(outbound_buffer_size > 0 && ((uint64_t)godot_js_websocket_buffered_amount(peer_sock) + cs.length() >= outbound_buffer_size), ERR_OUT_OF_MEMORY);
+Error EMWSPeer::_send(const uint8_t *p_buffer, int p_buffer_size, bool p_binary) {
+	ERR_FAIL_COND_V(outbound_buffer_size > 0 && (get_current_outbound_buffered_amount() + p_buffer_size >= outbound_buffer_size), ERR_OUT_OF_MEMORY);
 
-	if (godot_js_websocket_send(peer_sock, (const uint8_t *)cs.ptr(), cs.length(), 0) != 0) {
+	if (godot_js_websocket_send(peer_sock, p_buffer, p_buffer_size, p_binary ? 1 : 0) != 0) {
 		return FAILED;
 	}
 	return OK;
 }
 
-Error EMWSPeer::put_packet(const uint8_t *p_buffer, int p_buffer_size) {
-	ERR_FAIL_COND_V(outbound_buffer_size > 0 && ((uint64_t)godot_js_websocket_buffered_amount(peer_sock) + p_buffer_size >= outbound_buffer_size), ERR_OUT_OF_MEMORY);
+Error EMWSPeer::send(const String &p_text) {
+	const CharString cs = p_text.utf8();
+	return _send((const uint8_t *)cs.ptr(), cs.length(), false);
+}
 
-	if (godot_js_websocket_send(peer_sock, p_buffer, p_buffer_size, 1) != 0) {
-		return FAILED;
-	}
-	return OK;
+Error EMWSPeer::put_packet(const uint8_t *p_buffer, int p_buffer_size) {
+	return _send(p_buffer, p_buffer_size, true);
 }
 
 Error EMWSPeer::get_packet(const uint8_t **r_buffer, int &r_buffer_size) {

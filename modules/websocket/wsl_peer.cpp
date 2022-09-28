@@ -265,7 +265,7 @@ Error WSLPeer::_do_server_handshake() {
 				s += "\r\n";
 				CharString cs = s.utf8();
 				handshake_buffer->clear();
-				handshake_buffer->put_data((const uint8_t *)cs.get_data(), cs.size() - 1);
+				handshake_buffer->put_data((const uint8_t *)cs.get_data(), cs.length());
 				handshake_buffer->seek(0);
 				pending_request = false;
 				break;
@@ -539,7 +539,7 @@ Error WSLPeer::connect_to_url(String p_url, bool p_verify_tls, Ref<X509Certifica
 	}
 	request += "\r\n";
 	CharString cs = request.utf8();
-	handshake_buffer->put_data((const uint8_t *)cs.get_data(), cs.size() - 1);
+	handshake_buffer->put_data((const uint8_t *)cs.get_data(), cs.length());
 	handshake_buffer->seek(0);
 	ready_state = STATE_CONNECTING;
 	is_server = false;
@@ -760,7 +760,7 @@ void WSLPeer::close_now() {
 void WSLPeer::close(int p_code, String p_reason) {
 	if (ready_state == STATE_OPEN && !wslay_event_get_close_sent(wsl_ctx)) {
 		CharString cs = p_reason.utf8();
-		wslay_event_queue_close(wsl_ctx, p_code, (uint8_t *)cs.ptr(), cs.size());
+		wslay_event_queue_close(wsl_ctx, p_code, (uint8_t *)cs.ptr(), cs.length());
 		wslay_event_send(wsl_ctx);
 		ready_state = STATE_CLOSING;
 	} else if (ready_state == STATE_CONNECTING || ready_state == STATE_CLOSED) {

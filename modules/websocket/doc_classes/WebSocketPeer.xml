@@ -99,12 +99,6 @@
 				Returns the selected WebSocket sub-protocol for this connection or an empty string if the sub-protocol has not been selected yet.
 			</description>
 		</method>
-		<method name="is_connected_to_host" qualifiers="const">
-			<return type="bool" />
-			<description>
-				Returns [code]true[/code] if this peer is currently connected.
-			</description>
-		</method>
 		<method name="poll">
 			<return type="void" />
 			<description>

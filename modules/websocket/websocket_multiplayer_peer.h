@@ -93,9 +93,11 @@ protected:
 	void _send_add(int32_t p_peer_id);
 	void _send_sys(Ref<WebSocketPeer> p_peer, uint8_t p_type, int32_t p_peer_id);
 	void _send_del(int32_t p_peer_id);
+	void _process_multiplayer(Ref<WebSocketPeer> p_peer, uint32_t p_peer_id);
 
 	void _poll_client();
 	void _poll_server();
+	void _clear();
 
 public:
 	/* MultiplayerPeer */
@@ -139,8 +141,8 @@ public:
 	void disconnect_peer(int p_peer_id, int p_code = 1000, String p_reason = "");
 	void close();
 
-	void _process_multiplayer(Ref<WebSocketPeer> p_peer, uint32_t p_peer_id);
-	void _clear();
+	void set_max_queued_packets(int p_max_queued_packets);
+	int get_max_queued_packets() const;
 
 	WebSocketMultiplayerPeer();
 	~WebSocketMultiplayerPeer();

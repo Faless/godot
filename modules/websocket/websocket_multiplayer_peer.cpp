@@ -44,6 +44,9 @@ Ref<WebSocketPeer> WebSocketMultiplayerPeer::_create_peer() {
 	Ref<WebSocketPeer> peer = Ref<WebSocketPeer>(WebSocketPeer::create());
 	peer->set_supported_protocols(get_supported_protocols());
 	peer->set_handshake_headers(get_handshake_headers());
+	peer->set_inbound_buffer_size(get_inbound_buffer_size());
+	peer->set_outbound_buffer_size(get_outbound_buffer_size());
+	peer->set_max_queued_packets(get_max_queued_packets());
 	return peer;
 }
 
@@ -93,6 +96,9 @@ void WebSocketMultiplayerPeer::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_handshake_timeout"), &WebSocketMultiplayerPeer::get_handshake_timeout);
 	ClassDB::bind_method(D_METHOD("set_handshake_timeout", "timeout"), &WebSocketMultiplayerPeer::set_handshake_timeout);
 
+	ClassDB::bind_method(D_METHOD("set_max_queued_packets", "max_queued_packets"), &WebSocketPeer::set_max_queued_packets);
+	ClassDB::bind_method(D_METHOD("get_max_queued_packets"), &WebSocketPeer::get_max_queued_packets);
+
 	ADD_PROPERTY(PropertyInfo(Variant::PACKED_STRING_ARRAY, "supported_protocols"), "set_supported_protocols", "get_supported_protocols");
 	ADD_PROPERTY(PropertyInfo(Variant::PACKED_STRING_ARRAY, "handshake_headers"), "set_handshake_headers", "get_handshake_headers");
 
@@ -100,6 +106,8 @@ void WebSocketMultiplayerPeer::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "outbound_buffer_size"), "set_outbound_buffer_size", "get_outbound_buffer_size");
 
 	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "handshake_timeout"), "set_handshake_timeout", "get_handshake_timeout");
+
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "max_queued_packets"), "set_max_queued_packets", "get_max_queued_packets");
 }
 
 //
@@ -563,6 +571,14 @@ void WebSocketMultiplayerPeer::set_inbound_buffer_size(int p_buffer_size) {
 
 int WebSocketMultiplayerPeer::get_inbound_buffer_size() const {
 	return peer_config->get_inbound_buffer_size();
+}
+
+void WebSocketMultiplayerPeer::set_max_queued_packets(int p_max_queued_packets) {
+	peer_config->set_max_queued_packets(p_max_queued_packets);
+}
+
+int WebSocketMultiplayerPeer::get_max_queued_packets() const {
+	return peer_config->get_max_queued_packets();
 }
 
 float WebSocketMultiplayerPeer::get_handshake_timeout() const {

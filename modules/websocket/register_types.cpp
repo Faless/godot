@@ -33,16 +33,15 @@
 #include "core/config/project_settings.h"
 #include "core/error/error_macros.h"
 
-#include "websocket_client.h"
-#include "websocket_server.h"
+#include "websocket_multiplayer_peer.h"
+#include "websocket_peer.h"
 
 #ifdef WEB_ENABLED
 #include "emscripten.h"
 #include "emws_client.h"
 #include "emws_peer.h"
 #else
-#include "wsl_client.h"
-#include "wsl_server.h"
+#include "wsl_peer.h"
 #endif
 
 #ifdef TOOLS_ENABLED

@@ -36,25 +36,29 @@ Error RemoteDebuggerPeerWebSocket::connect_to_host(const String &p_uri) {
 	Vector<String> protocols;
 	protocols.push_back("binary"); // Compatibility for emscripten TCP-to-WebSocket.
 
-	ws_client->connect_to_url(p_uri, protocols);
-	ws_client->poll();
+	ws_peer = Ref<WebSocketPeer>(WebSocketPeer::create());
+	ws_peer->set_supported_protocols(protocols);
 
-	if (ws_client->get_status() != WebSocketClient::STATUS_CONNECTING) { // TODO check me.
-		ERR_PRINT("Remote Debugger: Unable to connect. Status: " + String::num(ws_client->get_status()) + ".");
+	Error err = ws_peer->connect_to_url(p_uri);
+	ERR_FAIL_COND_V(err != OK, err);
+
+	ws_peer->poll();
+	WebSocketPeer::State ready_state = ws_peer->get_ready_state();
+	if (ready_state != WebSocketPeer::STATE_CONNECTING && ready_state != WebSocketPeer::STATE_OPEN) {
+		ERR_PRINT(vformat("Remote Debugger: Unable to connect. State: %s.", ws_peer->get_ready_state()));
 		return FAILED;
 	}
-
-	// ws_peer = ws_client->get_peer(1); TODO FIXME
 
 	return OK;
 }
 
 bool RemoteDebuggerPeerWebSocket::is_peer_connected() {
-	return ws_peer.is_valid() && ws_peer->is_connected_to_host();
+	return ws_peer.is_valid() && (ws_peer->get_ready_state() == WebSocketPeer::STATE_OPEN || ws_peer->get_ready_state() == WebSocketPeer::STATE_CONNECTING);
 }
 
 void RemoteDebuggerPeerWebSocket::poll() {
-	ws_client->poll();
+	ERR_FAIL_COND(ws_peer.is_null());
+	ws_peer->poll();
 
 	while (ws_peer->is_connected_to_host() && ws_peer->get_available_packet_count() > 0 && in_queue.size() < max_queued_messages) {
 		Variant var;
@@ -73,7 +77,7 @@ void RemoteDebuggerPeerWebSocket::poll() {
 }
 
 int RemoteDebuggerPeerWebSocket::get_max_message_size() const {
-	return 8 << 20; // 8 Mib
+	return ws_peer->get_max_packet_size();
 }
 
 bool RemoteDebuggerPeerWebSocket::has_message() {
@@ -99,7 +103,6 @@ void RemoteDebuggerPeerWebSocket::close() {
 	if (ws_peer.is_valid()) {
 		ws_peer.unref();
 	}
-	ws_client->disconnect_from_host();
 }
 
 bool RemoteDebuggerPeerWebSocket::can_block() const {
@@ -111,13 +114,7 @@ bool RemoteDebuggerPeerWebSocket::can_block() const {
 }
 
 RemoteDebuggerPeerWebSocket::RemoteDebuggerPeerWebSocket(Ref<WebSocketPeer> p_peer) {
-#ifdef WEB_ENABLED
-	ws_client = Ref<WebSocketClient>(memnew(EMWSClient));
-#else
-	ws_client = Ref<WebSocketClient>(memnew(WSLClient));
-#endif
-	max_queued_messages = (int)GLOBAL_GET("network/limits/debugger/max_queued_messages");
-	ws_client->set_buffers(8192, max_queued_messages, 8192, max_queued_messages);
+	max_queued_messages = (int)GLOBAL_GET("network/limits/debugger/max_queued_messages"); // TODO
 	ws_peer = p_peer;
 }
 

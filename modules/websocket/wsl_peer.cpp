@@ -32,9 +32,9 @@
 
 #include "wsl_peer.h"
 
-#include "wsl_client.h"
-#include "wsl_server.h"
+#include "wsl_peer.h"
 
+#include "core/io/stream_peer_tls.h"
 #include "core/math/random_number_generator.h"
 
 CryptoCore::RandomGenerator *WSLPeer::_static_rng = nullptr;

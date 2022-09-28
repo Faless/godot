@@ -33,6 +33,7 @@
 #include "core/os/os.h"
 
 WebSocketMultiplayerPeer::WebSocketMultiplayerPeer() {
+	reference_stream = Ref<WebSocketPeer>(WebSocketPeer::create());
 }
 
 WebSocketMultiplayerPeer::~WebSocketMultiplayerPeer() {
@@ -64,6 +65,14 @@ void WebSocketMultiplayerPeer::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("create_client", "url", "verify_tls", "tls_certificate"), &WebSocketMultiplayerPeer::create_client);
 	ClassDB::bind_method(D_METHOD("create_server", "port", "tls_key", "tls_certificate"), &WebSocketMultiplayerPeer::create_server);
 	ClassDB::bind_method(D_METHOD("get_peer", "peer_id"), &WebSocketMultiplayerPeer::get_peer);
+
+	ClassDB::bind_method(D_METHOD("get_supported_protocols"), &WebSocketMultiplayerPeer::get_supported_protocols);
+	ClassDB::bind_method(D_METHOD("set_supported_protocols", "protocols"), &WebSocketMultiplayerPeer::set_supported_protocols);
+	ClassDB::bind_method(D_METHOD("get_handshake_headers"), &WebSocketMultiplayerPeer::get_handshake_headers);
+	ClassDB::bind_method(D_METHOD("set_handshake_headers", "protocols"), &WebSocketMultiplayerPeer::set_handshake_headers);
+
+	ADD_PROPERTY(PropertyInfo(Variant::PACKED_STRING_ARRAY, "supported_protocols"), "set_supported_protocols", "get_supported_protocols");
+	ADD_PROPERTY(PropertyInfo(Variant::PACKED_STRING_ARRAY, "handshake_headers"), "set_handshake_headers", "get_handshake_headers");
 }
 
 //
@@ -477,4 +486,20 @@ void WebSocketMultiplayerPeer::_process_multiplayer(Ref<WebSocketPeer> p_peer, u
 				break;
 		}
 	}
+}
+
+void WebSocketMultiplayerPeer::set_supported_protocols(const Vector<String> &p_protocols) {
+	reference_stream->set_supported_protocols(p_protocols);
+}
+
+Vector<String> WebSocketMultiplayerPeer::get_supported_protocols() const {
+	return reference_stream->get_supported_protocols();
+}
+
+void WebSocketMultiplayerPeer::set_handshake_headers(const Vector<String> &p_headers) {
+	reference_stream->set_handshake_headers(p_headers);
+}
+
+Vector<String> WebSocketMultiplayerPeer::get_handshake_headers() const {
+	return reference_stream->get_handshake_headers();
 }

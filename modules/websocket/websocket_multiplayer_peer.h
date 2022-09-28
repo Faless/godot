@@ -70,6 +70,7 @@ protected:
 		Ref<WebSocketPeer> ws;
 	};
 
+	Ref<WebSocketPeer> reference_stream;
 	HashMap<int, PendingPeer> pending_peers;
 	Ref<TCPServer> tcp_server;
 	bool use_tls = false;
@@ -118,6 +119,12 @@ public:
 
 	Error create_client(const String &p_url, bool p_verify_tls, Ref<X509Certificate> p_tls_certificate);
 	Error create_server(int p_port, Ref<CryptoKey> p_tls_key, Ref<X509Certificate> p_tls_certificate);
+
+	void set_supported_protocols(const Vector<String> &p_protocols);
+	Vector<String> get_supported_protocols() const;
+
+	void set_handshake_headers(const Vector<String> &p_headers);
+	Vector<String> get_handshake_headers() const;
 
 	void _process_multiplayer(Ref<WebSocketPeer> p_peer, uint32_t p_peer_id);
 	void _clear();

@@ -81,9 +81,7 @@ public:
 	virtual Error connect_to_url(String p_url, bool p_verify_tls = true, Ref<X509Certificate> p_cert = Ref<X509Certificate>()) { return ERR_UNAVAILABLE; };
 	virtual Error accept_stream(Ref<StreamPeer> p_stream) = 0;
 
-	virtual WriteMode get_write_mode() const = 0;
-	virtual void set_write_mode(WriteMode p_mode) = 0;
-
+	virtual Error send(const String &p_text) = 0;
 	virtual void close(int p_code = 1000, String p_reason = "") = 0;
 
 	virtual bool is_connected_to_host() const = 0;

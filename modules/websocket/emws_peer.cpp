@@ -147,10 +147,6 @@ bool EMWSPeer::was_string_packet() const {
 	return was_string;
 }
 
-bool EMWSPeer::is_connected_to_host() const {
-	return ready_state == STATE_OPEN; // TODO remove from upstream?
-}
-
 void EMWSPeer::_clear() {
 	if (peer_sock != -1) {
 		godot_js_websocket_destroy(peer_sock);

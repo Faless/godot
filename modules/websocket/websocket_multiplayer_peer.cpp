@@ -372,7 +372,7 @@ Ref<WebSocketPeer> WebSocketMultiplayerPeer::get_peer(int p_id) const {
 
 void WebSocketMultiplayerPeer::_send_sys(Ref<WebSocketPeer> p_peer, uint8_t p_type, int32_t p_peer_id) {
 	ERR_FAIL_COND(!p_peer.is_valid());
-	ERR_FAIL_COND(!p_peer->is_connected_to_host());
+	ERR_FAIL_COND(p_peer->get_ready_state() != WebSocketPeer::STATE_OPEN);
 
 	Vector<uint8_t> message = _make_pkt(p_type, 1, 0, (uint8_t *)&p_peer_id, 4);
 	p_peer->put_packet(&(message.ptr()[0]), message.size());

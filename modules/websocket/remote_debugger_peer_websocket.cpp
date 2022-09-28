@@ -60,7 +60,7 @@ void RemoteDebuggerPeerWebSocket::poll() {
 	ERR_FAIL_COND(ws_peer.is_null());
 	ws_peer->poll();
 
-	while (ws_peer->is_connected_to_host() && ws_peer->get_available_packet_count() > 0 && in_queue.size() < max_queued_messages) {
+	while (ws_peer->get_ready_state() == WebSocketPeer::STATE_OPEN && ws_peer->get_available_packet_count() > 0 && in_queue.size() < max_queued_messages) {
 		Variant var;
 		Error err = ws_peer->get_var(var);
 		ERR_CONTINUE(err != OK);
@@ -68,7 +68,7 @@ void RemoteDebuggerPeerWebSocket::poll() {
 		in_queue.push_back(var);
 	}
 
-	while (ws_peer->is_connected_to_host() && out_queue.size() > 0) {
+	while (ws_peer->get_ready_state() == WebSocketPeer::STATE_OPEN && out_queue.size() > 0) {
 		Array var = out_queue[0];
 		Error err = ws_peer->put_var(var);
 		ERR_BREAK(err != OK); // Peer buffer full?

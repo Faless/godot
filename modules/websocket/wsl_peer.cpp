@@ -688,7 +688,7 @@ void WSLPeer::poll() {
 }
 
 Error WSLPeer::_send(const uint8_t *p_buffer, int p_buffer_size, wslay_opcode p_opcode) {
-	ERR_FAIL_COND_V(!is_connected_to_host(), FAILED);
+	ERR_FAIL_COND_V(ready_state != STATE_OPEN, FAILED);
 	ERR_FAIL_COND_V(wslay_event_get_queued_msg_count(wsl_ctx) >= (uint32_t)max_queued_packets, ERR_OUT_OF_MEMORY);
 	ERR_FAIL_COND_V(outbound_buffer_size > 0 && (wslay_event_get_queued_msg_length(wsl_ctx) + p_buffer_size > (uint32_t)outbound_buffer_size), ERR_OUT_OF_MEMORY);
 
@@ -717,7 +717,7 @@ Error WSLPeer::put_packet(const uint8_t *p_buffer, int p_buffer_size) {
 Error WSLPeer::get_packet(const uint8_t **r_buffer, int &r_buffer_size) {
 	r_buffer_size = 0;
 
-	ERR_FAIL_COND_V(!is_connected_to_host(), FAILED);
+	ERR_FAIL_COND_V(ready_state != STATE_OPEN, FAILED);
 
 	if (in_buffer.packets_left() == 0) {
 		return ERR_UNAVAILABLE;
@@ -734,7 +734,7 @@ Error WSLPeer::get_packet(const uint8_t **r_buffer, int &r_buffer_size) {
 }
 
 int WSLPeer::get_available_packet_count() const {
-	if (!is_connected_to_host()) {
+	if (ready_state != STATE_OPEN) {
 		return 0;
 	}
 
@@ -742,15 +742,11 @@ int WSLPeer::get_available_packet_count() const {
 }
 
 int WSLPeer::get_current_outbound_buffered_amount() const {
-	if (!is_connected_to_host()) {
+	if (ready_state != STATE_OPEN) {
 		return 0;
 	}
 
 	return wslay_event_get_queued_msg_length(wsl_ctx);
-}
-
-bool WSLPeer::is_connected_to_host() const {
-	return ready_state == STATE_OPEN;
 }
 
 void WSLPeer::close(int p_code, String p_reason) {

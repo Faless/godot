@@ -93,7 +93,6 @@ public:
 	virtual State get_ready_state() const override;
 	virtual int get_close_code() const override;
 	virtual String get_close_reason() const override;
-	virtual bool is_connected_to_host() const override;
 	virtual int get_current_outbound_buffered_amount() const override;
 
 	virtual IPAddress get_connected_host() const override;

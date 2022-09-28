@@ -5,8 +5,8 @@
 	</brief_description>
 	<description>
 		This class represents WebSocket connection, and can be used as a WebSocket client (RFC 6455-compliant) or as a remote peer of a WebSocket server.
-		You can choose to write ([method PacketPeer.put_packet]) to the socket in binary or text mode, and you can recognize the mode used for writing by the other peer via [method was_string_packet].
-		To start a WebSocket client call [method connect_to_url] regularly call [method poll] (e.g. during [Node] process). You can query the socket state via [method get_ready_state] and receive pending packets ([method PacketPeer.get_available_packet_count]) via [method PacketPeer.get_packet].
+		You can send WebSocket binary frames using [method PacketPeer.put_packet], and WebSocket text frames using [method send] (prefer text frames when interacting with text-based API). You can check the frame type of the last packet via [method was_string_packet].
+		To start a WebSocket client, first call [method connect_to_url], then regularly call [method poll] (e.g. during [Node] process). You can query the socket state via [method get_ready_state], get the number of pending packets using [method PacketPeer.get_available_packet_count], and retrieve them via [method PacketPeer.get_packet].
 		[codeblocks]
 		[gdscript]
 		extends Node
@@ -99,12 +99,6 @@
 				Returns the selected WebSocket sub-protocol for this connection or an empty string if the sub-protocol has not been selected yet.
 			</description>
 		</method>
-		<method name="get_write_mode" qualifiers="const">
-			<return type="int" enum="WebSocketPeer.WriteMode" />
-			<description>
-				Gets the current selected write mode. See [enum WriteMode].
-			</description>
-		</method>
 		<method name="is_connected_to_host" qualifiers="const">
 			<return type="bool" />
 			<description>
@@ -117,19 +111,19 @@
 				Updates the connection state and receive incoming packets. Call this function regularly to keep it in a clean state.
 			</description>
 		</method>
+		<method name="send">
+			<return type="int" enum="Error" />
+			<param index="0" name="text" type="String" />
+			<description>
+				Sends the given [param text] using WebSocket text mode. Perfer this method over [method PacketPeer.put_packet] when interacting with third-party text-based API (e.g. when using [JSON] formatted messages).
+			</description>
+		</method>
 		<method name="set_no_delay">
 			<return type="void" />
 			<param index="0" name="enabled" type="bool" />
 			<description>
 				Disable Nagle's algorithm on the underling TCP socket (default). See [method StreamPeerTCP.set_no_delay] for more information.
 				[b]Note:[/b] Not available in the Web export.
-			</description>
-		</method>
-		<method name="set_write_mode">
-			<return type="void" />
-			<param index="0" name="mode" type="int" enum="WebSocketPeer.WriteMode" />
-			<description>
-				Sets the socket to use the given [enum WriteMode].
 			</description>
 		</method>
 		<method name="was_string_packet" qualifiers="const">

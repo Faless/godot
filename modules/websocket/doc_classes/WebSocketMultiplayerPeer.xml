@@ -22,7 +22,6 @@
 			<param index="0" name="url" type="String" />
 			<param index="1" name="verify_tls" type="bool" default="true" />
 			<param index="2" name="tls_certificate" type="X509Certificate" default="null" />
-				Starts a new multiplayer client connecting to the given [param url]. See [method WebSocketPeer.connect_to_url] for more information.
 			<description>
 			</description>
 		</method>

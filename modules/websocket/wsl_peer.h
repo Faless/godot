@@ -124,7 +124,6 @@ private:
 	void _do_client_handshake();
 	bool _verify_server_response();
 
-	void _close_now();
 	void _clear();
 
 public:

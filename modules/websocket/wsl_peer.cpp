@@ -217,7 +217,7 @@ Error WSLPeer::_do_server_handshake() {
 		Ref<StreamPeerTLS> tls = static_cast<Ref<StreamPeerTLS>>(connection);
 		if (tls.is_null()) {
 			ERR_FAIL_V_MSG(ERR_BUG, "Couldn't get StreamPeerTLS for WebSocket handshake.");
-			_close_now();
+			close(-1);
 			return FAILED;
 		}
 		tls->poll();
@@ -225,7 +225,7 @@ Error WSLPeer::_do_server_handshake() {
 			return OK; // Pending handshake
 		} else if (tls->get_status() != StreamPeerTLS::STATUS_CONNECTED) {
 			print_verbose(vformat("WebSocket SSL connection error during handshake (StreamPeerTLS status code %d).", tls->get_status()));
-			_close_now();
+			close(-1);
 			return FAILED;
 		}
 	}
@@ -239,7 +239,7 @@ Error WSLPeer::_do_server_handshake() {
 			Error err = connection->get_partial_data(&byte, 1, read);
 			if (err != OK) { // Got an error
 				print_verbose(vformat("WebSocket error while getting partial data (StreamPeer error code %d).", err));
-				_close_now();
+				close(-1);
 				return FAILED;
 			} else if (read != 1) { // Busy, wait next poll
 				return OK;
@@ -249,7 +249,7 @@ Error WSLPeer::_do_server_handshake() {
 			int l = pos;
 			if (l > 3 && r[l] == '\n' && r[l - 1] == '\r' && r[l - 2] == '\n' && r[l - 3] == '\r') {
 				if (!_parse_client_request()) {
-					_close_now();
+					close(-1);
 					return FAILED;
 				}
 				String s = "HTTP/1.1 101 Switching Protocols\r\n";
@@ -285,7 +285,7 @@ Error WSLPeer::_do_server_handshake() {
 		Error err = connection->put_partial_data(data.ptr() + pos, left, sent);
 		if (err != OK) {
 			print_verbose(vformat("WebSocket error while putting partial data (StreamPeer error code %d).", err));
-			_close_now();
+			close(-1);
 			return err;
 		}
 		handshake_buffer->seek(pos + sent);
@@ -320,7 +320,7 @@ void WSLPeer::_do_client_handshake() {
 
 	tcp->poll();
 	if (tcp->get_status() != StreamPeerTCP::STATUS_CONNECTED) {
-		_close_now(); // Failed to connect.
+		close(-1); // Failed to connect.
 		return;
 	}
 
@@ -332,7 +332,7 @@ void WSLPeer::_do_client_handshake() {
 			ERR_FAIL_COND_MSG(tls.is_null(), "SSL is not available in this build.");
 			tls->set_blocking_handshake_enabled(false);
 			if (tls->connect_to_stream(tcp, verify_tls, requested_host, tls_cert) != OK) {
-				_close_now();
+				close(-1);
 				return; // Error.
 			}
 			connection = tls;
@@ -344,7 +344,7 @@ void WSLPeer::_do_client_handshake() {
 		if (tls->get_status() == StreamPeerTLS::STATUS_HANDSHAKING) {
 			return; // Need more polling.
 		} else if (tls->get_status() != StreamPeerTLS::STATUS_CONNECTED) {
-			_close_now();
+			close(-1);
 			return; // Error.
 		}
 	}
@@ -358,7 +358,7 @@ void WSLPeer::_do_client_handshake() {
 		Error err = connection->put_partial_data(data.ptr() + pos, left, sent);
 		// Sending handshake failed
 		if (err != OK) {
-			_close_now();
+			close(-1);
 			return; // Error.
 		}
 		handshake_buffer->seek(pos + sent);
@@ -375,7 +375,7 @@ void WSLPeer::_do_client_handshake() {
 			int pos = handshake_buffer->get_position();
 			if (left == 0) {
 				// Header is too big
-				_close_now();
+				close(-1);
 				ERR_FAIL_MSG("Response headers too big.");
 				return;
 			}
@@ -384,7 +384,7 @@ void WSLPeer::_do_client_handshake() {
 			Error err = connection->get_partial_data(&byte, 1, read);
 			if (err != OK) {
 				// Got some error.
-				_close_now();
+				close(-1);
 				return;
 			} else if (read != 1) {
 				// Busy, wait next poll.
@@ -398,7 +398,7 @@ void WSLPeer::_do_client_handshake() {
 			if (l > 3 && r[l] == '\n' && r[l - 1] == '\r' && r[l - 2] == '\n' && r[l - 3] == '\r') {
 				// Response is over, verify headers and initialize wslay context/
 				if (!_verify_server_response()) {
-					_close_now();
+					close(-1);
 					ERR_FAIL_MSG("Invalid response headers.");
 					return;
 				}
@@ -674,14 +674,14 @@ void WSLPeer::poll() {
 			print_verbose("Websocket (wslay) poll error: " + itos(err));
 			wslay_event_context_free(wsl_ctx);
 			wsl_ctx = nullptr;
-			_close_now();
+			close(-1);
 			return;
 		}
 		if (wslay_event_get_close_sent(wsl_ctx) && wslay_event_get_close_received(wsl_ctx)) {
 			// Clean close.
 			wslay_event_context_free(wsl_ctx);
 			wsl_ctx = nullptr;
-			_close_now();
+			close(-1);
 			return;
 		}
 	}
@@ -699,7 +699,7 @@ Error WSLPeer::_send(const uint8_t *p_buffer, int p_buffer_size, wslay_opcode p_
 
 	// Queue & send message.
 	if (wslay_event_queue_msg(wsl_ctx, &msg) != 0 || wslay_event_send(wsl_ctx) != 0) {
-		_close_now();
+		close(-1);
 		return FAILED;
 	}
 	return OK;
@@ -751,10 +751,6 @@ int WSLPeer::get_current_outbound_buffered_amount() const {
 
 bool WSLPeer::is_connected_to_host() const {
 	return ready_state == STATE_OPEN;
-}
-
-void WSLPeer::_close_now() {
-	close(-1);
 }
 
 void WSLPeer::close(int p_code, String p_reason) {
@@ -837,7 +833,7 @@ WSLPeer::WSLPeer() {
 }
 
 WSLPeer::~WSLPeer() {
-	_close_now();
+	close(-1);
 }
 
 #endif // WEB_ENABLED

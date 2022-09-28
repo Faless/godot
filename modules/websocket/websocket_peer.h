@@ -68,6 +68,7 @@ protected:
 
 	int outbound_buffer_size = DEFAULT_BUFFER_SIZE;
 	int inbound_buffer_size = DEFAULT_BUFFER_SIZE;
+	int max_queued_packets = 2048;
 
 public:
 	virtual Error connect_to_url(String p_url, bool p_verify_tls = true, Ref<X509Certificate> p_cert = Ref<X509Certificate>()) { return ERR_UNAVAILABLE; };
@@ -102,6 +103,9 @@ public:
 
 	void set_inbound_buffer_size(int p_buffer_size);
 	int get_inbound_buffer_size() const;
+
+	void set_max_queued_packets(int p_max_queued_packets);
+	int get_max_queued_packets() const;
 
 	WebSocketPeer();
 	~WebSocketPeer();

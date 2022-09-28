@@ -67,11 +67,16 @@ void WebSocketPeer::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_outbound_buffer_size"), &WebSocketPeer::get_outbound_buffer_size);
 	ClassDB::bind_method(D_METHOD("set_outbound_buffer_size", "buffer_size"), &WebSocketPeer::set_outbound_buffer_size);
 
+	ClassDB::bind_method(D_METHOD("set_max_queued_packets", "buffer_size"), &WebSocketPeer::set_max_queued_packets);
+	ClassDB::bind_method(D_METHOD("get_max_queued_packets"), &WebSocketPeer::get_max_queued_packets);
+
 	ADD_PROPERTY(PropertyInfo(Variant::PACKED_STRING_ARRAY, "supported_protocols"), "set_supported_protocols", "get_supported_protocols");
 	ADD_PROPERTY(PropertyInfo(Variant::PACKED_STRING_ARRAY, "handshake_headers"), "set_handshake_headers", "get_handshake_headers");
 
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "inbound_buffer_size"), "set_inbound_buffer_size", "get_inbound_buffer_size");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "outbound_buffer_size"), "set_outbound_buffer_size", "get_outbound_buffer_size");
+
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "max_queued_packets"), "set_max_queued_packets", "get_max_queued_packets");
 
 	BIND_ENUM_CONSTANT(WRITE_MODE_TEXT);
 	BIND_ENUM_CONSTANT(WRITE_MODE_BINARY);
@@ -128,4 +133,12 @@ void WebSocketPeer::set_inbound_buffer_size(int p_buffer_size) {
 
 int WebSocketPeer::get_inbound_buffer_size() const {
 	return inbound_buffer_size;
+}
+
+void WebSocketPeer::set_max_queued_packets(int p_max_queued_packets) {
+	max_queued_packets = p_max_queued_packets;
+}
+
+int WebSocketPeer::get_max_queued_packets() const {
+	return max_queued_packets;
 }

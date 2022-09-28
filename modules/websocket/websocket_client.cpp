@@ -103,7 +103,6 @@ void WebSocketClient::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_connected_port"), &WebSocketClient::get_connected_port);
 	ClassDB::bind_method(D_METHOD("set_verify_tls_enabled", "enabled"), &WebSocketClient::set_verify_tls_enabled);
 	ClassDB::bind_method(D_METHOD("is_verify_tls_enabled"), &WebSocketClient::is_verify_tls_enabled);
-	ClassDB::bind_method(D_METHOD("set_buffers", "input_buffer_size_kb", "input_max_packets", "output_buffer_size_kb", "output_max_packets"), &WebSocketMultiplayerPeer::set_buffers);
 
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "verify_tls", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NONE), "set_verify_tls_enabled", "is_verify_tls_enabled");
 

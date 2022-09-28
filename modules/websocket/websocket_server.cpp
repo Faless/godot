@@ -44,7 +44,6 @@ void WebSocketServer::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_extra_headers", "headers"), &WebSocketServer::set_extra_headers, DEFVAL(Vector<String>()));
 	ClassDB::bind_method(D_METHOD("listen", "port", "protocols", "gd_mp_api"), &WebSocketServer::listen, DEFVAL(Vector<String>()), DEFVAL(false));
 	ClassDB::bind_method(D_METHOD("stop"), &WebSocketServer::stop);
-	ClassDB::bind_method(D_METHOD("set_buffers", "input_buffer_size_kb", "input_max_packets", "output_buffer_size_kb", "output_max_packets"), &WebSocketMultiplayerPeer::set_buffers);
 	ClassDB::bind_method(D_METHOD("has_peer", "id"), &WebSocketServer::has_peer);
 	ClassDB::bind_method(D_METHOD("get_peer", "peer_id"), &WebSocketMultiplayerPeer::get_peer);
 	ClassDB::bind_method(D_METHOD("get_peer_address", "id"), &WebSocketServer::get_peer_address);

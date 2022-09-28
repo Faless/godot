@@ -79,7 +79,6 @@ protected:
 	Ref<X509Certificate> tls_certificate;
 	Ref<CryptoKey> tls_key;
 
-	int _out_buf_size = DEF_BUF_SHIFT;
 	ConnectionStatus _status = CONNECTION_DISCONNECTED;
 	bool _is_server = false;
 
@@ -116,11 +115,10 @@ public:
 	virtual Error put_packet(const uint8_t *p_buffer, int p_buffer_size) override;
 
 	/* WebSocketPeer */
-	virtual Error set_buffers(int p_in_buffer, int p_in_packets, int p_out_buffer, int p_out_packets) { return OK; } // TODO remove
 	virtual Ref<WebSocketPeer> get_peer(int p_peer_id) const;
 
 	Error create_client(const String &p_url, bool p_verify_tls, Ref<X509Certificate> p_tls_certificate);
-	Error create_server(int p_port, Ref<CryptoKey> p_tls_key, Ref<X509Certificate> p_tls_certificate);
+	Error create_server(int p_port, IPAddress p_bind_ip, Ref<CryptoKey> p_tls_key, Ref<X509Certificate> p_tls_certificate);
 
 	void set_supported_protocols(const Vector<String> &p_protocols);
 	Vector<String> get_supported_protocols() const;

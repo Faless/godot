@@ -69,8 +69,8 @@ void WebSocketMultiplayerPeer::_clear() {
 }
 
 void WebSocketMultiplayerPeer::_bind_methods() {
-	ClassDB::bind_method(D_METHOD("create_client", "url", "verify_tls", "tls_certificate"), &WebSocketMultiplayerPeer::create_client);
-	ClassDB::bind_method(D_METHOD("create_server", "port", "tls_key", "tls_certificate"), &WebSocketMultiplayerPeer::create_server);
+	ClassDB::bind_method(D_METHOD("create_client", "url", "verify_tls", "tls_certificate"), &WebSocketMultiplayerPeer::create_client, DEFVAL(true), DEFVAL(Ref<X509Certificate>()));
+	ClassDB::bind_method(D_METHOD("create_server", "port", "bind_address", "tls_key", "tls_certificate"), &WebSocketMultiplayerPeer::create_server, DEFVAL("*"), DEFVAL(Ref<CryptoKey>()), DEFVAL(Ref<X509Certificate>()));
 	ClassDB::bind_method(D_METHOD("get_peer", "peer_id"), &WebSocketMultiplayerPeer::get_peer);
 
 	ClassDB::bind_method(D_METHOD("get_supported_protocols"), &WebSocketMultiplayerPeer::get_supported_protocols);
@@ -155,14 +155,14 @@ int WebSocketMultiplayerPeer::get_unique_id() const {
 }
 
 int WebSocketMultiplayerPeer::get_max_packet_size() const {
-	return (1 << _out_buf_size) - PROTO_SIZE;
+	return get_outbound_buffer_size() - PROTO_SIZE;
 }
 
-Error WebSocketMultiplayerPeer::create_server(int p_port, Ref<CryptoKey> p_tls_key, Ref<X509Certificate> p_tls_certificate) {
+Error WebSocketMultiplayerPeer::create_server(int p_port, IPAddress p_bind_ip, Ref<CryptoKey> p_tls_key, Ref<X509Certificate> p_tls_certificate) {
 	ERR_FAIL_COND_V(get_connection_status() != CONNECTION_DISCONNECTED, ERR_ALREADY_IN_USE);
 	_clear();
 	tcp_server.instantiate();
-	Error err = tcp_server->listen(p_port);
+	Error err = tcp_server->listen(p_port, p_bind_ip);
 	if (err != OK) {
 		tcp_server.unref();
 		return err;

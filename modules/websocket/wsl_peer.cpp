@@ -754,11 +754,15 @@ bool WSLPeer::is_connected_to_host() const {
 }
 
 void WSLPeer::_close_now() {
-	ready_state = STATE_CLOSED;
-	close();
+	close(-1);
 }
 
 void WSLPeer::close(int p_code, String p_reason) {
+	if (p_code < 0) {
+		// Force immediate close.
+		ready_state = STATE_CLOSED;
+	}
+
 	if (ready_state == STATE_OPEN && !wslay_event_get_close_sent(wsl_ctx)) {
 		CharString cs = p_reason.utf8();
 		wslay_event_queue_close(wsl_ctx, p_code, (uint8_t *)cs.ptr(), cs.length());

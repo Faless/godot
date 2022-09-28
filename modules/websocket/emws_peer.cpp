@@ -34,55 +34,106 @@
 
 #include "core/io/ip.h"
 
-void EMWSPeer::set_sock(int p_sock, unsigned int p_in_buf_size, unsigned int p_in_pkt_size, unsigned int p_out_buf_size) {
-	peer_sock = p_sock;
-	_in_buffer.resize(p_in_pkt_size, p_in_buf_size);
-	_packet_buffer.resize((1 << p_in_buf_size));
-	_out_buf_size = p_out_buf_size;
+void EMWSPeer::_esws_on_connect(void *p_obj, char *p_proto) {
+	EMWSPeer *peer = static_cast<EMWSPeer *>(p_obj);
+	peer->ready_state = STATE_OPEN;
 }
 
-void EMWSPeer::set_write_mode(WriteMode p_mode) {
-	write_mode = p_mode;
-}
-
-EMWSPeer::WriteMode EMWSPeer::get_write_mode() const {
-	return write_mode;
-}
-
-Error EMWSPeer::read_msg(const uint8_t *p_data, uint32_t p_size, bool p_is_string) {
+void EMWSPeer::_esws_on_message(void *p_obj, const uint8_t *p_data, int p_data_size, int p_is_string) {
+	EMWSPeer *peer = static_cast<EMWSPeer *>(p_obj);
 	uint8_t is_string = p_is_string ? 1 : 0;
-	return _in_buffer.write_packet(p_data, p_size, &is_string);
+	peer->in_buffer.write_packet(p_data, p_data_size, &is_string);
+}
+
+void EMWSPeer::_esws_on_error(void *p_obj) {
+	EMWSPeer *peer = static_cast<EMWSPeer *>(p_obj);
+	peer->ready_state = STATE_CLOSED;
+}
+
+void EMWSPeer::_esws_on_close(void *p_obj, int p_code, const char *p_reason, int p_was_clean) {
+	EMWSPeer *peer = static_cast<EMWSPeer *>(p_obj);
+	peer->close_code = p_code;
+	peer->close_reason.parse_utf8(p_reason);
+	peer->ready_state = STATE_CLOSED;
+}
+
+Error EMWSPeer::connect_to_url(const String &p_url, bool p_verify_tls, Ref<X509Certificate> p_tls_certificate) {
+	ERR_FAIL_COND_V(ready_state != STATE_CLOSED, ERR_ALREADY_IN_USE);
+	_clear();
+
+	String proto_string;
+	for (int i = 0; i < supported_protocols.size(); i++) {
+		if (i != 0) {
+			proto_string += ",";
+		}
+		proto_string += supported_protocols[i];
+	}
+
+	if (handshake_headers.size()) {
+		WARN_PRINT_ONCE("Custom headers are not supported in Web platform.");
+	}
+	if (p_tls_certificate.is_valid()) {
+		WARN_PRINT_ONCE("Custom SSL certificates are not supported in Web platform.");
+	}
+
+	String connect_string = p_url;
+
+	String lower = p_url.to_lower();
+	if (!lower.begins_with("wss://") && !lower.begins_with("ws://")) {
+		connect_string = "ws://" + connect_string;
+	}
+
+	peer_sock = godot_js_websocket_create(this, connect_string.utf8().get_data(), proto_string.utf8().get_data(), &_esws_on_connect, &_esws_on_message, &_esws_on_error, &_esws_on_close);
+	if (peer_sock == -1) {
+		return FAILED;
+	}
+	in_buffer.resize(nearest_shift(inbound_buffer_size), max_queued_packets);
+	packet_buffer.resize(inbound_buffer_size);
+	ready_state = STATE_CONNECTING;
+	return OK;
+}
+
+Error EMWSPeer::accept_stream(Ref<StreamPeer> p_stream) {
+	WARN_PRINT_ONCE("Acting as WebSocket server is not supported in Web platforms.");
+	return ERR_UNAVAILABLE;
+}
+
+Error EMWSPeer::send(const String &p_text) {
+	const CharString cs = p_text.utf8();
+	ERR_FAIL_COND_V(outbound_buffer_size > 0 && ((uint64_t)godot_js_websocket_buffered_amount(peer_sock) + cs.length() >= outbound_buffer_size), ERR_OUT_OF_MEMORY);
+
+	if (godot_js_websocket_send(peer_sock, (const uint8_t *)cs.ptr(), cs.length(), 0) != 0) {
+		return FAILED;
+	}
+	return OK;
 }
 
 Error EMWSPeer::put_packet(const uint8_t *p_buffer, int p_buffer_size) {
-	ERR_FAIL_COND_V(_out_buf_size && ((uint64_t)godot_js_websocket_buffered_amount(peer_sock) + p_buffer_size >= (1ULL << _out_buf_size)), ERR_OUT_OF_MEMORY);
+	ERR_FAIL_COND_V(outbound_buffer_size > 0 && ((uint64_t)godot_js_websocket_buffered_amount(peer_sock) + p_buffer_size >= outbound_buffer_size), ERR_OUT_OF_MEMORY);
 
-	int is_bin = write_mode == WebSocketPeer::WRITE_MODE_BINARY ? 1 : 0;
-
-	if (godot_js_websocket_send(peer_sock, p_buffer, p_buffer_size, is_bin) != 0) {
+	if (godot_js_websocket_send(peer_sock, p_buffer, p_buffer_size, 1) != 0) {
 		return FAILED;
 	}
-
 	return OK;
 }
 
 Error EMWSPeer::get_packet(const uint8_t **r_buffer, int &r_buffer_size) {
-	if (_in_buffer.packets_left() == 0) {
+	if (in_buffer.packets_left() == 0) {
 		return ERR_UNAVAILABLE;
 	}
 
 	int read = 0;
-	Error err = _in_buffer.read_packet(_packet_buffer.ptrw(), _packet_buffer.size(), &_is_string, read);
+	Error err = in_buffer.read_packet(packet_buffer.ptrw(), packet_buffer.size(), &was_string, read);
 	ERR_FAIL_COND_V(err != OK, err);
 
-	*r_buffer = _packet_buffer.ptr();
+	*r_buffer = packet_buffer.ptr();
 	r_buffer_size = read;
 
 	return OK;
 }
 
 int EMWSPeer::get_available_packet_count() const {
-	return _in_buffer.packets_left();
+	return in_buffer.packets_left();
 }
 
 int EMWSPeer::get_current_outbound_buffered_amount() const {
@@ -93,20 +144,62 @@ int EMWSPeer::get_current_outbound_buffered_amount() const {
 }
 
 bool EMWSPeer::was_string_packet() const {
-	return _is_string;
+	return was_string;
 }
 
 bool EMWSPeer::is_connected_to_host() const {
-	return peer_sock != -1;
+	return ready_state == STATE_OPEN; // TODO remove from upstream?
+}
+
+void EMWSPeer::_clear() {
+	if (peer_sock != -1) {
+		godot_js_websocket_destroy(peer_sock);
+		peer_sock = -1;
+	}
+	ready_state = STATE_CLOSED;
+	was_string = 0;
+	close_code = -1;
+	close_reason = "";
+	selected_protocol = "";
+	in_buffer.clear();
+	packet_buffer.clear();
 }
 
 void EMWSPeer::close(int p_code, String p_reason) {
 	if (peer_sock != -1) {
-		godot_js_websocket_close(peer_sock, p_code, p_reason.utf8().get_data());
+		if (p_code < 0) {
+			godot_js_websocket_destroy(peer_sock);
+			peer_sock = -1;
+			ready_state = STATE_CLOSED;
+		} else {
+			godot_js_websocket_close(peer_sock, p_code, p_reason.utf8().get_data());
+			ready_state = STATE_CLOSING;
+		}
+	} else {
+		ready_state = STATE_CLOSED;
 	}
-	_is_string = 0;
-	_in_buffer.clear();
-	peer_sock = -1;
+	in_buffer.clear();
+	packet_buffer.clear();
+}
+
+void EMWSPeer::poll() {
+	// Automatically polled by the navigator.
+}
+
+WebSocketPeer::State EMWSPeer::get_ready_state() const {
+	return ready_state;
+}
+
+int EMWSPeer::get_close_code() const {
+	return close_code;
+}
+
+String EMWSPeer::get_close_reason() const {
+	return close_reason;
+}
+
+String EMWSPeer::get_selected_protocol() const {
+	return selected_protocol;
 }
 
 IPAddress EMWSPeer::get_connected_host() const {

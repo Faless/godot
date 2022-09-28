@@ -37,8 +37,6 @@
 #include "websocket_peer.h"
 
 #ifdef WEB_ENABLED
-#include "emscripten.h"
-#include "emws_client.h"
 #include "emws_peer.h"
 #else
 #include "wsl_peer.h"
@@ -59,8 +57,7 @@ static void _editor_init_callback() {
 void initialize_websocket_module(ModuleInitializationLevel p_level) {
 	if (p_level == MODULE_INITIALIZATION_LEVEL_SCENE) {
 #ifdef WEB_ENABLED
-		EMWSPeer::make_default();
-		EMWSClient::make_default();
+		EMWSPeer::initialize();
 #else
 		WSLPeer::initialize();
 #endif

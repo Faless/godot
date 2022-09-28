@@ -135,7 +135,7 @@ public:
 
 	// WebSocketPeer
 	virtual Error send(const String &p_text) override;
-	virtual Error connect_to_url(String p_url, bool p_verify_tls = true, Ref<X509Certificate> p_cert = Ref<X509Certificate>()) override;
+	virtual Error connect_to_url(const String &p_url, bool p_verify_tls = true, Ref<X509Certificate> p_cert = Ref<X509Certificate>()) override;
 	virtual Error accept_stream(Ref<StreamPeer> p_stream) override;
 	virtual void close(int p_code = 1000, String p_reason = "") override;
 	virtual void poll() override;

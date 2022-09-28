@@ -78,7 +78,7 @@ public:
 		return _create();
 	}
 
-	virtual Error connect_to_url(String p_url, bool p_verify_tls = true, Ref<X509Certificate> p_cert = Ref<X509Certificate>()) { return ERR_UNAVAILABLE; };
+	virtual Error connect_to_url(const String &p_url, bool p_verify_tls = true, Ref<X509Certificate> p_cert = Ref<X509Certificate>()) { return ERR_UNAVAILABLE; };
 	virtual Error accept_stream(Ref<StreamPeer> p_stream) = 0;
 
 	virtual Error send(const String &p_text) = 0;

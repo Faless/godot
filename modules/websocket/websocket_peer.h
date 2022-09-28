@@ -53,6 +53,10 @@ public:
 		WRITE_MODE_BINARY,
 	};
 
+	enum {
+		DEFAULT_BUFFER_SIZE = 65535,
+	};
+
 protected:
 	static void _bind_methods();
 
@@ -61,6 +65,9 @@ protected:
 
 	Vector<String> _get_supported_protocols() const;
 	Vector<String> _get_handshake_headers() const;
+
+	int outbound_buffer_size = DEFAULT_BUFFER_SIZE;
+	int inbound_buffer_size = DEFAULT_BUFFER_SIZE;
 
 public:
 	virtual Error connect_to_url(String p_url, bool p_verify_tls = true, Ref<X509Certificate> p_cert = Ref<X509Certificate>()) { return ERR_UNAVAILABLE; };
@@ -88,6 +95,12 @@ public:
 
 	void set_handshake_headers(const Vector<String> &p_headers);
 	const Vector<String> get_handshake_headers() const;
+
+	void set_outbound_buffer_size(int p_buffer_size);
+	int get_outbound_buffer_size() const;
+
+	void set_inbound_buffer_size(int p_buffer_size);
+	int get_inbound_buffer_size() const;
 
 	WebSocketPeer();
 	~WebSocketPeer();

@@ -104,3 +104,19 @@ Vector<String> WebSocketPeer::_get_handshake_headers() const {
 	out.append_array(handshake_headers);
 	return out;
 }
+
+void WebSocketPeer::set_outbound_buffer_size(int p_buffer_size) {
+	outbound_buffer_size = p_buffer_size;
+}
+
+int WebSocketPeer::get_outbound_buffer_size() const {
+	return outbound_buffer_size;
+}
+
+void WebSocketPeer::set_inbound_buffer_size(int p_buffer_size) {
+	inbound_buffer_size = p_buffer_size;
+}
+
+int WebSocketPeer::get_inbound_buffer_size() const {
+	return inbound_buffer_size;
+}

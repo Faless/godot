@@ -112,9 +112,6 @@ private:
 	WriteMode write_mode = WRITE_MODE_BINARY;
 
 	// Packet buffers.
-	int _in_buf_size = DEF_BUF_SHIFT;
-	int _out_buf_size = DEF_BUF_SHIFT;
-
 	Vector<uint8_t> packet_buffer;
 	// Our packet info is just a boolean (is_string), using uint8_t for it.
 	PacketBuffer<uint8_t> in_buffer;

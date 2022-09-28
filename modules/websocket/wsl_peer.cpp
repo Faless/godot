@@ -294,9 +294,9 @@ Error WSLPeer::_do_server_handshake() {
 			resolver.stop();
 			// Response sent, initialize wslay context.
 			wslay_event_context_server_init(&wsl_ctx, &_wsl_callbacks, this);
-			wslay_event_config_set_max_recv_msg_length(wsl_ctx, (1ULL << _in_buf_size));
-			in_buffer.resize(11, _in_buf_size);
-			packet_buffer.resize(1 << _in_buf_size);
+			wslay_event_config_set_max_recv_msg_length(wsl_ctx, inbound_buffer_size);
+			in_buffer.resize(11, nearest_shift(inbound_buffer_size));
+			packet_buffer.resize(inbound_buffer_size);
 			ready_state = STATE_OPEN;
 		}
 	}
@@ -403,9 +403,9 @@ void WSLPeer::_do_client_handshake() {
 					return;
 				}
 				wslay_event_context_client_init(&wsl_ctx, &_wsl_callbacks, this);
-				wslay_event_config_set_max_recv_msg_length(wsl_ctx, (1ULL << _in_buf_size));
-				in_buffer.resize(11, _in_buf_size);
-				packet_buffer.resize(1 << _in_buf_size);
+				wslay_event_config_set_max_recv_msg_length(wsl_ctx, inbound_buffer_size);
+				in_buffer.resize(11, nearest_shift(inbound_buffer_size));
+				packet_buffer.resize(inbound_buffer_size);
 				ready_state = STATE_OPEN;
 				break;
 			}
@@ -697,8 +697,7 @@ void WSLPeer::poll() {
 
 Error WSLPeer::put_packet(const uint8_t *p_buffer, int p_buffer_size) {
 	ERR_FAIL_COND_V(!is_connected_to_host(), FAILED);
-	ERR_FAIL_COND_V(wslay_event_get_queued_msg_count(wsl_ctx) >= 2048, ERR_OUT_OF_MEMORY);
-	ERR_FAIL_COND_V(_out_buf_size && (wslay_event_get_queued_msg_length(wsl_ctx) + p_buffer_size >= (1ULL << _out_buf_size)), ERR_OUT_OF_MEMORY);
+	ERR_FAIL_COND_V(outbound_buffer_size > 0 && (wslay_event_get_queued_msg_length(wsl_ctx) + p_buffer_size > (uint32_t)outbound_buffer_size), ERR_OUT_OF_MEMORY);
 
 	struct wslay_event_msg msg;
 	msg.opcode = write_mode == WRITE_MODE_TEXT ? WSLAY_TEXT_FRAME : WSLAY_BINARY_FRAME;

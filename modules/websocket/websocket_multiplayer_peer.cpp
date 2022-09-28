@@ -186,6 +186,9 @@ Error WebSocketMultiplayerPeer::create_client(const String &p_url, bool p_verify
 	if (err != OK) {
 		return err;
 	}
+	PendingPeer pending;
+	pending.time = OS::get_singleton()->get_ticks_msec();
+	pending_peers[1] = pending;
 	_peer_map[1] = peer;
 	_is_server = false;
 	_status = CONNECTION_CONNECTING;
@@ -213,16 +216,17 @@ void WebSocketMultiplayerPeer::_poll_client() {
 			emit_signal(SNAME("connection_failed"));
 		}
 		_clear();
-	} else {
-#if 0
-		// TODO
-		// STATE_CONNECTING
-		if (OS::get_singleton()->get_ticks_msec() - time > handshake_timeout) {
+		return;
+	}
+	if (_status == CONNECTION_CONNECTING) {
+		// Still connecting
+		ERR_FAIL_COND(!pending_peers.has(1)); // Bug.
+		if (OS::get_singleton()->get_ticks_msec() - pending_peers[1].time > handshake_timeout) {
 			print_verbose(vformat("WebSocket handshake timed out after %.3f seconds.", handshake_timeout * 0.001));
-			to_remove.insert(id);
-			continue;
+			emit_signal(SNAME("connection_failed"));
+			_clear();
+			return;
 		}
-#endif
 	}
 }
 
@@ -504,6 +508,7 @@ void WebSocketMultiplayerPeer::_process_multiplayer(Ref<WebSocketPeer> p_peer, u
 				if (id != 1) {
 					_peer_map[id] = Ref<WebSocketPeer>();
 				} else {
+					pending_peers.clear();
 					_status = CONNECTION_CONNECTED;
 				}
 				emit_signal(SNAME("peer_connected"), id);

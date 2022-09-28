@@ -45,6 +45,7 @@ private:
 	Vector<uint8_t> _make_pkt(uint8_t p_type, int32_t p_from, int32_t p_to, const uint8_t *p_data, uint32_t p_data_size);
 	void _store_pkt(int32_t p_source, int32_t p_dest, const uint8_t *p_data, uint32_t p_data_size);
 	Error _server_relay(int32_t p_from, int32_t p_to, const uint8_t *p_buffer, uint32_t p_buffer_size);
+	Ref<WebSocketPeer> _create_peer();
 
 protected:
 	enum {
@@ -70,7 +71,7 @@ protected:
 		Ref<WebSocketPeer> ws;
 	};
 
-	Ref<WebSocketPeer> reference_stream;
+	Ref<WebSocketPeer> peer_config;
 	HashMap<int, PendingPeer> pending_peers;
 	Ref<TCPServer> tcp_server;
 	bool use_tls = false;

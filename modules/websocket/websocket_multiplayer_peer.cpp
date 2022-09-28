@@ -33,11 +33,18 @@
 #include "core/os/os.h"
 
 WebSocketMultiplayerPeer::WebSocketMultiplayerPeer() {
-	reference_stream = Ref<WebSocketPeer>(WebSocketPeer::create());
+	peer_config = Ref<WebSocketPeer>(WebSocketPeer::create());
 }
 
 WebSocketMultiplayerPeer::~WebSocketMultiplayerPeer() {
 	_clear();
+}
+
+Ref<WebSocketPeer> WebSocketMultiplayerPeer::_create_peer() {
+	Ref<WebSocketPeer> peer = Ref<WebSocketPeer>(WebSocketPeer::create());
+	peer->set_supported_protocols(get_supported_protocols());
+	peer->set_handshake_headers(get_handshake_headers());
+	return peer;
 }
 
 void WebSocketMultiplayerPeer::_clear() {
@@ -159,8 +166,7 @@ Error WebSocketMultiplayerPeer::create_server(int p_port, Ref<CryptoKey> p_tls_k
 Error WebSocketMultiplayerPeer::create_client(const String &p_url, bool p_verify_tls, Ref<X509Certificate> p_tls_certificate) {
 	ERR_FAIL_COND_V(get_connection_status() != CONNECTION_DISCONNECTED, ERR_ALREADY_IN_USE);
 	_clear();
-	Ref<WebSocketPeer> peer = Ref<WebSocketPeer>(WebSocketPeer::create());
-	ERR_FAIL_COND_V(peer.is_null(), ERR_UNAVAILABLE);
+	Ref<WebSocketPeer> peer = _create_peer();
 	Error err = peer->connect_to_url(p_url, p_verify_tls, p_tls_certificate);
 	if (err != OK) {
 		return err;
@@ -238,7 +244,7 @@ void WebSocketMultiplayerPeer::_poll_server() {
 			continue;
 		}
 		if (!use_tls) {
-			peer.ws = Ref<WebSocketPeer>(WebSocketPeer::create());
+			peer.ws = _create_peer();
 			peer.ws->accept_stream(peer.tcp);
 			continue;
 		} else {
@@ -253,7 +259,7 @@ void WebSocketMultiplayerPeer::_poll_server() {
 			Ref<StreamPeerTLS> tls = static_cast<Ref<StreamPeerTLS>>(peer.connection);
 			tls->poll();
 			if (tls->get_status() == StreamPeerTLS::STATUS_CONNECTED) {
-				peer.ws = Ref<WebSocketPeer>(WebSocketPeer::create());
+				peer.ws = _create_peer();
 				peer.ws->accept_stream(peer.connection);
 				continue;
 			} else if (tls->get_status() == StreamPeerTLS::STATUS_HANDSHAKING) {
@@ -489,17 +495,17 @@ void WebSocketMultiplayerPeer::_process_multiplayer(Ref<WebSocketPeer> p_peer, u
 }
 
 void WebSocketMultiplayerPeer::set_supported_protocols(const Vector<String> &p_protocols) {
-	reference_stream->set_supported_protocols(p_protocols);
+	peer_config->set_supported_protocols(p_protocols);
 }
 
 Vector<String> WebSocketMultiplayerPeer::get_supported_protocols() const {
-	return reference_stream->get_supported_protocols();
+	return peer_config->get_supported_protocols();
 }
 
 void WebSocketMultiplayerPeer::set_handshake_headers(const Vector<String> &p_headers) {
-	reference_stream->set_handshake_headers(p_headers);
+	peer_config->set_handshake_headers(p_headers);
 }
 
 Vector<String> WebSocketMultiplayerPeer::get_handshake_headers() const {
-	return reference_stream->get_handshake_headers();
+	return peer_config->get_handshake_headers();
 }

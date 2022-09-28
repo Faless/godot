@@ -162,17 +162,20 @@ void EMWSPeer::_clear() {
 }
 
 void EMWSPeer::close(int p_code, String p_reason) {
-	if (peer_sock != -1) {
-		if (p_code < 0) {
+	if (p_code < 0) {
+		if (peer_sock != -1) {
 			godot_js_websocket_destroy(peer_sock);
 			peer_sock = -1;
-			ready_state = STATE_CLOSED;
-		} else {
-			godot_js_websocket_close(peer_sock, p_code, p_reason.utf8().get_data());
-			ready_state = STATE_CLOSING;
 		}
-	} else {
 		ready_state = STATE_CLOSED;
+	}
+	if (ready_state == STATE_CONNECTING || ready_state == STATE_OPEN) {
+		ready_state = STATE_CLOSING;
+		if (peer_sock != -1) {
+			godot_js_websocket_close(peer_sock, p_code, p_reason.utf8().get_data());
+		} else {
+			ready_state = STATE_CLOSED;
+		}
 	}
 	in_buffer.clear();
 	packet_buffer.clear();
@@ -211,11 +214,10 @@ void EMWSPeer::set_no_delay(bool p_enabled) {
 }
 
 EMWSPeer::EMWSPeer() {
-	close();
 }
 
 EMWSPeer::~EMWSPeer() {
-	close();
+	_clear();
 }
 
 #endif // WEB_ENABLED

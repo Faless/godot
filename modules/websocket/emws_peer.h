@@ -74,7 +74,6 @@ private:
 	void _clear();
 
 public:
-	// Set custom instance implementation.
 	static void initialize() { WebSocketPeer::_create = EMWSPeer::_create; }
 
 	// PacketPeer

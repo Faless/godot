@@ -47,14 +47,9 @@
 #define WSL_MAX_HEADER_SIZE 4096
 
 class WSLPeer : public WebSocketPeer {
-public:
-	// Custom instance implementation.
-	static WebSocketPeer *_create() { return memnew(WSLPeer); }
-	static void initialize();
-	static void deinitialize();
-
 private:
 	static CryptoCore::RandomGenerator *_static_rng;
+	static WebSocketPeer *_create() { return memnew(WSLPeer); }
 
 	// Callbacks.
 	static ssize_t _wsl_recv_callback(wslay_event_context_ptr ctx, uint8_t *data, size_t len, int flags, void *user_data);
@@ -127,6 +122,9 @@ private:
 	void _clear();
 
 public:
+	static void initialize();
+	static void deinitialize();
+
 	// PacketPeer
 	virtual int get_available_packet_count() const override;
 	virtual Error get_packet(const uint8_t **r_buffer, int &r_buffer_size) override;

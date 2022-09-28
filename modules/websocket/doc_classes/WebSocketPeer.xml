@@ -93,6 +93,12 @@
 				Returns the ready state of the connection. See [enum State].
 			</description>
 		</method>
+		<method name="get_requested_url" qualifiers="const">
+			<return type="String" />
+			<description>
+				Returns the URL requested by this peer. The URL is derived from the [code]url[/code] passed to [method connect_to_url] or from the HTTP headers when acting as server (i.e. when using [method accept_stream]).
+			</description>
+		</method>
 		<method name="get_selected_protocol" qualifiers="const">
 			<return type="String" />
 			<description>

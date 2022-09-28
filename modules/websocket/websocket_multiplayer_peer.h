@@ -79,15 +79,14 @@ protected:
 	Ref<X509Certificate> tls_certificate;
 	Ref<CryptoKey> tls_key;
 
-	ConnectionStatus _status = CONNECTION_DISCONNECTED;
-	bool _is_server = false;
+	ConnectionStatus connection_status = CONNECTION_DISCONNECTED;
 
-	List<Packet> _incoming_packets;
-	HashMap<int, Ref<WebSocketPeer>> _peer_map;
-	Packet _current_packet;
+	List<Packet> incoming_packets;
+	HashMap<int, Ref<WebSocketPeer>> peers_map;
+	Packet current_packet;
 
-	int _target_peer = 0;
-	int _peer_id = 0;
+	int target_peer = 0;
+	int unique_id = 0;
 
 	static void _bind_methods();
 

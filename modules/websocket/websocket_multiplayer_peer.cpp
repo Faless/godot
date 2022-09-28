@@ -96,8 +96,8 @@ void WebSocketMultiplayerPeer::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_handshake_timeout"), &WebSocketMultiplayerPeer::get_handshake_timeout);
 	ClassDB::bind_method(D_METHOD("set_handshake_timeout", "timeout"), &WebSocketMultiplayerPeer::set_handshake_timeout);
 
-	ClassDB::bind_method(D_METHOD("set_max_queued_packets", "max_queued_packets"), &WebSocketPeer::set_max_queued_packets);
-	ClassDB::bind_method(D_METHOD("get_max_queued_packets"), &WebSocketPeer::get_max_queued_packets);
+	ClassDB::bind_method(D_METHOD("set_max_queued_packets", "max_queued_packets"), &WebSocketMultiplayerPeer::set_max_queued_packets);
+	ClassDB::bind_method(D_METHOD("get_max_queued_packets"), &WebSocketMultiplayerPeer::get_max_queued_packets);
 
 	ADD_PROPERTY(PropertyInfo(Variant::PACKED_STRING_ARRAY, "supported_protocols"), "set_supported_protocols", "get_supported_protocols");
 	ADD_PROPERTY(PropertyInfo(Variant::PACKED_STRING_ARRAY, "handshake_headers"), "set_handshake_headers", "get_handshake_headers");

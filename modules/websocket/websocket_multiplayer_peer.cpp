@@ -152,7 +152,7 @@ Error WebSocketMultiplayerPeer::create_client(const String &p_url, bool p_verify
 	_clear();
 	Ref<WebSocketPeer> peer = Ref<WebSocketPeer>(WebSocketPeer::create());
 	ERR_FAIL_COND_V(peer.is_null(), ERR_UNAVAILABLE);
-	Error err = peer->connect_to_url(p_url, Vector<String>(), Vector<String>(), p_verify_tls, p_tls_certificate);
+	Error err = peer->connect_to_url(p_url, p_verify_tls, p_tls_certificate);
 	if (err != OK) {
 		return err;
 	}

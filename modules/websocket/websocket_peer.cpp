@@ -39,8 +39,8 @@ WebSocketPeer::~WebSocketPeer() {
 }
 
 void WebSocketPeer::_bind_methods() {
-	ClassDB::bind_method(D_METHOD("connect_to_url", "url", "protocols", "custom_headers", "verify_tls", "tls_certificate"), &WebSocketPeer::connect_to_url, DEFVAL(Vector<String>()), DEFVAL(Vector<String>()), DEFVAL(true), DEFVAL(Ref<X509Certificate>()));
-	ClassDB::bind_method(D_METHOD("accept_stream", "stream", "protocols", "custom_headers"), &WebSocketPeer::accept_stream, DEFVAL(Vector<String>()), DEFVAL(Vector<String>()));
+	ClassDB::bind_method(D_METHOD("connect_to_url", "url", "verify_tls", "tls_certificate"), &WebSocketPeer::connect_to_url, DEFVAL(true), DEFVAL(Ref<X509Certificate>()));
+	ClassDB::bind_method(D_METHOD("accept_stream", "stream", "protocols", "custom_headers"), &WebSocketPeer::accept_stream);
 	ClassDB::bind_method(D_METHOD("get_write_mode"), &WebSocketPeer::get_write_mode);
 	ClassDB::bind_method(D_METHOD("set_write_mode", "mode"), &WebSocketPeer::set_write_mode);
 	ClassDB::bind_method(D_METHOD("is_connected_to_host"), &WebSocketPeer::is_connected_to_host);
@@ -56,6 +56,14 @@ void WebSocketPeer::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_close_code"), &WebSocketPeer::get_close_code);
 	ClassDB::bind_method(D_METHOD("get_close_reason"), &WebSocketPeer::get_close_reason);
 
+	ClassDB::bind_method(D_METHOD("get_supported_protocols"), &WebSocketPeer::_get_supported_protocols);
+	ClassDB::bind_method(D_METHOD("set_supported_protocols", "protocols"), &WebSocketPeer::set_supported_protocols);
+	ClassDB::bind_method(D_METHOD("get_handshake_headers"), &WebSocketPeer::_get_handshake_headers);
+	ClassDB::bind_method(D_METHOD("set_handshake_headers", "protocols"), &WebSocketPeer::set_handshake_headers);
+
+	ADD_PROPERTY(PropertyInfo(Variant::PACKED_STRING_ARRAY, "supported_protocols"), "set_supported_protocols", "get_supported_protocols");
+	ADD_PROPERTY(PropertyInfo(Variant::PACKED_STRING_ARRAY, "handshake_headers"), "set_handshake_headers", "get_handshake_headers");
+
 	BIND_ENUM_CONSTANT(WRITE_MODE_TEXT);
 	BIND_ENUM_CONSTANT(WRITE_MODE_BINARY);
 
@@ -63,4 +71,36 @@ void WebSocketPeer::_bind_methods() {
 	BIND_ENUM_CONSTANT(STATE_OPEN);
 	BIND_ENUM_CONSTANT(STATE_CLOSING);
 	BIND_ENUM_CONSTANT(STATE_CLOSED);
+}
+
+void WebSocketPeer::set_supported_protocols(const Vector<String> &p_protocols) {
+	// Strip edges from protocols.
+	supported_protocols.resize(p_protocols.size());
+	for (int i = 0; i < p_protocols.size(); i++) {
+		supported_protocols.write[i] = p_protocols[i].strip_edges();
+	}
+}
+
+const Vector<String> WebSocketPeer::get_supported_protocols() const {
+	return supported_protocols;
+}
+
+Vector<String> WebSocketPeer::_get_supported_protocols() const {
+	Vector<String> out;
+	out.append_array(supported_protocols);
+	return out;
+}
+
+void WebSocketPeer::set_handshake_headers(const Vector<String> &p_headers) {
+	handshake_headers = p_headers;
+}
+
+const Vector<String> WebSocketPeer::get_handshake_headers() const {
+	return handshake_headers;
+}
+
+Vector<String> WebSocketPeer::_get_handshake_headers() const {
+	Vector<String> out;
+	out.append_array(handshake_headers);
+	return out;
 }

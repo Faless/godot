@@ -124,7 +124,7 @@ void WSLPeer::Resolver::try_next_candidate(Ref<StreamPeerTCP> &p_tcp) {
 ///
 /// Server functions
 ///
-Error WSLPeer::accept_stream(Ref<StreamPeer> p_stream, const Vector<String> p_protocols, const Vector<String> p_custom_headers) {
+Error WSLPeer::accept_stream(Ref<StreamPeer> p_stream) {
 	ERR_FAIL_COND_V(wsl_ctx || tcp.is_valid(), ERR_ALREADY_IN_USE);
 	ERR_FAIL_COND_V(p_stream.is_null(), ERR_INVALID_PARAMETER);
 
@@ -142,8 +142,6 @@ Error WSLPeer::accept_stream(Ref<StreamPeer> p_stream, const Vector<String> p_pr
 		use_tls = true;
 	}
 	ERR_FAIL_COND_V(connection.is_null() || tcp.is_null(), ERR_INVALID_PARAMETER);
-	supported_protocols = p_protocols;
-	custom_headers = p_custom_headers;
 	is_server = true;
 	ready_state = STATE_CONNECTING;
 	handshake_buffer->resize(WSL_MAX_HEADER_SIZE);
@@ -261,8 +259,8 @@ Error WSLPeer::_do_server_handshake() {
 				if (!selected_protocol.is_empty()) {
 					s += "Sec-WebSocket-Protocol: " + selected_protocol + "\r\n";
 				}
-				for (int i = 0; i < custom_headers.size(); i++) {
-					s += custom_headers[i] + "\r\n";
+				for (int i = 0; i < handshake_headers.size(); i++) {
+					s += handshake_headers[i] + "\r\n";
 				}
 				s += "\r\n";
 				CharString cs = s.utf8();
@@ -475,7 +473,7 @@ bool WSLPeer::_verify_server_response() {
 	return true;
 }
 
-Error WSLPeer::connect_to_url(String p_url, const Vector<String> p_protocols, const Vector<String> p_custom_headers, bool p_verify_tls, Ref<X509Certificate> p_cert) {
+Error WSLPeer::connect_to_url(String p_url, bool p_verify_tls, Ref<X509Certificate> p_cert) {
 	ERR_FAIL_COND_V(wsl_ctx || tcp.is_valid(), ERR_ALREADY_IN_USE);
 	ERR_FAIL_COND_V(p_url.is_empty(), ERR_INVALID_PARAMETER);
 
@@ -514,12 +512,6 @@ Error WSLPeer::connect_to_url(String p_url, const Vector<String> p_protocols, co
 	}
 	connection = tcp;
 
-	// Strip edges from protocols.
-	supported_protocols.resize(p_protocols.size());
-	for (int i = 0; i < p_protocols.size(); i++) {
-		supported_protocols.write[i] = p_protocols[i].strip_edges();
-	}
-
 	// Prepare handshake request.
 	session_key = _generate_key();
 	String request = "GET " + path + " HTTP/1.1\r\n";
@@ -542,8 +534,8 @@ Error WSLPeer::connect_to_url(String p_url, const Vector<String> p_protocols, co
 		}
 		request += "\r\n";
 	}
-	for (int i = 0; i < custom_headers.size(); i++) {
-		request += custom_headers[i] + "\r\n";
+	for (int i = 0; i < handshake_headers.size(); i++) {
+		request += handshake_headers[i] + "\r\n";
 	}
 	request += "\r\n";
 	CharString cs = request.utf8();
@@ -818,11 +810,8 @@ void WSLPeer::_clear() {
 	requested_host = "";
 	pending_request = true;
 	handshake_buffer->clear();
-	supported_protocols.clear();
 	selected_protocol = "";
 	session_key = "";
-
-	custom_headers.clear();
 
 	// Pending packets info.
 	was_string = 0;

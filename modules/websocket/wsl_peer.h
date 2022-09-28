@@ -98,7 +98,6 @@ private:
 	String requested_host;
 	bool pending_request = true;
 	Ref<StreamPeerBuffer> handshake_buffer;
-	Vector<String> supported_protocols;
 	String selected_protocol;
 	String session_key;
 
@@ -107,7 +106,6 @@ private:
 	uint8_t was_string = 0;
 
 	// WebSocket configuration.
-	Vector<String> custom_headers;
 	bool use_tls = true;
 	bool verify_tls = true;
 	Ref<X509Certificate> tls_cert;
@@ -130,8 +128,8 @@ private:
 	void _clear();
 
 public:
-	virtual Error connect_to_url(String p_url, const Vector<String> p_protocols = Vector<String>(), const Vector<String> p_custom_headers = Vector<String>(), bool p_verify_tls = true, Ref<X509Certificate> p_cert = Ref<X509Certificate>()) override;
-	virtual Error accept_stream(Ref<StreamPeer> p_stream, const Vector<String> p_protocols = Vector<String>(), const Vector<String> p_custom_headers = Vector<String>()) override;
+	virtual Error connect_to_url(String p_url, bool p_verify_tls = true, Ref<X509Certificate> p_cert = Ref<X509Certificate>()) override;
+	virtual Error accept_stream(Ref<StreamPeer> p_stream) override;
 
 	virtual void poll() override;
 

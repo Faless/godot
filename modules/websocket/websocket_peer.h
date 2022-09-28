@@ -56,9 +56,15 @@ public:
 protected:
 	static void _bind_methods();
 
+	Vector<String> supported_protocols;
+	Vector<String> handshake_headers;
+
+	Vector<String> _get_supported_protocols() const;
+	Vector<String> _get_handshake_headers() const;
+
 public:
-	virtual Error connect_to_url(String p_url, const Vector<String> p_protocols = Vector<String>(), const Vector<String> p_custom_headers = Vector<String>(), bool p_verify_tls = true, Ref<X509Certificate> p_cert = Ref<X509Certificate>()) { return ERR_UNAVAILABLE; };
-	virtual Error accept_stream(Ref<StreamPeer> p_stream, const Vector<String> p_protocols = Vector<String>(), const Vector<String> p_custom_headers = Vector<String>()) = 0;
+	virtual Error connect_to_url(String p_url, bool p_verify_tls = true, Ref<X509Certificate> p_cert = Ref<X509Certificate>()) { return ERR_UNAVAILABLE; };
+	virtual Error accept_stream(Ref<StreamPeer> p_stream) = 0;
 
 	virtual WriteMode get_write_mode() const = 0;
 	virtual void set_write_mode(WriteMode p_mode) = 0;
@@ -76,6 +82,12 @@ public:
 	virtual State get_ready_state() const = 0;
 	virtual int get_close_code() const = 0;
 	virtual String get_close_reason() const = 0;
+
+	void set_supported_protocols(const Vector<String> &p_protocols);
+	const Vector<String> get_supported_protocols() const;
+
+	void set_handshake_headers(const Vector<String> &p_headers);
+	const Vector<String> get_handshake_headers() const;
 
 	WebSocketPeer();
 	~WebSocketPeer();

@@ -84,6 +84,7 @@ public:
 	virtual bool was_string_packet() const = 0;
 	virtual void set_no_delay(bool p_enabled) = 0;
 	virtual int get_current_outbound_buffered_amount() const = 0;
+	virtual String get_selected_protocol() const = 0;
 
 	virtual void poll() = 0;
 	virtual State get_ready_state() const = 0;

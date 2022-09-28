@@ -785,6 +785,10 @@ uint16_t WSLPeer::get_connected_port() const {
 	return tcp->get_connected_port();
 }
 
+String WSLPeer::get_selected_protocol() const {
+	return selected_protocol;
+}
+
 void WSLPeer::set_no_delay(bool p_enabled) {
 	ERR_FAIL_COND(tcp.is_null());
 	tcp->set_no_delay(p_enabled);

@@ -145,6 +145,7 @@ public:
 	virtual bool is_connected_to_host() const override;
 	virtual IPAddress get_connected_host() const override;
 	virtual uint16_t get_connected_port() const override;
+	virtual String get_selected_protocol() const override;
 
 	virtual WriteMode get_write_mode() const override;
 	virtual void set_write_mode(WriteMode p_mode) override;

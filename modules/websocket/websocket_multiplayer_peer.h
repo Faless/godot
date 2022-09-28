@@ -32,6 +32,7 @@
 #define WEBSOCKET_MULTIPLAYER_PEER_H
 
 #include "core/error/error_list.h"
+#include "core/io/stream_peer_tls.h"
 #include "core/io/tcp_server.h"
 #include "core/templates/list.h"
 #include "scene/main/multiplayer_peer.h"
@@ -71,6 +72,9 @@ protected:
 
 	HashMap<int, PendingPeer> pending_peers;
 	Ref<TCPServer> tcp_server;
+	bool use_tls = false;
+	Ref<X509Certificate> tls_certificate;
+	Ref<CryptoKey> tls_key;
 
 	int _out_buf_size = DEF_BUF_SHIFT;
 	ConnectionStatus _status = CONNECTION_DISCONNECTED;

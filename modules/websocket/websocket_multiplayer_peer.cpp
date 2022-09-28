@@ -43,7 +43,10 @@ void WebSocketMultiplayerPeer::_clear() {
 	_status = CONNECTION_DISCONNECTED;
 	_is_server = false;
 	_peer_map.clear();
+	use_tls = false;
 	tcp_server.unref();
+	tls_certificate.unref();
+	tls_key.unref();
 	if (_current_packet.data != nullptr) {
 		memfree(_current_packet.data);
 	}
@@ -135,6 +138,12 @@ Error WebSocketMultiplayerPeer::create_server(int p_port, Ref<CryptoKey> p_tls_k
 	}
 	_is_server = true;
 	_status = CONNECTION_CONNECTED;
+	// TLS config
+	tls_key = p_tls_key;
+	tls_certificate = p_tls_certificate;
+	if (tls_key.is_valid() && tls_certificate.is_valid()) {
+		use_tls = true;
+	}
 	return OK;
 }
 
@@ -201,6 +210,10 @@ void WebSocketMultiplayerPeer::_poll_server() {
 			if (state == WebSocketPeer::STATE_OPEN) {
 				// Connected.
 				to_remove.insert(id);
+				if (is_refusing_new_connections()) {
+					// The user does not want new connections, dropping it.
+					continue;
+				}
 				_peer_map[id] = peer.ws;
 				_send_add(id);
 				emit_signal("peer_connected", id);
@@ -215,12 +228,32 @@ void WebSocketMultiplayerPeer::_poll_server() {
 			to_remove.insert(id); // Error.
 			continue;
 		}
-		if (true) { // !use_tls
+		if (!use_tls) {
 			peer.ws = Ref<WebSocketPeer>(WebSocketPeer::create());
 			peer.ws->accept_stream(peer.tcp);
 			continue;
 		} else {
-			// TODO TLS.
+			if (peer.connection == peer.tcp) {
+				Ref<StreamPeerTLS> tls = Ref<StreamPeerTLS>(StreamPeerTLS::create());
+				Error err = tls->accept_stream(peer.tcp, tls_key, tls_certificate);
+				if (err != OK) {
+					to_remove.insert(id);
+					continue;
+				}
+			}
+			Ref<StreamPeerTLS> tls = static_cast<Ref<StreamPeerTLS>>(peer.connection);
+			tls->poll();
+			if (tls->get_status() == StreamPeerTLS::STATUS_CONNECTED) {
+				peer.ws = Ref<WebSocketPeer>(WebSocketPeer::create());
+				peer.ws->accept_stream(peer.connection);
+				continue;
+			} else if (tls->get_status() == StreamPeerTLS::STATUS_HANDSHAKING) {
+				// Still connecting.
+				continue;
+			} else {
+				// Error
+				to_remove.insert(id);
+			}
 		}
 	}
 

@@ -41,7 +41,7 @@
 			<param index="1" name="reason" type="String" default="&quot;&quot;" />
 			<description>
 				Closes this WebSocket connection. [code]code[/code] is the status code for the closure (see RFC 6455 section 7.4 for a list of valid status codes). [code]reason[/code] is the human readable reason for closing the connection (can be any UTF-8 string that's smaller than 123 bytes).
-				[b]Note:[/b] To achieve a clean close, you will need to keep polling until either [signal WebSocketClient.connection_closed] or [signal WebSocketServer.client_disconnected] is received.
+				[b]Note:[/b] To achieve a clean close, you will need to keep polling until [constant STATE_CLOSED] is reached.
 				[b]Note:[/b] The Web export might not support all status codes. Please refer to browser-specific documentation for more details.
 			</description>
 		</method>

@@ -53,6 +53,7 @@ void WebSocketMultiplayerPeer::_clear() {
 	_peer_map.clear();
 	use_tls = false;
 	tcp_server.unref();
+	pending_peers.clear();
 	tls_certificate.unref();
 	tls_key.unref();
 	if (_current_packet.data != nullptr) {
@@ -68,26 +69,32 @@ void WebSocketMultiplayerPeer::_clear() {
 }
 
 void WebSocketMultiplayerPeer::_bind_methods() {
-	ClassDB::bind_method(D_METHOD("set_buffers", "input_buffer_size_kb", "input_max_packets", "output_buffer_size_kb", "output_max_packets"), &WebSocketMultiplayerPeer::set_buffers); // TODO remove
 	ClassDB::bind_method(D_METHOD("create_client", "url", "verify_tls", "tls_certificate"), &WebSocketMultiplayerPeer::create_client);
 	ClassDB::bind_method(D_METHOD("create_server", "port", "tls_key", "tls_certificate"), &WebSocketMultiplayerPeer::create_server);
 	ClassDB::bind_method(D_METHOD("get_peer", "peer_id"), &WebSocketMultiplayerPeer::get_peer);
 
 	ClassDB::bind_method(D_METHOD("get_supported_protocols"), &WebSocketMultiplayerPeer::get_supported_protocols);
 	ClassDB::bind_method(D_METHOD("set_supported_protocols", "protocols"), &WebSocketMultiplayerPeer::set_supported_protocols);
+
 	ClassDB::bind_method(D_METHOD("get_handshake_headers"), &WebSocketMultiplayerPeer::get_handshake_headers);
 	ClassDB::bind_method(D_METHOD("set_handshake_headers", "protocols"), &WebSocketMultiplayerPeer::set_handshake_headers);
 
 	ClassDB::bind_method(D_METHOD("get_inbound_buffer_size"), &WebSocketMultiplayerPeer::get_inbound_buffer_size);
 	ClassDB::bind_method(D_METHOD("set_inbound_buffer_size", "buffer_size"), &WebSocketMultiplayerPeer::set_inbound_buffer_size);
+
 	ClassDB::bind_method(D_METHOD("get_outbound_buffer_size"), &WebSocketMultiplayerPeer::get_outbound_buffer_size);
 	ClassDB::bind_method(D_METHOD("set_outbound_buffer_size", "buffer_size"), &WebSocketMultiplayerPeer::set_outbound_buffer_size);
+
+	ClassDB::bind_method(D_METHOD("get_handshake_timeout"), &WebSocketMultiplayerPeer::get_handshake_timeout);
+	ClassDB::bind_method(D_METHOD("set_handshake_timeout", "timeout"), &WebSocketMultiplayerPeer::set_handshake_timeout);
 
 	ADD_PROPERTY(PropertyInfo(Variant::PACKED_STRING_ARRAY, "supported_protocols"), "set_supported_protocols", "get_supported_protocols");
 	ADD_PROPERTY(PropertyInfo(Variant::PACKED_STRING_ARRAY, "handshake_headers"), "set_handshake_headers", "get_handshake_headers");
 
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "inbound_buffer_size"), "set_inbound_buffer_size", "get_inbound_buffer_size");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "outbound_buffer_size"), "set_outbound_buffer_size", "get_outbound_buffer_size");
+
+	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "handshake_timeout"), "set_handshake_timeout", "get_handshake_timeout");
 }
 
 //
@@ -206,6 +213,16 @@ void WebSocketMultiplayerPeer::_poll_client() {
 			emit_signal(SNAME("connection_failed"));
 		}
 		_clear();
+	} else {
+#if 0
+		// TODO
+		// STATE_CONNECTING
+		if (OS::get_singleton()->get_ticks_msec() - time > handshake_timeout) {
+			print_verbose(vformat("WebSocket handshake timed out after %.3f seconds.", handshake_timeout * 0.001));
+			to_remove.insert(id);
+			continue;
+		}
+#endif
 	}
 }
 
@@ -227,6 +244,13 @@ void WebSocketMultiplayerPeer::_poll_server() {
 	for (KeyValue<int, PendingPeer> &E : pending_peers) {
 		PendingPeer &peer = E.value;
 		int id = E.key;
+
+		if (OS::get_singleton()->get_ticks_msec() - peer.time > handshake_timeout) {
+			print_verbose(vformat("WebSocket handshake timed out after %.3f seconds.", handshake_timeout * 0.001));
+			to_remove.insert(id);
+			continue;
+		}
+
 		if (peer.ws.is_valid()) {
 			peer.ws->poll();
 			WebSocketPeer::State state = peer.ws->get_ready_state();
@@ -532,4 +556,13 @@ void WebSocketMultiplayerPeer::set_inbound_buffer_size(int p_buffer_size) {
 
 int WebSocketMultiplayerPeer::get_inbound_buffer_size() const {
 	return peer_config->get_inbound_buffer_size();
+}
+
+float WebSocketMultiplayerPeer::get_handshake_timeout() const {
+	return handshake_timeout / 1000.0;
+}
+
+void WebSocketMultiplayerPeer::set_handshake_timeout(float p_timeout) {
+	ERR_FAIL_COND(p_timeout <= 0.0);
+	handshake_timeout = p_timeout * 1000;
 }

@@ -71,6 +71,7 @@ protected:
 		Ref<WebSocketPeer> ws;
 	};
 
+	uint64_t handshake_timeout = 3000;
 	Ref<WebSocketPeer> peer_config;
 	HashMap<int, PendingPeer> pending_peers;
 	Ref<TCPServer> tcp_server;
@@ -132,6 +133,9 @@ public:
 
 	void set_inbound_buffer_size(int p_buffer_size);
 	int get_inbound_buffer_size() const;
+
+	float get_handshake_timeout() const;
+	void set_handshake_timeout(float p_timeout);
 
 	void _process_multiplayer(Ref<WebSocketPeer> p_peer, uint32_t p_peer_id);
 	void _clear();

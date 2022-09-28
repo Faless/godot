@@ -78,8 +78,16 @@ void WebSocketMultiplayerPeer::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_handshake_headers"), &WebSocketMultiplayerPeer::get_handshake_headers);
 	ClassDB::bind_method(D_METHOD("set_handshake_headers", "protocols"), &WebSocketMultiplayerPeer::set_handshake_headers);
 
+	ClassDB::bind_method(D_METHOD("get_inbound_buffer_size"), &WebSocketMultiplayerPeer::get_inbound_buffer_size);
+	ClassDB::bind_method(D_METHOD("set_inbound_buffer_size", "buffer_size"), &WebSocketMultiplayerPeer::set_inbound_buffer_size);
+	ClassDB::bind_method(D_METHOD("get_outbound_buffer_size"), &WebSocketMultiplayerPeer::get_outbound_buffer_size);
+	ClassDB::bind_method(D_METHOD("set_outbound_buffer_size", "buffer_size"), &WebSocketMultiplayerPeer::set_outbound_buffer_size);
+
 	ADD_PROPERTY(PropertyInfo(Variant::PACKED_STRING_ARRAY, "supported_protocols"), "set_supported_protocols", "get_supported_protocols");
 	ADD_PROPERTY(PropertyInfo(Variant::PACKED_STRING_ARRAY, "handshake_headers"), "set_handshake_headers", "get_handshake_headers");
+
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "inbound_buffer_size"), "set_inbound_buffer_size", "get_inbound_buffer_size");
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "outbound_buffer_size"), "set_outbound_buffer_size", "get_outbound_buffer_size");
 }
 
 //
@@ -508,4 +516,20 @@ void WebSocketMultiplayerPeer::set_handshake_headers(const Vector<String> &p_hea
 
 Vector<String> WebSocketMultiplayerPeer::get_handshake_headers() const {
 	return peer_config->get_handshake_headers();
+}
+
+void WebSocketMultiplayerPeer::set_outbound_buffer_size(int p_buffer_size) {
+	peer_config->set_outbound_buffer_size(p_buffer_size);
+}
+
+int WebSocketMultiplayerPeer::get_outbound_buffer_size() const {
+	return peer_config->get_outbound_buffer_size();
+}
+
+void WebSocketMultiplayerPeer::set_inbound_buffer_size(int p_buffer_size) {
+	peer_config->set_inbound_buffer_size(p_buffer_size);
+}
+
+int WebSocketMultiplayerPeer::get_inbound_buffer_size() const {
+	return peer_config->get_inbound_buffer_size();
 }

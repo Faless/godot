@@ -127,6 +127,12 @@ public:
 	void set_handshake_headers(const Vector<String> &p_headers);
 	Vector<String> get_handshake_headers() const;
 
+	void set_outbound_buffer_size(int p_buffer_size);
+	int get_outbound_buffer_size() const;
+
+	void set_inbound_buffer_size(int p_buffer_size);
+	int get_inbound_buffer_size() const;
+
 	void _process_multiplayer(Ref<WebSocketPeer> p_peer, uint32_t p_peer_id);
 	void _clear();
 

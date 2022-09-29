@@ -278,7 +278,7 @@ void WebSocketMultiplayerPeer::_poll_server() {
 					continue;
 				}
 				peers_map[id] = peer.ws;
-				_send_add(id);
+				_send_ack(peer.ws, id);
 				emit_signal("peer_connected", id);
 				continue;
 			} else if (state == WebSocketPeer::STATE_CONNECTING) {
@@ -345,8 +345,8 @@ void WebSocketMultiplayerPeer::_poll_server() {
 
 	// Remove disconnected peers.
 	for (const int &pid : to_remove) {
-		peers_map.erase(pid);
 		emit_signal(SNAME("peer_disconnected"), pid);
+		peers_map.erase(pid);
 	}
 }
 
@@ -391,23 +391,26 @@ Vector<uint8_t> WebSocketMultiplayerPeer::_make_pkt(uint8_t p_type, int32_t p_fr
 	return out;
 }
 
-void WebSocketMultiplayerPeer::_send_add(int32_t p_peer_id) {
+void WebSocketMultiplayerPeer::_send_ack(Ref<WebSocketPeer> p_peer, int32_t p_peer_id) {
+	ERR_FAIL_COND(p_peer.is_null());
 	// First of all, confirm the ID!
-	_send_sys(get_peer(p_peer_id), SYS_ID, p_peer_id);
+	_send_sys(p_peer, SYS_ID, p_peer_id);
 
 	// Then send the server peer (which will trigger connection_succeded in client)
-	_send_sys(get_peer(p_peer_id), SYS_ADD, 1);
+	_send_sys(p_peer, SYS_ADD, 1);
 
 	for (const KeyValue<int, Ref<WebSocketPeer>> &E : peers_map) {
+		ERR_CONTINUE(E.value.is_null());
+
 		int32_t id = E.key;
 		if (p_peer_id == id) {
 			continue; // Skip the newly added peer (already confirmed)
 		}
 
 		// Send new peer to others
-		_send_sys(get_peer(id), SYS_ADD, p_peer_id);
+		_send_sys(E.value, SYS_ADD, p_peer_id);
 		// Send others to new peer
-		_send_sys(get_peer(p_peer_id), SYS_ADD, id);
+		_send_sys(E.value, SYS_ADD, id);
 	}
 }
 
@@ -415,7 +418,7 @@ void WebSocketMultiplayerPeer::_send_del(int32_t p_peer_id) {
 	for (const KeyValue<int, Ref<WebSocketPeer>> &E : peers_map) {
 		int32_t id = E.key;
 		if (p_peer_id != id) {
-			_send_sys(get_peer(id), SYS_DEL, p_peer_id);
+			_send_sys(E.value, SYS_DEL, p_peer_id);
 		}
 	}
 }
@@ -528,8 +531,8 @@ void WebSocketMultiplayerPeer::_process_multiplayer(Ref<WebSocketPeer> p_peer, u
 				break;
 
 			case SYS_DEL: // Remove peer
-				peers_map.erase(id);
 				emit_signal(SNAME("peer_disconnected"), id);
+				peers_map.erase(id);
 				break;
 			case SYS_ID: // Hello, server assigned ID
 				unique_id = id;

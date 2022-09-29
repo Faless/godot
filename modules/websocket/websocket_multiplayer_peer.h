@@ -90,7 +90,7 @@ protected:
 
 	static void _bind_methods();
 
-	void _send_add(int32_t p_peer_id);
+	void _send_ack(Ref<WebSocketPeer> p_peer, int32_t p_peer_id);
 	void _send_sys(Ref<WebSocketPeer> p_peer, uint8_t p_type, int32_t p_peer_id);
 	void _send_del(int32_t p_peer_id);
 	void _process_multiplayer(Ref<WebSocketPeer> p_peer, uint32_t p_peer_id);

@@ -104,7 +104,6 @@ private:
 	bool use_tls = true;
 	bool verify_tls = true;
 	Ref<X509Certificate> tls_cert;
-	WriteMode write_mode = WRITE_MODE_BINARY;
 
 	// Packet buffers.
 	Vector<uint8_t> packet_buffer;

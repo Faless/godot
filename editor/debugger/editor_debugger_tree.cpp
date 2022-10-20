@@ -188,48 +188,31 @@ void EditorDebuggerTree::update_scene_tree(const SceneDebuggerTree *p_tree, int 
 			}
 		}
 
-		if (true) {
-			// Add buttons.
-			const Color remote_button_color = Color(1, 1, 1, 0.8);
-			if (!node.scene_file_path.is_empty()) {
-				String node_scene_file_path = node.scene_file_path;
-				Ref<Texture2D> button_icon = get_theme_icon(SNAME("InstanceOptions"), SNAME("EditorIcons"));
-				String tooltip = vformat(TTR("This node has been instantiated from a PackedScene file:\n%s\nClick to open the original file in the Editor."), node_scene_file_path);
+		// Add buttons.
+		const Color remote_button_color = Color(1, 1, 1, 0.8);
+		if (!node.scene_file_path.is_empty()) {
+			String node_scene_file_path = node.scene_file_path;
+			Ref<Texture2D> button_icon = get_theme_icon(SNAME("InstanceOptions"), SNAME("EditorIcons"));
+			String tooltip = vformat(TTR("This node has been instantiated from a PackedScene file:\n%s\nClick to open the original file in the Editor."), node_scene_file_path);
 
-				item->set_meta("scene_file_path", node_scene_file_path);
-				item->add_button(0, button_icon, BUTTON_SUBSCENE, false, tooltip);
+			item->set_meta("scene_file_path", node_scene_file_path);
+			item->add_button(0, button_icon, BUTTON_SUBSCENE, false, tooltip);
+			item->set_button_color(0, item->get_button_count(0) - 1, remote_button_color);
+		}
+
+		if (node.view_flags & SceneDebuggerTree::RemoteNode::VIEW_HAS_VISIBLE_METHOD) {
+			bool node_visible = node.view_flags & SceneDebuggerTree::RemoteNode::VIEW_VISIBLE;
+			bool node_visible_in_tree = node.view_flags & SceneDebuggerTree::RemoteNode::VIEW_VISIBLE_IN_TREE;
+			Ref<Texture2D> button_icon = get_theme_icon(node_visible ? SNAME("GuiVisibilityVisible") : SNAME("GuiVisibilityHidden"), SNAME("EditorIcons"));
+			String tooltip = TTR("Toggle Visibility");
+
+			item->set_meta("visible", node_visible);
+			item->add_button(0, button_icon, BUTTON_VISIBILITY, false, tooltip);
+			if (ClassDB::is_parent_class(node.type_name, "CanvasItem") || ClassDB::is_parent_class(node.type_name, "Node3D")) {
+				item->set_button_color(0, item->get_button_count(0) - 1, node_visible_in_tree ? remote_button_color : Color(1, 1, 1, 0.6));
+			} else {
 				item->set_button_color(0, item->get_button_count(0) - 1, remote_button_color);
 			}
-
-			if (node.view_flags & SceneDebuggerTree::RemoteNode::VIEW_HAS_VISIBLE_METHOD) {
-				bool node_visible = node.view_flags & SceneDebuggerTree::RemoteNode::VIEW_VISIBLE;
-				bool node_visible_in_tree = node.view_flags & SceneDebuggerTree::RemoteNode::VIEW_VISIBLE_IN_TREE;
-				Ref<Texture2D> button_icon = get_theme_icon(node_visible ? SNAME("GuiVisibilityVisible") : SNAME("GuiVisibilityHidden"), SNAME("EditorIcons"));
-				String tooltip = TTR("Toggle Visibility");
-
-				item->set_meta("visible", node_visible);
-				item->add_button(0, button_icon, BUTTON_VISIBILITY, false, tooltip);
-				if (ClassDB::is_parent_class(node.type_name, "CanvasItem") || ClassDB::is_parent_class(node.type_name, "Node3D")) {
-					item->set_button_color(0, item->get_button_count(0) - 1, node_visible_in_tree ? remote_button_color : Color(1, 1, 1, 0.6));
-				} else {
-					item->set_button_color(0, item->get_button_count(0) - 1, remote_button_color);
-				}
-			}
-
-			/*if (node.extra_data.has("visible")) {
-				bool node_visible = node.extra_data["visible"];
-				bool node_visible_in_tree = node.extra_data["visible_in_tree"];
-				Ref<Texture2D> button_icon = get_theme_icon(node_visible ? SNAME("GuiVisibilityVisible") : SNAME("GuiVisibilityHidden"), SNAME("EditorIcons"));
-				String tooltip = TTR("Toggle Visibility");
-
-				item->set_meta("visible", node_visible);
-				item->add_button(0, button_icon, BUTTON_VISIBILITY, false, tooltip);
-				if (ClassDB::is_parent_class(node.type_name, "CanvasItem") || ClassDB::is_parent_class(node.type_name, "Node3D")) {
-					item->set_button_color(0, item->get_button_count(0) - 1, node_visible_in_tree ? remote_button_color : Color(1, 1, 1, 0.6));
-				} else {
-					item->set_button_color(0, item->get_button_count(0) - 1, remote_button_color);
-				}
-			}*/
 		}
 
 		// Add in front of the parents stack if children are expected.

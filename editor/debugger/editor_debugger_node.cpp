@@ -587,9 +587,7 @@ void EditorDebuggerNode::_remote_tree_button_pressed(Object *p_item, int p_colum
 	} else if (p_id == EditorDebuggerTree::BUTTON_VISIBILITY) {
 		ObjectID obj_id = item->get_metadata(0);
 		ERR_FAIL_COND(obj_id.is_null());
-		_for_all(singleton->tabs, [&](ScriptEditorDebugger *dbg) {
-			dbg->update_remote_object(obj_id, "visible", !item->get_meta("visible"));
-		});
+		get_current_debugger()->update_remote_object(obj_id, "visible", !item->get_meta("visible"));
 		get_current_debugger()->request_remote_tree();
 	}
 }

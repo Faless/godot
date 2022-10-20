@@ -551,11 +551,13 @@ SceneDebuggerTree::SceneDebuggerTree(Node *p_root) {
 	while (stack.size()) {
 		Node *n = stack[0];
 		stack.pop_front();
+
 		int count = n->get_child_count();
-		nodes.push_back(RemoteNode(count, n->get_name(), n->get_class(), n->get_instance_id()));
 		for (int i = 0; i < count; i++) {
 			stack.push_front(n->get_child(count - i - 1));
 		}
+
+		nodes.push_back(RemoteNode(n));
 	}
 }
 
@@ -565,20 +567,53 @@ void SceneDebuggerTree::serialize(Array &p_arr) {
 		p_arr.push_back(n.name);
 		p_arr.push_back(n.type_name);
 		p_arr.push_back(n.id);
+		p_arr.push_back(n.scene_file_path);
+		p_arr.push_back(n.view_flags);
 	}
 }
 
 void SceneDebuggerTree::deserialize(const Array &p_arr) {
 	int idx = 0;
 	while (p_arr.size() > idx) {
-		ERR_FAIL_COND(p_arr.size() < 4);
-		CHECK_TYPE(p_arr[idx], INT);
-		CHECK_TYPE(p_arr[idx + 1], STRING);
-		CHECK_TYPE(p_arr[idx + 2], STRING);
-		CHECK_TYPE(p_arr[idx + 3], INT);
-		nodes.push_back(RemoteNode(p_arr[idx], p_arr[idx + 1], p_arr[idx + 2], p_arr[idx + 3]));
-		idx += 4;
+		ERR_FAIL_COND(p_arr.size() < 6);
+		CHECK_TYPE(p_arr[idx], INT); // child_count.
+		CHECK_TYPE(p_arr[idx + 1], STRING); // name.
+		CHECK_TYPE(p_arr[idx + 2], STRING); // type_name.
+		CHECK_TYPE(p_arr[idx + 3], INT); // id.
+		CHECK_TYPE(p_arr[idx + 4], STRING); // scene_file_path.
+		CHECK_TYPE(p_arr[idx + 5], INT); // view_flags.
+		nodes.push_back(RemoteNode(p_arr[idx], p_arr[idx + 1], p_arr[idx + 2], p_arr[idx + 3], p_arr[idx + 4], p_arr[idx + 5]));
+		idx += 6;
 	}
+}
+/// RemoteNode
+void SceneDebuggerTree::RemoteNode::_fetch_view_flags(Node *p_node) {
+	const NodePath node_path = p_node->get_path();
+	if (node_path.get_name_count() == 1 && node_path.get_name(0) == "root") {
+		return; // Prevent root window visibility from being changed.
+	}
+
+	const Variant visible = p_node->call(SNAME("is_visible"));
+	if (visible.get_type() != Variant::NIL) {
+		WARN_PRINT(vformat("name: %s | path: %s", p_node->get_name(), p_node->get_path()));
+		view_flags = VIEW_HAS_VISIBLE_METHOD;
+		view_flags |= uint8_t(visible) * VIEW_VISIBLE;
+	}
+
+	const Variant visible_in_tree = p_node->call(SNAME("is_visible_in_tree"));
+	if (visible_in_tree.get_type() != Variant::NIL) {
+		view_flags |= uint8_t(visible_in_tree) * VIEW_VISIBLE_IN_TREE;
+	}
+}
+
+SceneDebuggerTree::RemoteNode::RemoteNode(Node *p_node) {
+	child_count = p_node->get_child_count();
+	name = p_node->get_name();
+	type_name = p_node->get_class();
+	id = p_node->get_instance_id();
+
+	scene_file_path = p_node->get_scene_file_path();
+	_fetch_view_flags(p_node);
 }
 
 /// LiveEditor

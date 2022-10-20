@@ -36,9 +36,9 @@
 #include "core/string/ustring.h"
 #include "core/templates/pair.h"
 #include "core/variant/array.h"
+#include "scene/main/node.h"
 
 class Script;
-class Node;
 
 class SceneDebugger {
 public:
@@ -110,13 +110,29 @@ public:
 		String name;
 		String type_name;
 		ObjectID id;
+		String scene_file_path;
+		uint8_t view_flags = 0;
 
-		RemoteNode(int p_child, const String &p_name, const String &p_type, ObjectID p_id) {
+		enum ViewFlags {
+			VIEW_HAS_VISIBLE_METHOD = 1 << 1,
+			VIEW_VISIBLE = 1 << 2,
+			VIEW_VISIBLE_IN_TREE = 1 << 3,
+		};
+
+	private:
+		void _fetch_view_flags(Node *p_node);
+
+	public:
+		RemoteNode(int p_child, const String &p_name, const String &p_type, ObjectID p_id, const String p_scene_file_path, int p_view_flags) {
 			child_count = p_child;
 			name = p_name;
 			type_name = p_type;
 			id = p_id;
+
+			scene_file_path = p_scene_file_path;
+			view_flags = p_view_flags;
 		}
+		RemoteNode(Node *p_node);
 
 		RemoteNode() {}
 	};

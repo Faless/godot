@@ -210,6 +210,8 @@ void MultiplayerPeerExtension::_bind_methods() {
 	GDVIRTUAL_BIND(_set_target_peer, "p_peer");
 
 	GDVIRTUAL_BIND(_get_packet_peer);
+	GDVIRTUAL_BIND(_get_packet_channel);
+	GDVIRTUAL_BIND(_get_packet_mode);
 	GDVIRTUAL_BIND(_is_server);
 	GDVIRTUAL_BIND(_poll);
 	GDVIRTUAL_BIND(_close);
@@ -218,6 +220,7 @@ void MultiplayerPeerExtension::_bind_methods() {
 	GDVIRTUAL_BIND(_set_refuse_new_connections, "p_enable");
 	GDVIRTUAL_BIND(_is_refusing_new_connections);
 	GDVIRTUAL_BIND(_get_connection_status);
+	GDVIRTUAL_BIND(_is_server_relay_supported);
 
 	ADD_PROPERTY_DEFAULT("transfer_mode", TRANSFER_MODE_RELIABLE);
 	ADD_PROPERTY_DEFAULT("transfer_channel", 0);

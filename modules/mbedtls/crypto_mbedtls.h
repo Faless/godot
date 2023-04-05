@@ -35,7 +35,6 @@
 #include "core/io/resource.h"
 
 #include <mbedtls/ctr_drbg.h>
-#include <mbedtls/entropy.h>
 #include <mbedtls/ssl.h>
 
 class CryptoMbedTLS;
@@ -124,7 +123,6 @@ public:
 
 class CryptoMbedTLS : public Crypto {
 private:
-	mbedtls_entropy_context entropy;
 	mbedtls_ctr_drbg_context ctr_drbg;
 	static X509CertificateMbedTLS *default_certs;
 
@@ -143,6 +141,8 @@ public:
 	virtual bool verify(HashingContext::HashType p_hash_type, Vector<uint8_t> p_hash, Vector<uint8_t> p_signature, Ref<CryptoKey> p_key);
 	virtual Vector<uint8_t> encrypt(Ref<CryptoKey> p_key, Vector<uint8_t> p_plaintext);
 	virtual Vector<uint8_t> decrypt(Ref<CryptoKey> p_key, Vector<uint8_t> p_ciphertext);
+
+	static int entropy_func(void *p_data, unsigned char *r_buffer, size_t p_len);
 
 	CryptoMbedTLS();
 	~CryptoMbedTLS();

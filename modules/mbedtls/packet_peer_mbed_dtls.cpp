@@ -78,6 +78,37 @@ int PacketPeerMbedDTLS::bio_recv(void *ctx, unsigned char *buf, size_t len) {
 	return buffer_size;
 }
 
+void PacketPeerMbedDTLS::timing_set_delay(void *p_ctx, uint32_t p_int_ms, uint32_t p_fin_ms) {
+	// See mbedtls_timing_set_delay
+	PacketPeerMbedDTLS *pp = (PacketPeerMbedDTLS *)p_ctx;
+	pp->tls_timer.int_ms = p_int_ms;
+	pp->tls_timer.fin_ms = p_fin_ms;
+
+	// Start timer.
+	if (p_fin_ms != 0) {
+		pp->tls_timer.start_ticks = OS::get_singleton()->get_ticks_msec();
+	}
+}
+
+int PacketPeerMbedDTLS::timing_get_delay(void *ctx) {
+	// See mbedtls_timing_get_delay
+	PacketPeerMbedDTLS *pp = (PacketPeerMbedDTLS *)ctx;
+
+	// Not started.
+	if (pp->tls_timer.fin_ms == 0) {
+		return -1;
+	}
+
+	uint64_t elapsed_ms = OS::get_singleton()->get_ticks_msec();
+	if (elapsed_ms >= pp->tls_timer.fin_ms) {
+		return 2;
+	} else if (elapsed_ms >= pp->tls_timer.int_ms) {
+		return 1;
+	} else {
+		return 0;
+	}
+}
+
 void PacketPeerMbedDTLS::_cleanup() {
 	tls_ctx->clear();
 	base = Ref<PacketPeer>();
@@ -123,7 +154,7 @@ Error PacketPeerMbedDTLS::connect_to_peer(Ref<PacketPeerUDP> p_base, const Strin
 	base = p_base;
 
 	mbedtls_ssl_set_bio(tls_ctx->get_context(), this, bio_send, bio_recv, nullptr);
-	mbedtls_ssl_set_timer_cb(tls_ctx->get_context(), &timer, mbedtls_timing_set_delay, mbedtls_timing_get_delay);
+	mbedtls_ssl_set_timer_cb(tls_ctx->get_context(), this, timing_set_delay, timing_get_delay);
 
 	status = STATUS_HANDSHAKING;
 
@@ -153,7 +184,7 @@ Error PacketPeerMbedDTLS::accept_peer(Ref<PacketPeerUDP> p_base, Ref<TLSOptions>
 	}
 
 	mbedtls_ssl_set_bio(tls_ctx->get_context(), this, bio_send, bio_recv, nullptr);
-	mbedtls_ssl_set_timer_cb(tls_ctx->get_context(), &timer, mbedtls_timing_set_delay, mbedtls_timing_get_delay);
+	mbedtls_ssl_set_timer_cb(tls_ctx->get_context(), this, timing_set_delay, timing_get_delay);
 
 	status = STATUS_HANDSHAKING;
 

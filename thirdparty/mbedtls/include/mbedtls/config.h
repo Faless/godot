@@ -2844,7 +2844,7 @@
  *
  * This module provides a generic entropy pool
  */
-#define MBEDTLS_ENTROPY_C
+//#define MBEDTLS_ENTROPY_C
 
 /**
  * \def MBEDTLS_ERROR_C
@@ -3038,7 +3038,7 @@
  *
  * This module provides networking routines.
  */
-#define MBEDTLS_NET_C
+//#define MBEDTLS_NET_C
 
 /**
  * \def MBEDTLS_OID_C
@@ -3221,7 +3221,7 @@
  *
  * This module enables abstraction of common (libc) functions.
  */
-#define MBEDTLS_PLATFORM_C
+//#define MBEDTLS_PLATFORM_C
 
 /**
  * \def MBEDTLS_POLY1305_C
@@ -3245,7 +3245,7 @@
  *           or MBEDTLS_PSA_CRYPTO_EXTERNAL_RNG.
  *
  */
-#define MBEDTLS_PSA_CRYPTO_C
+//#define MBEDTLS_PSA_CRYPTO_C
 
 /**
  * \def MBEDTLS_PSA_CRYPTO_SE_C
@@ -3274,7 +3274,7 @@
  *           either MBEDTLS_PSA_ITS_FILE_C or a native implementation of
  *           the PSA ITS interface
  */
-#define MBEDTLS_PSA_CRYPTO_STORAGE_C
+//#define MBEDTLS_PSA_CRYPTO_STORAGE_C
 
 /**
  * \def MBEDTLS_PSA_ITS_FILE_C
@@ -3498,7 +3498,7 @@
  *
  * This module is used by the HAVEGE random number generator.
  */
-#define MBEDTLS_TIMING_C
+//#define MBEDTLS_TIMING_C
 
 /**
  * \def MBEDTLS_VERSION_C

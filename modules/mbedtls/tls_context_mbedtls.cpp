@@ -30,6 +30,8 @@
 
 #include "tls_context_mbedtls.h"
 
+#include "core/os/os.h"
+
 static void my_debug(void *ctx, int level,
 		const char *file, int line,
 		const char *str) {
@@ -48,11 +50,10 @@ Error CookieContextMbedTLS::setup() {
 	ERR_FAIL_COND_V_MSG(inited, ERR_ALREADY_IN_USE, "This cookie context is already in use");
 
 	mbedtls_ctr_drbg_init(&ctr_drbg);
-	mbedtls_entropy_init(&entropy);
 	mbedtls_ssl_cookie_init(&cookie_ctx);
 	inited = true;
 
-	int ret = mbedtls_ctr_drbg_seed(&ctr_drbg, mbedtls_entropy_func, &entropy, nullptr, 0);
+	int ret = mbedtls_ctr_drbg_seed(&ctr_drbg, &CryptoMbedTLS::entropy_func, OS::get_singleton(), nullptr, 0);
 	if (ret != 0) {
 		clear(); // Never leave unusable resources around.
 		ERR_FAIL_V_MSG(FAILED, "mbedtls_ctr_drbg_seed returned an error " + itos(ret));
@@ -71,7 +72,6 @@ void CookieContextMbedTLS::clear() {
 		return;
 	}
 	mbedtls_ctr_drbg_free(&ctr_drbg);
-	mbedtls_entropy_free(&entropy);
 	mbedtls_ssl_cookie_free(&cookie_ctx);
 }
 
@@ -90,10 +90,9 @@ Error TLSContextMbedTLS::_setup(int p_endpoint, int p_transport, int p_authmode)
 	mbedtls_ssl_init(&tls);
 	mbedtls_ssl_config_init(&conf);
 	mbedtls_ctr_drbg_init(&ctr_drbg);
-	mbedtls_entropy_init(&entropy);
 	inited = true;
 
-	int ret = mbedtls_ctr_drbg_seed(&ctr_drbg, mbedtls_entropy_func, &entropy, nullptr, 0);
+	int ret = mbedtls_ctr_drbg_seed(&ctr_drbg, &CryptoMbedTLS::entropy_func, OS::get_singleton(), nullptr, 0);
 	if (ret != 0) {
 		clear(); // Never leave unusable resources around.
 		ERR_FAIL_V_MSG(FAILED, "mbedtls_ctr_drbg_seed returned an error " + itos(ret));
@@ -198,7 +197,6 @@ void TLSContextMbedTLS::clear() {
 	mbedtls_ssl_free(&tls);
 	mbedtls_ssl_config_free(&conf);
 	mbedtls_ctr_drbg_free(&ctr_drbg);
-	mbedtls_entropy_free(&entropy);
 
 	// Unlock and key and certificates
 	if (certs.is_valid()) {

@@ -36,6 +36,7 @@
 #include "core/config/project_settings.h"
 #include "core/io/certs_compressed.gen.h"
 #include "core/io/compression.h"
+#include "core/os/os.h"
 
 #ifdef TOOLS_ENABLED
 #include "editor/editor_settings.h"
@@ -278,10 +279,16 @@ void CryptoMbedTLS::finalize_crypto() {
 	HMACContextMbedTLS::finalize();
 }
 
+int CryptoMbedTLS::entropy_func(void *p_data, unsigned char *r_buffer, size_t p_len) {
+	ERR_FAIL_COND_V(!p_data, -1);
+	Error err = OS::get_singleton()->get_entropy(r_buffer, p_len);
+	ERR_FAIL_COND_V(err, -1);
+	return 0;
+}
+
 CryptoMbedTLS::CryptoMbedTLS() {
 	mbedtls_ctr_drbg_init(&ctr_drbg);
-	mbedtls_entropy_init(&entropy);
-	int ret = mbedtls_ctr_drbg_seed(&ctr_drbg, mbedtls_entropy_func, &entropy, nullptr, 0);
+	int ret = mbedtls_ctr_drbg_seed(&ctr_drbg, &entropy_func, OS::get_singleton(), nullptr, 0);
 	if (ret != 0) {
 		ERR_PRINT(" failed\n  ! mbedtls_ctr_drbg_seed returned an error" + itos(ret));
 	}
@@ -289,7 +296,6 @@ CryptoMbedTLS::CryptoMbedTLS() {
 
 CryptoMbedTLS::~CryptoMbedTLS() {
 	mbedtls_ctr_drbg_free(&ctr_drbg);
-	mbedtls_entropy_free(&entropy);
 }
 
 X509CertificateMbedTLS *CryptoMbedTLS::default_certs = nullptr;

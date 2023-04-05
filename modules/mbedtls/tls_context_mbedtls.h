@@ -40,7 +40,6 @@
 #include <mbedtls/config.h>
 #include <mbedtls/ctr_drbg.h>
 #include <mbedtls/debug.h>
-#include <mbedtls/entropy.h>
 #include <mbedtls/ssl.h>
 #include <mbedtls/ssl_cookie.h>
 
@@ -51,7 +50,6 @@ class CookieContextMbedTLS : public RefCounted {
 
 protected:
 	bool inited = false;
-	mbedtls_entropy_context entropy;
 	mbedtls_ctr_drbg_context ctr_drbg;
 	mbedtls_ssl_cookie_ctx cookie_ctx;
 
@@ -74,7 +72,6 @@ public:
 	Ref<CryptoKeyMbedTLS> pkey;
 	Ref<CookieContextMbedTLS> cookies;
 
-	mbedtls_entropy_context entropy;
 	mbedtls_ctr_drbg_context ctr_drbg;
 	mbedtls_ssl_context tls;
 	mbedtls_ssl_config conf;

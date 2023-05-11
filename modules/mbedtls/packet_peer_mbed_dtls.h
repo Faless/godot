@@ -34,13 +34,19 @@
 #include "core/io/packet_peer_dtls.h"
 #include "tls_context_mbedtls.h"
 
-#include <mbedtls/timing.h>
-
 class PacketPeerMbedDTLS : public PacketPeerDTLS {
 private:
 	enum {
 		PACKET_BUFFER_SIZE = 65536
 	};
+
+	struct TLSTimer {
+		uint64_t start_ticks = 0;
+		uint32_t int_ms = 0;
+		uint32_t fin_ms = 0;
+	};
+
+	TLSTimer tls_timer;
 
 	uint8_t packet_buffer[PACKET_BUFFER_SIZE];
 
@@ -53,11 +59,16 @@ private:
 
 	static int bio_recv(void *ctx, unsigned char *buf, size_t len);
 	static int bio_send(void *ctx, const unsigned char *buf, size_t len);
+
+	// See mbedtls_ssl_set_timer_t.
+	static void timing_set_delay(void *ctx, uint32_t int_ms, uint32_t fin_ms);
+	// See mbedtls_ssl_get_timer_t.
+	static int timing_get_delay(void *ctx);
+
 	void _cleanup();
 
 protected:
 	Ref<TLSContextMbedTLS> tls_ctx;
-	mbedtls_timing_delay_context timer;
 
 	Error _do_handshake();
 	int _set_cookie();

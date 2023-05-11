@@ -56,6 +56,9 @@
 // Disable default entropy sources
 #define MBEDTLS_NO_DEFAULT_ENTROPY_SOURCES
 
+// Disable the timing module
+#undef MBEDTLS_TIMING_C
+
 #endif // GODOT_MBEDTLS_INCLUDE_H
 
 #endif // GODOT_MODULE_MBEDTLS_CONFIG_H

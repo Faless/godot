@@ -52,6 +52,7 @@ Error CookieContextMbedTLS::setup() {
 	mbedtls_ssl_cookie_init(&cookie_ctx);
 	inited = true;
 
+	mbedtls_entropy_add_source(&entropy, &CryptoMbedTLS::entropy_poll, nullptr, CryptoMbedTLS::MIN_ENTROPY_POLL, MBEDTLS_ENTROPY_SOURCE_STRONG);
 	int ret = mbedtls_ctr_drbg_seed(&ctr_drbg, mbedtls_entropy_func, &entropy, nullptr, 0);
 	if (ret != 0) {
 		clear(); // Never leave unusable resources around.
@@ -93,6 +94,7 @@ Error TLSContextMbedTLS::_setup(int p_endpoint, int p_transport, int p_authmode)
 	mbedtls_entropy_init(&entropy);
 	inited = true;
 
+	mbedtls_entropy_add_source(&entropy, &CryptoMbedTLS::entropy_poll, nullptr, CryptoMbedTLS::MIN_ENTROPY_POLL, MBEDTLS_ENTROPY_SOURCE_STRONG);
 	int ret = mbedtls_ctr_drbg_seed(&ctr_drbg, mbedtls_entropy_func, &entropy, nullptr, 0);
 	if (ret != 0) {
 		clear(); // Never leave unusable resources around.

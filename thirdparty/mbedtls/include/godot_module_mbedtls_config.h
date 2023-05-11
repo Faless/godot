@@ -53,6 +53,9 @@
 #undef MBEDTLS_DES_C
 #undef MBEDTLS_DHM_C
 
+// Disable default entropy sources
+#define MBEDTLS_NO_DEFAULT_ENTROPY_SOURCES
+
 #endif // GODOT_MBEDTLS_INCLUDE_H
 
 #endif // GODOT_MODULE_MBEDTLS_CONFIG_H

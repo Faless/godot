@@ -312,6 +312,7 @@ void CryptoMbedTLS::finalize_crypto() {
 CryptoMbedTLS::CryptoMbedTLS() {
 	mbedtls_ctr_drbg_init(&ctr_drbg);
 	mbedtls_entropy_init(&entropy);
+	mbedtls_entropy_add_source(&entropy, &entropy_poll, nullptr, MIN_ENTROPY_POLL, MBEDTLS_ENTROPY_SOURCE_STRONG);
 	int ret = mbedtls_ctr_drbg_seed(&ctr_drbg, mbedtls_entropy_func, &entropy, nullptr, 0);
 	if (ret != 0) {
 		ERR_PRINT(" failed\n  ! mbedtls_ctr_drbg_seed returned an error" + itos(ret));
@@ -486,4 +487,12 @@ Vector<uint8_t> CryptoMbedTLS::decrypt(Ref<CryptoKey> p_key, Vector<uint8_t> p_c
 	out.resize(size);
 	memcpy(out.ptrw(), buf, size);
 	return out;
+}
+
+int CryptoMbedTLS::entropy_poll(void *p_data, unsigned char *r_buffer, size_t p_len, size_t *r_len) {
+	*r_len = 0;
+	Error err = OS::get_singleton()->get_entropy(r_buffer, p_len);
+	ERR_FAIL_COND_V(err, MBEDTLS_ERR_ENTROPY_SOURCE_FAILED);
+	*r_len = p_len;
+	return 0;
 }

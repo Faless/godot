@@ -125,12 +125,19 @@ public:
 };
 
 class CryptoMbedTLS : public Crypto {
+public:
+	enum {
+		MIN_ENTROPY_POLL = 32,
+	};
+
 private:
 	mbedtls_entropy_context entropy;
 	mbedtls_ctr_drbg_context ctr_drbg;
 	static X509CertificateMbedTLS *default_certs;
 
 public:
+	static int entropy_poll(void *p_data, unsigned char *r_buffer, size_t p_len, size_t *r_len);
+
 	static Crypto *create();
 	static void initialize_crypto();
 	static void finalize_crypto();

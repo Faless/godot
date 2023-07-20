@@ -193,6 +193,10 @@ int HTTPClientWeb::get_read_chunk_size() const {
 	return read_limit;
 }
 
+bool HTTPClientWeb::is_decompressing() const {
+	return true;
+}
+
 Error HTTPClientWeb::poll() {
 	switch (status) {
 		case STATUS_DISCONNECTED:

@@ -101,6 +101,7 @@ public:
 	bool is_blocking_mode_enabled() const override;
 	void set_read_chunk_size(int p_size) override;
 	int get_read_chunk_size() const override;
+	bool is_decompressing() const;
 	Error poll() override;
 	HTTPClientWeb();
 	~HTTPClientWeb();

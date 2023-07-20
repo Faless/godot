@@ -192,6 +192,8 @@ public:
 	virtual void set_read_chunk_size(int p_size) = 0;
 	virtual int get_read_chunk_size() const = 0;
 
+	virtual bool is_decompressing() const = 0;
+
 	virtual Error poll() = 0;
 
 	// Use empty string or -1 to unset

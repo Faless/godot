@@ -787,6 +787,10 @@ void HTTPClientTCP::set_https_proxy(const String &p_host, int p_port) {
 	}
 }
 
+void HTTPClientTCP::is_decompressing() const {
+	return false;
+}
+
 HTTPClientTCP::HTTPClientTCP() {
 	tcp_connection.instantiate();
 	request_buffer.instantiate();

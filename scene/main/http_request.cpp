@@ -129,7 +129,7 @@ Error HTTPRequest::request_raw(const String &p_url, const Vector<String> &p_cust
 
 	headers = p_custom_headers;
 
-	if (accept_gzip) {
+	if (accept_gzip && !client->is_decompressing()) {
 		// If the user has specified an Accept-Encoding header, don't overwrite it.
 		if (!has_header(headers, "Accept-Encoding")) {
 			headers.push_back("Accept-Encoding: gzip, deflate");
@@ -271,7 +271,7 @@ bool HTTPRequest::_handle_response(bool *ret_value) {
 
 	// Check if we need to start streaming decompression.
 	String content_encoding;
-	if (accept_gzip) {
+	if (accept_gzip && !client->is_decompressing()) {
 		content_encoding = get_header_value(response_headers, "Content-Encoding").to_lower();
 	}
 	if (content_encoding == "gzip") {

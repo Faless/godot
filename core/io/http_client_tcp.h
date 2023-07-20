@@ -98,6 +98,7 @@ public:
 	Error poll() override;
 	void set_http_proxy(const String &p_host, int p_port) override;
 	void set_https_proxy(const String &p_host, int p_port) override;
+	bool is_decompressing() const override;
 	HTTPClientTCP();
 };
 

@@ -6,6 +6,9 @@ from emscripten_helpers import (
     create_engine_file,
     add_js_libraries,
     add_js_pre,
+    add_js_extern_pre,
+    add_js_post,
+    add_js_extern_post,
     add_js_externs,
     create_template_zip,
 )
@@ -150,9 +153,15 @@ def configure(env: "Environment"):
     # Add helper method for adding libraries, externs, pre-js.
     env["JS_LIBS"] = []
     env["JS_PRE"] = []
+    env["JS_EXTERN_PRE"] = []
+    env["JS_POST"] = []
+    env["JS_EXTERN_POST"] = []
     env["JS_EXTERNS"] = []
     env.AddMethod(add_js_libraries, "AddJSLibraries")
     env.AddMethod(add_js_pre, "AddJSPre")
+    env.AddMethod(add_js_extern_pre, "AddJSExternPre")
+    env.AddMethod(add_js_post, "AddJSPost")
+    env.AddMethod(add_js_extern_post, "AddJSExternPost")
     env.AddMethod(add_js_externs, "AddJSExterns")
 
     # Add method that joins/compiles our Engine files.

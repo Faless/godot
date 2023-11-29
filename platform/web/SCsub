@@ -51,6 +51,12 @@ for lib in sys_env["JS_LIBS"]:
     sys_env.Append(LINKFLAGS=["--js-library", lib.abspath])
 for js in sys_env["JS_PRE"]:
     sys_env.Append(LINKFLAGS=["--pre-js", js.abspath])
+for js in sys_env["JS_EXTERN_PRE"]:
+    sys_env.Append(LINKFLAGS=["--extern-pre-js", js.abspath])
+for js in sys_env["JS_POST"]:
+    sys_env.Append(LINKFLAGS=["--post-js", js.abspath])
+for js in sys_env["JS_EXTERN_POST"]:
+    sys_env.Append(LINKFLAGS=["--extern-post-js", js.abspath])
 for ext in sys_env["JS_EXTERNS"]:
     sys_env["ENV"]["EMCC_CLOSURE_ARGS"] += " --externs " + ext.abspath
 

@@ -89,6 +89,7 @@ public:
 		mimes["png"] = "image/png";
 		mimes["svg"] = "image/svg";
 		mimes["wasm"] = "application/wasm";
+		mimes["txt"] = "text/plain";
 		server.instantiate();
 		stop();
 	}
@@ -142,7 +143,7 @@ public:
 		const String cache_path = EditorPaths::get_singleton()->get_cache_dir().path_join("web");
 		const String filepath = cache_path.path_join(req_file);
 
-		if (!mimes.has(req_ext) || !FileAccess::exists(filepath)) {
+		if (!FileAccess::exists(filepath)) {
 			String s = "HTTP/1.1 404 Not Found\r\n";
 			s += "Connection: Close\r\n";
 			s += "\r\n";
@@ -150,7 +151,11 @@ public:
 			peer->put_data((const uint8_t *)cs.get_data(), cs.size() - 1);
 			return;
 		}
-		const String ctype = mimes[req_ext];
+
+		String ctype = "application/octet-stream";
+		if (mimes.has(req_ext)) {
+			ctype = mimes[req_ext];
+		}
 
 		Ref<FileAccess> f = FileAccess::open(filepath, FileAccess::READ);
 		ERR_FAIL_COND(f.is_null());

@@ -53,6 +53,17 @@ const InternalConfig = function (initConfig) { // eslint-disable-line no-unused-
 		 */
 		mainPack: null,
 		/**
+		 * Additional files to be preloaded before init.
+		 *
+		 * Specify addional files to be preloaded and copied in the virtual file system before the engine is
+		 * initialized.
+		 *
+		 * @memberof EngineConfig
+		 * @default
+		 * @type {Array<string>}
+		 */
+		preloads: [],
+		/**
 		 * Specify a language code to select the proper localization for the game.
 		 *
 		 * The browser locale will be used if none is specified. See complete list of
@@ -250,6 +261,7 @@ const InternalConfig = function (initConfig) { // eslint-disable-line no-unused-
 		this.canvas = parse('canvas', this.canvas);
 		this.executable = parse('executable', this.executable);
 		this.mainPack = parse('mainPack', this.mainPack);
+		this.preloads = parse('preloads', this.preloads);
 		this.locale = parse('locale', this.locale);
 		this.canvasResizePolicy = parse('canvasResizePolicy', this.canvasResizePolicy);
 		this.persistentPaths = parse('persistentPaths', this.persistentPaths);

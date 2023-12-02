@@ -207,12 +207,15 @@ const Engine = (function () {
 				const exe = this.config.executable;
 				const pack = this.config.mainPack || `${exe}.pck`;
 				this.config.args = ['--main-pack', pack].concat(this.config.args);
-				// Start and init with execName as loadPath if not inited.
 				const me = this;
+				const preloads = this.config.preloads.map(function (file) {
+					return me.preloadFile(file, file);
+				});
+				// Start and init with execName as loadPath if not inited.
 				return Promise.all([
 					this.init(exe),
 					this.preloadFile(pack, pack),
-				]).then(function () {
+				].concat(preloads)).then(function () {
 					return me.start.apply(me);
 				});
 			},

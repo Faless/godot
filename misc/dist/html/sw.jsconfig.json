@@ -1,0 +1,14 @@
+{
+	"compilerOptions": {
+		"composite": true,
+		"lib": [
+			"WebWorker",
+			"WebWorker.ImportScripts",
+			"Webworker.Iterable",
+			"ES6"
+		]
+	},
+	"files": [
+		"./service-worker.js"
+	]
+}

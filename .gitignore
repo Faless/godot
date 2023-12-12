@@ -90,6 +90,7 @@ platform/android/java/*/libs/
 # Web platform
 *.bc
 platform/web/node_modules/
+misc/dist/html/node_modules/
 
 # Misc
 *.debug

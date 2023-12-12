@@ -1,0 +1,11 @@
+{
+	"name": "godot-html-files",
+	"author": {
+		"name": "Godot Engine",
+		"url": "https://godotengine.org/"
+	},
+	"devDependencies": {
+		"eslint": "^8.55.0",
+		"typescript": "^5.3.3"
+	}
+}

@@ -220,6 +220,16 @@ const engine = new Engine(GODOT_CONFIG);
 	if (missing.length !== 0) {
 		const missingMsg = 'Error\nThe following features required to run Godot projects on the Web are missing:\n';
 		displayFailureNotice(missingMsg + missing.join('\n'));
+		
+		if ("serviceWorker" in navigator) {
+			navigator.serviceWorker.getRegistration().then((registration) => {
+				if (registration == null) {
+					engine.installServiceWorker().then(() => {
+						window.location.reload();
+					});
+				}
+			})
+		}
 	} else {
 		setStatusMode('indeterminate');
 		engine.startGame({

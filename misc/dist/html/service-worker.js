@@ -41,34 +41,33 @@ self.addEventListener("activate", (event) => {
  * @param {FetchEvent} event 
  * @param {Cache} cache 
  * @param {boolean} isCacheable 
- * @returns {any} Response
+ * @returns {Response}
  */
 async function fetchAndCache(event, cache, isCacheable) {
 	// Use the preloaded response, if it's there
+	/** @type { Response } */
 	let response = await event.preloadResponse;
 	if (response == null) {
 		// Or, go over network.
-		let newResponse = await self.fetch(event.request);
-		if (
-			ENSURE_CROSSORIGIN_ISOLATION_HEADERS && 
-			!(
-				newResponse.headers.get("Cross-Origin-Embedder-Policy") === "require-corp" && 
-				newResponse.headers.get("Cross-Origin-Opener-Policy") === "same-origin"
-			)
-		) {
-			const crossOriginIsolatedHeaders = new Headers(newResponse.headers);
-			crossOriginIsolatedHeaders.set("Cross-Origin-Embedder-Policy", "require-corp");
-			crossOriginIsolatedHeaders.set("Cross-Origin-Opener-Policy", "same-origin");
-			const crossOriginIsolatedResponse = newResponse.clone();
-			crossOriginIsolatedResponse.headers = crossOriginIsolatedHeaders;
-			newResponse = crossOriginIsolatedResponse;
-		}
-		response = newResponse;
+		response = await self.fetch(event.request);
 	}
+
+	if (ENSURE_CROSSORIGIN_ISOLATION_HEADERS &&
+		!(
+			response.headers.get("Cross-Origin-Embedder-Policy") === "require-corp" &&
+			response.headers.get("Cross-Origin-Opener-Policy") === "same-origin"
+		)) {
+		const crossOriginIsolatedResponse = response.clone();
+		crossOriginIsolatedResponse.headers.set("Cross-Origin-Embedder-Policy", "require-corp");
+		crossOriginIsolatedResponse.headers.set("Cross-Origin-Opener-Policy", "same-origin");
+		response = crossOriginIsolatedResponse;
+	}
+
 	if (isCacheable) {
 		// And update the cache
 		cache.put(event.request, response.clone());
 	}
+
 	return response;
 }
 

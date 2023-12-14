@@ -242,8 +242,8 @@ const Engine = (function () {
 			},
 
 			/**
-			 * Install the progressive-web app service worker
-			 * @returns {Promise}
+			 * Install the progressive-web app service worker.
+			 * @returns {Promise} The service worker registration promise.
 			 */
 			installServiceWorker: function () {
 				if (this.config.serviceWorker && 'serviceWorker' in navigator) {

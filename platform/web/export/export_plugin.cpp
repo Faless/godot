@@ -150,6 +150,7 @@ void EditorExportPlatformWeb::_fix_html(Vector<uint8_t> &p_html, const Ref<Edito
 	config["executable"] = p_name;
 	config["args"] = args;
 	config["fileSizes"] = p_file_sizes;
+	config["ensureCrossOriginIsolationHeaders"] = (bool)p_preset->get("progressive_web_app/ensure_cross_origin_isolation_headers");
 
 	String head_include;
 	if (p_preset->get("html/export_icon")) {

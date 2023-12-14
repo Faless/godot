@@ -218,18 +218,21 @@ const engine = new Engine(GODOT_CONFIG);
 		threads: GODOT_THREADS_ENABLED,
 	});
 	if (missing.length !== 0) {
-		if (GODOT_CONFIG["serviceWorker"] && GODOT_CONFIG["ensureCrossOriginIsolationHeaders"] && "serviceWorker" in navigator) {
+		if (GODOT_CONFIG['serviceWorker'] && GODOT_CONFIG['ensureCrossOriginIsolationHeaders'] && 'serviceWorker' in navigator) {
 			// There's a chance that installing the service worker would fix the issue
 			Promise.race([
 				navigator.serviceWorker.getRegistration().then((registration) => {
 					if (registration != null) {
-						return Promise.reject("Service worker already exists.");
+						return Promise.reject(new Error('Service worker already exists.'));
 					}
+					return registration;
 				}).then(() => engine.installServiceWorker()),
 				// For some reason, `getRegistration()` can stall
-				new Promise((resolve) => setTimeout(() => resolve(), 2000))
+				new Promise((resolve) => {
+					setTimeout(() => resolve(), 2000);
+				}),
 			]).catch((err) => {
-				console.error("Error while registering service worker:", err);
+				console.error('Error while registering service worker:', err);
 			}).then(() => {
 				window.location.reload();
 			});

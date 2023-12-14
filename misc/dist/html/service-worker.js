@@ -37,6 +37,29 @@ self.addEventListener("activate", (event) => {
 });
 
 /**
+ * Ensures that the response has the correct COEP/COOP headers
+ * @param {Response} response
+ * @returns {Response}
+ */
+function ensureCrossOriginIsolationHeaders(response) {
+	if (response.headers.get("Cross-Origin-Embedder-Policy") === "require-corp" &&
+		response.headers.get("Cross-Origin-Opener-Policy") === "same-origin") {
+		return response;
+	}
+
+	const crossOriginIsolatedHeaders = new Headers(response.headers);
+	crossOriginIsolatedHeaders.set("Cross-Origin-Embedder-Policy", "require-corp");
+	crossOriginIsolatedHeaders.set("Cross-Origin-Opener-Policy", "same-origin");
+	const newResponse = new Response(response.body, {
+		status: response.status,
+		statusText: response.statusText,
+		headers: crossOriginIsolatedHeaders,
+	});
+
+	return newResponse;
+}
+
+/**
  * Calls fetch and cache the result if it is cacheable
  * @param {FetchEvent} event 
  * @param {Cache} cache 
@@ -52,15 +75,8 @@ async function fetchAndCache(event, cache, isCacheable) {
 		response = await self.fetch(event.request);
 	}
 
-	if (ENSURE_CROSSORIGIN_ISOLATION_HEADERS &&
-		!(
-			response.headers.get("Cross-Origin-Embedder-Policy") === "require-corp" &&
-			response.headers.get("Cross-Origin-Opener-Policy") === "same-origin"
-		)) {
-		const crossOriginIsolatedResponse = response.clone();
-		crossOriginIsolatedResponse.headers.set("Cross-Origin-Embedder-Policy", "require-corp");
-		crossOriginIsolatedResponse.headers.set("Cross-Origin-Opener-Policy", "same-origin");
-		response = crossOriginIsolatedResponse;
+	if (ENSURE_CROSSORIGIN_ISOLATION_HEADERS) {
+		response = ensureCrossOriginIsolationHeaders(response);
 	}
 
 	if (isCacheable) {
@@ -84,10 +100,10 @@ self.addEventListener("fetch",
 		const local = url.startsWith(base) ? url.replace(base, "") : "";
 		const isCachable = FULL_CACHE.some(v => v === local) || (base === referrer && base.endsWith(CACHED_FILES[0]));
 		if (isNavigate || isCachable) {
-			event.respondWith(async function () {
+			event.respondWith((async () => {
 				// Try to use cache first
 				const cache = await caches.open(CACHE_NAME);
-				if (event.request.mode === "navigate") {
+				if (isNavigate) {
 					// Check if we have full cache during HTML page request.
 					/** @type {Response[]} */
 					const fullCache = await Promise.all(FULL_CACHE.map(name => cache.match(name)));
@@ -95,7 +111,8 @@ self.addEventListener("fetch",
 					if (missing) {
 						try {
 							// Try network if some cached file is missing (so we can display offline page in case).
-							return await fetchAndCache(event, cache, isCachable);
+							const response = await fetchAndCache(event, cache, isCachable);
+							return response;
 						} catch (e) {
 							// And return the hopefully always cached offline page in case of network failure.
 							console.error("Network error: ", e);
@@ -103,14 +120,24 @@ self.addEventListener("fetch",
 						}
 					}
 				}
-				const cached = await cache.match(event.request);
+				let cached = await cache.match(event.request);
 				if (cached != null) {
+					if (ENSURE_CROSSORIGIN_ISOLATION_HEADERS) {
+						cached = ensureCrossOriginIsolationHeaders(cached);
+					}
 					return cached;
 				} else {
 					// Try network if don't have it in cache.
-					return await fetchAndCache(event, cache, isCachable);
+					const response = await fetchAndCache(event, cache, isCachable);
+					return response;
 				}
-			}());
+			})());
+		} else if (ENSURE_CROSSORIGIN_ISOLATION_HEADERS) {
+			event.respondWith((async () => {
+				let response = await fetch(event.request);
+				response = ensureCrossOriginIsolationHeaders(response);
+				return response;
+			})());
 		}
 	}
 );

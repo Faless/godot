@@ -250,7 +250,7 @@ const Engine = (function () {
 					return navigator.serviceWorker.register(this.config.serviceWorker);
 				}
 				return Promise.resolve();
-			}
+			},
 		};
 
 		Engine.prototype = proto;

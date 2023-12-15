@@ -5,7 +5,7 @@
   "description": "Development and linting setup for Godot's Web platform code",
   "scripts": {
     "docs": "jsdoc --template js/jsdoc2rst/ js/engine/engine.js js/engine/config.js js/engine/features.js --destination ''",
-    "lint": "npm run lint:engine && npm run lint:libs && npm run lint:modules && npm run lint:tools && lint:sw && npm run lint:html",
+    "lint": "npm run lint:engine && npm run lint:libs && npm run lint:modules && npm run lint:tools && npm run lint:sw && npm run lint:html",
     "lint:engine": "eslint \"../../misc/dist/html/*.js\" \"js/engine/*.js\" --no-eslintrc -c .eslintrc.engine.js",
     "lint:engine": "eslint \"js/engine/*.js\" --no-eslintrc -c .eslintrc.engine.js",
     "lint:sw": "eslint \"../../misc/dist/html/service-worker.js\" --no-eslintrc -c .eslintrc.sw.js",
@@ -13,7 +13,7 @@
     "lint:modules": "eslint \"../../modules/**/*.js\" --no-eslintrc -c .eslintrc.libs.js",
     "lint:tools": "eslint \"js/jsdoc2rst/**/*.js\" --no-eslintrc -c .eslintrc.engine.js",
     "lint:html": "eslint \"../../misc/dist/html/*.html\" --no-eslintrc -c .eslintrc.html.js",
-    "format": "npm run format:engine && npm run format:libs && npm run format:modules && npm run format:tools && format:sw && npm run format:html",
+    "format": "npm run format:engine && npm run format:libs && npm run format:modules && npm run format:tools && npm run format:sw && npm run format:html",
     "format:engine": "npm run lint:engine -- --fix",
     "format:libs": "npm run lint:libs -- --fix",
     "format:modules": "npm run lint:modules -- --fix",

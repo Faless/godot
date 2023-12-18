@@ -138,6 +138,12 @@ void AudioDriverWeb::start() {
 	start(output_rb, memarr_len(output_rb), input_rb, memarr_len(input_rb));
 }
 
+void AudioDriverWeb::sync() {
+#ifndef THREADS_ENABLED
+	godot_audio_worklet_sync();
+#endif
+}
+
 void AudioDriverWeb::resume() {
 	if (audio_context.state == 0) { // 'suspended'
 		godot_audio_resume();

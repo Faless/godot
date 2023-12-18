@@ -261,7 +261,7 @@ const GodotAudioWorklet = {
 				let pending_samples = 0;
 				const wbuf = new Float32Array(p_out_size);
 
-				function send(port) {
+				this.send = function (port) {
 					if (pending_samples === 0) {
 						return;
 					}
@@ -301,7 +301,6 @@ const GodotAudioWorklet = {
 				};
 				this.consumed = function (size, port) {
 					pending_samples += size;
-					send(port);
 				};
 			}
 			GodotAudioWorklet.ring_buffer = new RingBuffer();
@@ -389,6 +388,14 @@ const GodotAudioWorklet = {
 		const out_callback = GodotRuntime.get_func(p_out_callback);
 		const in_callback = GodotRuntime.get_func(p_in_callback);
 		GodotAudioWorklet.start_no_threads(p_out_buf, p_out_size, out_callback, p_in_buf, p_in_size, in_callback);
+	},
+
+	godot_audio_worklet_sync__proxy: 'sync',
+	godot_audio_worklet_sync__sig: 'v',
+	godot_audio_worklet_sync: function () {
+		if (GodotAudioWorklet.worklet && GodotAudioWorklet.ring_buffer) {
+			GodotAudioWorklet.ring_buffer.send(GodotAudioWorklet.worklet.port);
+		}
 	},
 
 	godot_audio_worklet_state_wait__sig: 'iiii',

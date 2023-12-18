@@ -42,6 +42,8 @@
 static OS_Web *os = nullptr;
 #ifndef PROXY_TO_PTHREAD_ENABLED
 static uint64_t target_ticks = 0;
+static uint64_t last_iteration_time = 0;
+static uint64_t estimated_frame_time = 16666;
 #endif
 
 static bool main_started = false;
@@ -68,6 +70,11 @@ void cleanup_after_sync() {
 void main_loop_callback() {
 #ifndef PROXY_TO_PTHREAD_ENABLED
 	uint64_t current_ticks = os->get_ticks_usec();
+	if (last_iteration_time > estimated_frame_time) {
+		last_iteration_time = 0;
+		AudioDriverWeb::sync();
+		return;
+	}
 #endif
 
 	bool force_draw = DisplayServerWeb::get_singleton()->check_size_force_redraw();
@@ -96,6 +103,10 @@ void main_loop_callback() {
 		emscripten_set_main_loop(exit_callback, -1, false);
 		godot_js_os_finish_async(cleanup_after_sync);
 	}
+	last_iteration_time = os->get_ticks_usec() - current_ticks;
+	// If we know time it took to iterate.
+	// And we know the expected requestAnimationFrame frequency.
+	// If we are taking too long, skip one iteration.
 }
 
 /// When calling main, it is assumed FS is setup and synced.

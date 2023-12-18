@@ -55,11 +55,11 @@ extern void godot_audio_worklet_start_no_threads(float *p_out_buf, int p_out_siz
 extern int godot_audio_worklet_state_add(GodotAudioState p_state, int p_idx, int p_value);
 extern int godot_audio_worklet_state_get(GodotAudioState p_state, int p_idx);
 extern int godot_audio_worklet_state_wait(int32_t *p_state, int p_idx, int32_t p_expected, int p_timeout);
+extern void godot_audio_worklet_sync();
 
 // Script
 extern int godot_audio_script_create(int *p_buffer_size, int p_channels);
 extern void godot_audio_script_start(float *p_in_buf, int p_in_size, float *p_out_buf, int p_out_size, void (*p_cb)());
-
 #ifdef __cplusplus
 }
 #endif

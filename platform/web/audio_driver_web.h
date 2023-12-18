@@ -86,6 +86,7 @@ public:
 	virtual Error input_stop() override;
 
 	static void resume();
+	static void sync();
 
 	AudioDriverWeb() {}
 };

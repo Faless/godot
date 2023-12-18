@@ -80,6 +80,7 @@ bool OS_Web::main_loop_iterate() {
 	}
 
 	DisplayServer::get_singleton()->process_events();
+	AudioDriverWeb::sync();
 
 	return Main::iteration();
 }

@@ -24,16 +24,25 @@ def shell_open(url):
         subprocess.call([opener, url])
 
 
-def serve(root, port, run_browser):
+def serve(root, port, location, run_browser):
     os.chdir(root)
 
     address = ("", port)
     httpd = HTTPServer(address, CORSRequestHandler)
 
     if run_browser:
+        default_location = f"http://127.0.0.1:{port}"
+
+        if location == "":
+            location = default_location
+        elif not location.startswith("http://"):
+            if not location.startswith("/"):
+                location = "/" + location
+            location = default_location + location
+
         # Open the served page in the user's default browser.
         print("Opening the served URL in the default browser (use `--no-browser` or `-n` to disable this).")
-        shell_open(f"http://127.0.0.1:{port}")
+        shell_open(location)
 
     try:
         httpd.serve_forever()
@@ -51,6 +60,7 @@ if __name__ == "__main__":
         "-r", "--root", help="path to serve as root (relative to `platform/web/`)", default="../../bin", type=Path
     )
     browser_parser = parser.add_mutually_exclusive_group(required=False)
+    browser_parser.add_argument("-l", "--location", help="browser location to open", default="", type=str)
     browser_parser.add_argument(
         "-n", "--no-browser", help="don't open default web browser automatically", dest="browser", action="store_false"
     )
@@ -61,4 +71,4 @@ if __name__ == "__main__":
     # so that the script can be run from any location.
     os.chdir(Path(__file__).resolve().parent)
 
-    serve(args.root, args.port, args.browser)
+    serve(args.root, args.port, args.location, args.browser)

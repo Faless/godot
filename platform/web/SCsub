@@ -13,8 +13,11 @@ if "serve" in COMMAND_LINE_TARGETS or "run" in COMMAND_LINE_TARGETS:
     except Exception:
         print("GODOT_WEB_TEST_PORT must be a valid integer")
         sys.exit(255)
-    serve(env.Dir(env.GetTemplateZipPath()).abspath, port, "run" in COMMAND_LINE_TARGETS)
-    sys.exit(0)
+    run = "run" in COMMAND_LINE_TARGETS
+    # We can only run editor builds directly
+    location = "godot.editor.html" if run and env["target"] == "editor" else ""
+    serve(env.Dir(env.GetTemplateZipPath()).abspath, port, location, "run" in COMMAND_LINE_TARGETS)
+    Exit(1)
 
 web_files = [
     "audio_driver_web.cpp",

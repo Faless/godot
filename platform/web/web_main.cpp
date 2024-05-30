@@ -98,9 +98,14 @@ void main_loop_callback() {
 	}
 }
 
+void godot_dlopen(char *p_lib) {
+	void *handle = nullptr;
+	os->open_dynamic_library(String::utf8(p_lib), handle);
+}
 /// When calling main, it is assumed FS is setup and synced.
 extern EMSCRIPTEN_KEEPALIVE int godot_web_main(int argc, char *argv[]) {
 	os = new OS_Web();
+	godot_js_os_preload_libraries(godot_dlopen);
 
 	// We must override main when testing is enabled
 	TEST_MAIN_OVERRIDE

@@ -229,16 +229,22 @@ const GodotOS = {
 	$GodotOS__deps: ['$GodotRuntime', '$GodotConfig', '$GodotFS'],
 	$GodotOS__postset: [
 		'Module["request_quit"] = function() { GodotOS.request_quit() };',
+		'Module["godot_dlopen"] = function(lib) { GodotOS.dlopen(lib) };',
 		'Module["onExit"] = GodotOS.cleanup;',
 		'GodotOS._fs_sync_promise = Promise.resolve();',
 	].join(''),
 	$GodotOS: {
 		request_quit: function () {},
 		_async_cbs: [],
+		_libs: [],
 		_fs_sync_promise: null,
 
 		atexit: function (p_promise_cb) {
 			GodotOS._async_cbs.push(p_promise_cb);
+		},
+
+		dlopen: function (lib) {
+			GodotOS._libs.push(lib);
 		},
 
 		cleanup: function (exit_code) {
@@ -344,6 +350,17 @@ const GodotOS = {
 		// TODO Godot core needs fixing to avoid spawning too many threads (> 24).
 		const concurrency = navigator.hardwareConcurrency || 1;
 		return concurrency < 2 ? concurrency : 2;
+	},
+
+	godot_js_os_download_buffer__proxy: 'sync',
+	godot_js_os_download_buffer__sig: 'vi',
+	godot_js_os_preload_libraries: function (p_func) {
+		const cb = GodotRuntime.get_func(p_func);
+		GodotOS._libs.forEach(function (lib) {
+			const c_str = GodotRuntime.allocString(lib);
+			cb(c_str);
+			GodotRuntime.free(c_str);
+		});
 	},
 
 	godot_js_os_download_buffer__proxy: 'sync',

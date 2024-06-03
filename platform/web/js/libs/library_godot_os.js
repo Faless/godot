@@ -352,8 +352,8 @@ const GodotOS = {
 		return concurrency < 2 ? concurrency : 2;
 	},
 
-	godot_js_os_download_buffer__proxy: 'sync',
-	godot_js_os_download_buffer__sig: 'vi',
+	godot_js_os_preload_libraries__proxy: 'sync',
+	godot_js_os_preload_libraries__sig: 'vi',
 	godot_js_os_preload_libraries: function (p_func) {
 		const cb = GodotRuntime.get_func(p_func);
 		GodotOS._libs.forEach(function (lib) {

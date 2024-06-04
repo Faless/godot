@@ -185,6 +185,7 @@ const Engine = (function () {
 							if (me.config.serviceWorker && 'serviceWorker' in navigator) {
 								navigator.serviceWorker.register(me.config.serviceWorker);
 							}
+							me.rtenv['call_real_main'](me.config.args);
 							resolve();
 						});
 					});

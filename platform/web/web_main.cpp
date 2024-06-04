@@ -108,6 +108,8 @@ void godot_dlopen(char *p_lib) {
 
 int godot_real_main(int argc, char *argv[]) {
 
+	emscripten_cancel_main_loop();
+
 	// We must override main when testing is enabled
 	TEST_MAIN_OVERRIDE
 

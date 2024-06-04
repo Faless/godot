@@ -5,7 +5,9 @@
 #define THORVG_SVG_LOADER_SUPPORT
 #define THORVG_PNG_LOADER_SUPPORT
 #define THORVG_JPG_LOADER_SUPPORT
+#ifndef WEB_ENABLED
 #define THORVG_THREAD_SUPPORT
+#endif
 
 // For internal debugging:
 //#define THORVG_LOG_ENABLED

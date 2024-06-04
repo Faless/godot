@@ -230,11 +230,13 @@ const GodotOS = {
 	$GodotOS__postset: [
 		'Module["request_quit"] = function() { GodotOS.request_quit() };',
 		'Module["godot_dlopen"] = function(lib) { GodotOS.dlopen(lib) };',
+		'Module["call_real_main"] = function(args) { const ptr = GodotRuntime.allocStringArray(args); GodotOS.real_main(args.length, ptr) };',
 		'Module["onExit"] = GodotOS.cleanup;',
 		'GodotOS._fs_sync_promise = Promise.resolve();',
 	].join(''),
 	$GodotOS: {
 		request_quit: function () {},
+		real_main: function (argc, argv) {},
 		_async_cbs: [],
 		_libs: [],
 		_fs_sync_promise: null,
@@ -361,6 +363,13 @@ const GodotOS = {
 			cb(c_str);
 			GodotRuntime.free(c_str);
 		});
+	},
+
+	godot_js_os_real_main_cb__proxy: 'sync',
+	godot_js_os_real_main_cb__sig: 'vi',
+	godot_js_os_real_main_cb: function (p_func) {
+		const cb = GodotRuntime.get_func(p_func);
+		GodotOS.real_main = cb;
 	},
 
 	godot_js_os_download_buffer__proxy: 'sync',

@@ -98,14 +98,15 @@ void main_loop_callback() {
 	}
 }
 
+void fake_loop_callback() {
+}
+
 void godot_dlopen(char *p_lib) {
 	void *handle = nullptr;
 	os->open_dynamic_library(String::utf8(p_lib), handle);
 }
-/// When calling main, it is assumed FS is setup and synced.
-extern EMSCRIPTEN_KEEPALIVE int godot_web_main(int argc, char *argv[]) {
-	os = new OS_Web();
-	godot_js_os_preload_libraries(godot_dlopen);
+
+int godot_real_main(int argc, char *argv[]) {
 
 	// We must override main when testing is enabled
 	TEST_MAIN_OVERRIDE
@@ -144,6 +145,18 @@ extern EMSCRIPTEN_KEEPALIVE int godot_web_main(int argc, char *argv[]) {
 	// Immediately run the first iteration.
 	// We are inside an animation frame, we want to immediately draw on the newly setup canvas.
 	main_loop_callback();
+
+	return 0;
+}
+
+/// When calling main, it is assumed FS is setup and synced.
+extern EMSCRIPTEN_KEEPALIVE int godot_web_main(int argc, char *argv[]) {
+	os = new OS_Web();
+	godot_js_os_preload_libraries(godot_dlopen);
+	godot_js_os_real_main_cb(godot_real_main);
+
+	// Set a fake loop, the JS will then load GDExtension, and call the real main (switching to the true loop).
+	emscripten_set_main_loop(fake_loop_callback, -1, false);
 
 	return 0;
 }

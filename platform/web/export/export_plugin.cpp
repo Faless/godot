@@ -339,6 +339,8 @@ void EditorExportPlatformWeb::get_preset_features(const Ref<EditorExportPreset> 
 	}
 	if (p_preset->get("variant/thread_support").operator bool()) {
 		r_features->push_back("threads");
+	} else {
+		r_features->push_back("nothreads");
 	}
 	r_features->push_back("wasm32");
 }

@@ -648,8 +648,9 @@ void EditorExportPlatformJavaScript::get_preset_features(const Ref<EditorExportP
 		r_features->push_back("threads");
 	}
 	if (mode & EXPORT_MODE_GDNATIVE) {
-		r_features->push_back("wasm32");
+		r_features->push_back("gdnative");
 	}
+	r_features->push_back("wasm32");
 }
 
 void EditorExportPlatformJavaScript::get_export_options(List<ExportOption> *r_options) {

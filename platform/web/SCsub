@@ -44,6 +44,7 @@ sys_env.AddJSLibraries(
 sys_env.AddJSExterns(
     [
         "js/libs/library_godot_webgl2.externs.js",
+        "js/libs/toolchain_workarounds.externs.js",
     ]
 )
 

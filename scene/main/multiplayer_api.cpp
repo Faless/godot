@@ -227,7 +227,7 @@ Error MultiplayerAPI::encode_and_compress_variants(const Variant **p_variants, i
 	if (r_raw && p_count == 1) {
 		*r_raw = false;
 		const Variant &v = *(p_variants[0]);
-		if (v.get_type() == Variant::PACKED_BYTE_ARRAY) {
+		if (v.get_type() == Variant::PACKED_BYTE_ARRAY && v.operator PackedByteArray().size() > 0) {
 			*r_raw = true;
 			const PackedByteArray pba = v;
 			if (p_buffer) {

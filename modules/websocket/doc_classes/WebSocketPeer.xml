@@ -61,8 +61,9 @@
 			<param index="1" name="tls_client_options" type="TLSOptions" default="null" />
 			<description>
 				Starts connecting to the given [param url]. The connection process (including DNS resolution) is non-blocking. Use [method get_ready_state] to check the connection [enum State], and remember to call [method poll] regularly.
-				TLS certificates will be verified against the hostname when connecting using the [code]wss://[/code] protocol. You can pass the optional [param tls_client_options] parameter to customize the trusted certification authorities, or disable the common name verification. See [method TLSOptions.client] and [method TLSOptions.client_unsafe].
-				[b]Note:[/b] On the Web platform, TLS certificate validation is enforced by the browser, so the [param tls_client_options] can't be supported. Additionally to avoid mixed content warnings or errors you may have to use a [param url] that starts with [code]wss://[/code] (secure) instead of [code]ws://[/code]. When doing so, make sure to use the fully qualified domain name that matches the one defined in the server's TLS certificate. Do not connect directly via the IP address for [code]wss://[/code] connections, as it won't match with the TLS certificate.
+				TLS certificates will be verified against the hostname when connecting using the [code]wss://[/code] (secure) protocol. You can pass the optional [param tls_client_options] parameter to customize the trusted certification authorities, or disable the common name verification. See [method TLSOptions.client] and [method TLSOptions.client_unsafe].
+				[b]Note:[/b] On the Web platform, most browsers have strict "mixed content" policies, and only allow connections to secure WebSocket servers ([code]wss://[/code]) from pages served over a secure channel like HTTPS.
+				[b]Note:[/b] On the Web platform, TLS certificate validation is enforced by the browser, so the [param tls_client_options] can't be supported. During development, self-signed certificates can be usually accepted temporarily by the user if the page is also served using the same certificate, but the hostname in the [param url] parameter, the certificate's common name (CN), and the hostname used to access the page, must all match.
 			</description>
 		</method>
 		<method name="get_close_code" qualifiers="const">

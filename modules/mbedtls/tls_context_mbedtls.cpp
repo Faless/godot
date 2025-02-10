@@ -148,7 +148,7 @@ Error TLSContextMbedTLS::init_server(int p_transport, Ref<TLSOptions> p_options,
 	return OK;
 }
 
-Error TLSContextMbedTLS::init_client(int p_transport, const String &p_hostname, Ref<TLSOptions> p_options) {
+Error TLSContextMbedTLS::init_client(int p_transport, const String &p_hostname, Ref<TLSOptions> p_options, bool p_force_tls12) {
 	ERR_FAIL_COND_V(p_options.is_null() || p_options->is_server(), ERR_INVALID_PARAMETER);
 
 	int authmode = MBEDTLS_SSL_VERIFY_REQUIRED;
@@ -189,6 +189,12 @@ Error TLSContextMbedTLS::init_client(int p_transport, const String &p_hostname, 
 
 	// Set valid CAs
 	mbedtls_ssl_conf_ca_chain(&conf, &(cas->cert), nullptr);
+
+	// Set forced TLS v1.2
+	if (p_force_tls12) {
+		mbedtls_ssl_conf_max_tls_version(&conf, MBEDTLS_SSL_VERSION_TLS1_2);
+	}
+
 	mbedtls_ssl_setup(&tls, &conf);
 	return OK;
 }

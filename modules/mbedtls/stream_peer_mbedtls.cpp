@@ -76,6 +76,9 @@ void StreamPeerMbedTLS::_cleanup() {
 	tls_ctx->clear();
 	base = Ref<StreamPeer>();
 	status = STATUS_DISCONNECTED;
+	hostname = "";
+	tls_options.unref();
+	retrying = false;
 }
 
 Error StreamPeerMbedTLS::_do_handshake() {
@@ -85,6 +88,27 @@ Error StreamPeerMbedTLS::_do_handshake() {
 		return OK;
 	} else if (ret != 0) {
 		// An error occurred.
+		if (ret == MBEDTLS_ERR_SSL_FEATURE_UNAVAILABLE && !retrying) {
+			// Try to fallback to TLS 1.2
+			retrying = true;
+			Ref<StreamPeerTCP> tcp = base;
+			if (tcp.is_null()) {
+				disconnect_from_stream();
+				return FAILED;
+			}
+			IPAddress ip = tcp->get_connected_host();
+			int port = tcp->get_connected_port();
+			tcp->disconnect_from_host();
+			tcp->connect_to_host(ip, port);
+
+			tls_ctx->clear();
+			Error err = tls_ctx->init_client(MBEDTLS_SSL_TRANSPORT_STREAM, hostname, tls_options, true);
+			ERR_FAIL_COND_V(err != OK, err);
+
+			mbedtls_ssl_set_bio(tls_ctx->get_context(), this, bio_send, bio_recv, nullptr);
+			return OK;
+		}
+		// Unrecoverable.
 		ERR_PRINT("TLS handshake error: " + itos(ret));
 		TLSContextMbedTLS::print_mbedtls_error(ret);
 		disconnect_from_stream();
@@ -93,6 +117,9 @@ Error StreamPeerMbedTLS::_do_handshake() {
 	}
 
 	status = STATUS_CONNECTED;
+	hostname = "";
+	tls_options.unref();
+	retrying = false;
 	return OK;
 }
 
@@ -102,6 +129,8 @@ Error StreamPeerMbedTLS::connect_to_stream(Ref<StreamPeer> p_base, const String 
 	Error err = tls_ctx->init_client(MBEDTLS_SSL_TRANSPORT_STREAM, p_common_name, p_options.is_valid() ? p_options : TLSOptions::client());
 	ERR_FAIL_COND_V(err != OK, err);
 
+	tls_options = p_options;
+	hostname = p_common_name;
 	base = p_base;
 	mbedtls_ssl_set_bio(tls_ctx->get_context(), this, bio_send, bio_recv, nullptr);
 

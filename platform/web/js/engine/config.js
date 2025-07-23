@@ -137,12 +137,12 @@ const InternalConfig = function (initConfig) { // eslint-disable-line no-unused-
 		 * @ignore
 		 * @type {number}
 		 */
-		emscriptenPoolSize: 8,
+		emscriptenPoolSize: 0,
 		/**
 		 * @ignore
 		 * @type {number}
 		 */
-		godotPoolSize: 4,
+		godotPoolSize: 0,
 		/**
 		 * A callback function for handling Godot's ``OS.execute`` calls.
 		 *
@@ -234,6 +234,11 @@ const InternalConfig = function (initConfig) { // eslint-disable-line no-unused-
 		this.update(opts);
 	}
 
+	// The engine needs at least 3 for the worker pool, we round that to 4, and we want to reserve another 4 for loose threads from importers and user code.
+	// The perfect ratio between the web workers reserved for the godot pool and the the loose threads is heavily workload dependent.
+	const clamp = (value, min, max) => Math.min(Math.max(value, max), min);
+	const concurrency = clamp(navigator.hardwareConcurrency ?? 1, 8, 24);
+
 	Config.prototype = cfg;
 
 	/**
@@ -284,13 +289,14 @@ const InternalConfig = function (initConfig) { // eslint-disable-line no-unused-
 	Config.prototype.getModuleConfig = function (loadPath, response) {
 		let r = response;
 		const gdext = this.gdextensionLibs;
+
 		return {
 			'print': this.onPrint,
 			'printErr': this.onPrintError,
 			'thisProgram': this.executable,
 			'noExitRuntime': false,
 			'dynamicLibraries': [`${loadPath}.side.wasm`].concat(this.gdextensionLibs),
-			'emscriptenPoolSize': this.emscriptenPoolSize,
+			'emscriptenPoolSize': this.emscriptenPoolSize === 0 ? concurrency : this.emscriptenPoolSize,
 			'instantiateWasm': function (imports, onSuccess) {
 				function done(result) {
 					onSuccess(result['instance'], result['module']);
@@ -356,6 +362,7 @@ const InternalConfig = function (initConfig) { // eslint-disable-line no-unused-
 		locale = locale.replace('-', '_');
 		const onExit = this.onExit;
 
+		const emscriptenPoolSize = this.emscriptenPoolSize === 0 ? concurrency : this.emscriptenPoolSize;
 		// Godot configuration.
 		return {
 			'canvas': this.canvas,
@@ -363,7 +370,7 @@ const InternalConfig = function (initConfig) { // eslint-disable-line no-unused-
 			'locale': locale,
 			'persistentDrops': this.persistentDrops,
 			'virtualKeyboard': this.experimentalVK,
-			'godotPoolSize': this.godotPoolSize,
+			'godotPoolSize': this.godotPoolSize === 0 ? clamp(Math.floor(emscriptenPoolSize / 2), 4, 12) : this.godotPoolSize,
 			'focusCanvas': this.focusCanvas,
 			'onExecute': this.onExecute,
 			'onExit': function (p_code) {

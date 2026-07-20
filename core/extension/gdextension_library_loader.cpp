@@ -71,7 +71,8 @@ Vector<SharedObject> GDExtensionLibraryLoader::find_extension_dependencies(const
 	return dependencies_shared_objects;
 }
 
-String GDExtensionLibraryLoader::find_extension_library(const String &p_path, Ref<ConfigFile> p_config, std::function<bool(String)> p_has_feature, PackedStringArray *r_tags) {
+String GDExtensionLibraryLoader::find_extension_library(const String &p_path, Ref<ConfigFile> p_config, std::function<bool(String)> p_has_feature, bool &r_skip, PackedStringArray *r_tags) {
+	r_skip = false;
 	// First, check the explicit libraries.
 	if (p_config->has_section("libraries")) {
 		Vector<String> libraries = p_config->get_section_keys("libraries");
@@ -93,7 +94,12 @@ String GDExtensionLibraryLoader::find_extension_library(const String &p_path, Re
 			if (all_tags_met && tags.size() > best_library_tags.size()) {
 				best_library_path = p_config->get_value("libraries", E);
 				best_library_tags = tags;
+				r_skip = best_library_path.is_empty();
 			}
+		}
+
+		if (r_skip) {
+			return "";
 		}
 
 		if (!best_library_path.is_empty()) {
@@ -362,7 +368,11 @@ Error GDExtensionLibraryLoader::parse_gdextension_file(const String &p_path) {
 		}
 	}
 
-	library_path = find_extension_library(p_path, config, [](const String &p_feature) { return OS::get_singleton()->has_feature(p_feature); });
+	bool skip = false;
+	library_path = find_extension_library(p_path, config, [](const String &p_feature) { return OS::get_singleton()->has_feature(p_feature); }, skip);
+	if (skip) {
+		return ERR_SKIP;
+	}
 
 	if (library_path.is_empty()) {
 		const String os_arch = OS::get_singleton()->get_name().to_lower() + "." + Engine::get_singleton()->get_architecture_name();

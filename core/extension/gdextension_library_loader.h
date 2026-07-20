@@ -68,7 +68,7 @@ private:
 #endif
 
 public:
-	static String find_extension_library(const String &p_path, Ref<ConfigFile> p_config, std::function<bool(String)> p_has_feature, PackedStringArray *r_tags = nullptr);
+	static String find_extension_library(const String &p_path, Ref<ConfigFile> p_config, std::function<bool(String)> p_has_feature, bool &r_skip, PackedStringArray *r_tags = nullptr);
 	static Vector<SharedObject> find_extension_dependencies(const String &p_path, Ref<ConfigFile> p_config, std::function<bool(String)> p_has_feature);
 
 	virtual Error open_library(const String &p_path) override;

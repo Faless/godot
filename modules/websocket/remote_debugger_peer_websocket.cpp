@@ -112,7 +112,7 @@ void RemoteDebuggerPeerWebSocket::close() {
 }
 
 bool RemoteDebuggerPeerWebSocket::can_block() const {
-#ifdef WEB_ENABLED
+#if defined(WEB_ENABLED) && !defined(WEB_JSPI)
 	return false;
 #else
 	return true;

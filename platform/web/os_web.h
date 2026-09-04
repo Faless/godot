@@ -117,6 +117,8 @@ public:
 
 	Error move_to_trash(const String &p_path) override;
 
+	void yield() override;
+
 	void resume_audio();
 
 	OS_Web();

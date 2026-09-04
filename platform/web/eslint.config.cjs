@@ -22,6 +22,7 @@ const emscriptenGlobals = {
 	'IDBFS': true,
 	'LibraryManager': true,
 	'MainLoop': true,
+	'setMainLoop': true,
 	'Module': true,
 	'UTF8ToString': true,
 	'UTF8Decoder': true,
@@ -40,6 +41,39 @@ const emscriptenGlobals = {
 	'stringToUTF8': true,
 	'stringToUTF8Array': true,
 	'wasmTable': true,
+};
+
+let emRemap = {};
+const emscripten = {
+	meta: { name: "emscripten", version: "0.0.0" },
+	processors: {
+		"emscripten": {
+			meta: { name: "emscripten", version: "0.0.0" },
+			preprocess: (text, filename) => {
+				const chunks = [];
+				emRemap[filename] = [];
+				let cur = 1;
+				text.split('\n').forEach((l) => {
+					if (l.startsWith('#')) {
+						emRemap[filename].push(cur);
+						chunks.push(' '.repeat(l.length));
+					} else {
+						chunks.push(l);
+					}
+					cur++;
+				});
+				return [
+					{ text: chunks.join('\n'), filename },
+				];
+			},
+			postprocess: (messages, filename) => {
+				const remap = emRemap[filename];
+				const msgs = messages.map(m => m.filter((e) => remap.indexOf(e.line) === -1));
+				return [].concat(...msgs);
+			},
+			supportsAutofix: true,
+		},
+	},
 };
 
 module.exports = [
@@ -147,6 +181,10 @@ module.exports = [
 			'platform/web/js/patches/**/*.js',
 			'modules/**/*.js'
 		],
+		plugins: {
+			emscripten,
+		},
+		processor: 'emscripten/emscripten',
 		languageOptions: {
 			globals: {
 				...globals.browser,

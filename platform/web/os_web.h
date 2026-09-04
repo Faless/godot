@@ -116,5 +116,7 @@ public:
 
 	void resume_audio();
 
+	void yield() override;
+
 	OS_Web();
 };

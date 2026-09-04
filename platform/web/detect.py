@@ -56,6 +56,7 @@ def get_opts():
             "dlink_enabled", "Enable WebAssembly dynamic linking (GDExtension support). Produces bigger binaries", False
         ),
         BoolVariable("use_closure_compiler", "Use closure compiler to minimize JavaScript code", False),
+        BoolVariable("jspi", "Enable WebAssembly JavaScript-Promise integration.", False),
         BoolVariable(
             "proxy_to_pthread",
             "Use Emscripten PROXY_TO_PTHREAD option to run the main application code to a separate thread",
@@ -247,6 +248,10 @@ def configure(env: "SConsEnvironment"):
         # Disables the use of *glGetProcAddress() which is inefficient.
         # See https://emscripten.org/docs/tools_reference/settings_reference.html#gl-enable-get-proc-address
         env.Append(LINKFLAGS=["-sGL_ENABLE_GET_PROC_ADDRESS=0"])
+
+    if env["jspi"]:
+        env.Append(CPPDEFINES=["WEB_JSPI"])
+        env.Append(LINKFLAGS=["-sJSPI"])
 
     if env["javascript_eval"]:
         env.Append(CPPDEFINES=["JAVASCRIPT_EVAL_ENABLED"])

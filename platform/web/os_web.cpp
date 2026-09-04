@@ -160,6 +160,14 @@ bool OS_Web::_check_internal_feature_support(const String &p_feature) {
 		return true;
 	}
 
+	if (p_feature == "jspi") {
+#ifdef WEB_JSPI
+		return true;
+#else
+		return false;
+#endif
+	}
+
 	if (p_feature == "web_extensions") {
 #ifdef WEB_DLINK_ENABLED
 		return true;
@@ -301,6 +309,12 @@ OS_Web *OS_Web::get_singleton() {
 }
 
 void OS_Web::initialize_joypads() {
+}
+
+void OS_Web::yield() {
+#ifdef WEB_JSPI
+	emscripten_sleep(1);
+#endif
 }
 
 OS_Web::OS_Web() {

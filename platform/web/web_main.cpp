@@ -60,6 +60,10 @@ static uint64_t target_ticks = 0;
 static bool main_started = false;
 static bool shutdown_complete = false;
 
+#ifdef WEB_JSPI
+#define emscripten_set_main_loop(m_cb, m_fps, m_simulate) godot_js_os_set_main_loop(m_cb, m_fps, m_simulate)
+#endif
+
 void exit_callback() {
 	if (!shutdown_complete) {
 		return; // Still waiting.

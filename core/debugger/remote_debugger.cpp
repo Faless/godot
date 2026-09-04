@@ -442,6 +442,7 @@ void RemoteDebugger::debug(bool p_can_continue, bool p_is_error_breakpoint) {
 	}
 
 	while (is_peer_connected()) {
+		OS::get_singleton()->yield();
 		flush_output();
 
 		_poll_messages();

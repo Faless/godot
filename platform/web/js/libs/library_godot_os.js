@@ -244,7 +244,7 @@ const GodotFS = {
 mergeInto(LibraryManager.library, GodotFS);
 
 const GodotOS = {
-	$GodotOS__deps: ['$GodotRuntime', '$GodotConfig', '$GodotFS'],
+	$GodotOS__deps: ['$GodotRuntime', '$GodotConfig', '$GodotFS', '$setMainLoop'],
 	$GodotOS__postset: [
 		'Module["request_quit"] = function() { GodotOS.request_quit() };',
 		'Module["onExit"] = GodotOS.cleanup;',
@@ -284,6 +284,30 @@ const GodotOS = {
 				}, 0);
 			});
 		},
+	},
+
+	godot_js_os_set_main_loop__proxy: 'sync',
+	godot_js_os_set_main_loop__sig: 'viii',
+	godot_js_os_set_main_loop: function (p_callback, p_fps, p_simulate) {
+		const cb = GodotRuntime.get_func(p_callback);
+		let pending = 0;
+		let error = null;
+		async function loop() {
+			if (pending) {
+				return;
+			}
+			if (error) {
+				throw error;
+			}
+			pending += 1;
+			try {
+				await cb();
+			} catch (e) {
+				error = e; // eslint-disable-line require-atomic-updates
+			};
+			pending -= 1;
+		}
+		setMainLoop(loop, p_fps, p_simulate);
 	},
 
 	godot_js_os_finish_async__proxy: 'sync',

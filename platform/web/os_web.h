@@ -115,6 +115,8 @@ public:
 
 	Error open_dynamic_library(const String &p_path, void *&p_library_handle, GDExtensionData *p_data = nullptr) override;
 
+	void yield() override;
+
 	void resume_audio();
 
 	OS_Web();

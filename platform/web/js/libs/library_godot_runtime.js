@@ -33,10 +33,15 @@ const GodotRuntime = {
 		/*
 		 * Functions
 		 */
+#if JSPI
 		get_func: function (ptr) {
+			return WebAssembly.promising(wasmTable.get(ptr));
+		},
+#else
+		get_func: function (ptr) { // eslint-disable-line no-dupe-keys
 			return wasmTable.get(ptr);
 		},
-
+#endif
 		/*
 		 * Prints
 		 */

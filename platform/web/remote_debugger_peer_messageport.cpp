@@ -103,7 +103,11 @@ void RemoteDebuggerPeerMessagePort::close() {
 }
 
 bool RemoteDebuggerPeerMessagePort::can_block() const {
+#ifdef WEB_JSPI
+	return true;
+#else
 	return false;
+#endif
 }
 
 RemoteDebuggerPeerMessagePort::RemoteDebuggerPeerMessagePort(int p_id) {

@@ -455,7 +455,7 @@ const GodotPWA = {
 	godot_js_pwa_cb__proxy: 'sync',
 	godot_js_pwa_cb__sig: 'vi',
 	godot_js_pwa_cb: function (p_update_cb) {
-		if ('serviceWorker' in navigator) {
+		if (window.parent == window && 'serviceWorker' in navigator) {
 			try {
 				const cb = GodotRuntime.get_func(p_update_cb);
 				navigator.serviceWorker.getRegistration().then(GodotPWA.updateState.bind(null, cb));

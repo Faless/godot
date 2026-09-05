@@ -26,7 +26,7 @@
 		<link rel="preload" href="inter-regular.woff2" as="font" crossorigin="anonymous">
 		<link rel="preload" href="inter-bold.woff2" as="font" crossorigin="anonymous">
 		<title>Godot Engine Web Editor (___GODOT_VERSION___)</title>
-		<style>
+		<style id="web-editor-style">
 /* Use Inter in the same configuration as used in the editor (e.g. alternate lowercase `l`). */
 @font-face {
 	font-family: "Inter";
@@ -134,20 +134,14 @@ a:active {
 	min-height: 100vh;
 }
 
-#canvas, #gameCanvas {
-	display: block;
-	margin: 0;
-	color: white;
+#tab-game iframe {
+	width: 100vw;
+	height: 100vh;
 }
 
 /* Don't show distracting focus outlines for the main tabs' contents. */
 #tab-editor canvas:focus,
-#tab-game canvas:focus,
-#canvas:focus,
-#gameCanvas:focus {
-	outline: none;
-}
-
+#tab-game iframe:focus,
 .godot {
 	color: #d0d0d0;
 	background-color: #1b1b1b;
@@ -382,10 +376,7 @@ a:active {
 				</canvas>
 			</div>
 			<div id="tab-game" style="display: none;">
-				<canvas id="game-canvas" tabindex="2">
-					HTML5 canvas appears to be unsupported in the current browser.<br >
-					Please try updating or use a different browser.
-				</canvas>
+				<iframe id="game-iframe" class="godot" tabindex="2"></iframe>
 			</div>
 			<div id="tab-status" style="display: none;">
 				<div id="status-progress" style="display: none;" oncontextmenu="event.preventDefault();">
@@ -476,7 +467,7 @@ function closeWelcomeModal(dontShowAgain) { // eslint-disable-line no-unused-var
 		<script src="godot.editor.js"></script>
 		<script>
 let editor = null;
-let game = null;
+let gameIframe = document.getElementById('game-iframe');
 let setStatusMode;
 let setStatusNotice;
 
@@ -516,9 +507,13 @@ function showTab(name) {
 	tabs.forEach(function (elem) {
 		if (elem.id === `tab-${name}`) {
 			elem.style.display = 'block';
-			if (name === 'editor' || name === 'game') {
-				const canvas = document.getElementById(`${name}-canvas`);
+			if (name === 'editor') {
+				const canvas = document.getElementById('editor-canvas');
 				canvas.focus();
+			} else if (name === 'game') {
+				const iframe = document.getElementById('game-iframe');
+				iframe.focus();
+				iframe.contentWindow.postMessage({ cmd: 'focus' });
 			}
 		} else {
 			elem.style.display = 'none';
@@ -546,8 +541,106 @@ function setGameTabEnabled(enabled) {
 }
 
 function closeGame() {
-	if (game) {
-		game.requestQuit();
+	// IMPORTANT!!! This function will run in the iframe document, not in the current context.
+	const iframeScript = function () {
+		const pid = Math.round(Math.random() * (1 << 30));
+		const canvas = document.getElementById('game-canvas');
+		let game = null;
+		let debug_port = null;
+		function handleMessage(event) {
+			function notify(cmd, msg) {
+				window.parent.postMessage({ cmd, msg });
+			}
+			const cmd = event.data.cmd || '';
+			const msg = event.data.msg || '';
+			if (cmd == 'start') {
+				if (game) {
+					throw new Error('An instance is already running.');
+				}
+				const channel = new MessageChannel();
+				debug_port = channel.port2;
+				debug_port.onmessage = (evt) => {
+					notify('debug', evt.data);
+				};
+				const gameConfig = {
+					'debugPort': channel.port1,
+					'persistentPaths': msg.persistentPaths ?? [],
+					'unloadAfterInit': true,
+					'canvasResizePolicy': 1,
+					'canvas': canvas,
+					'args': msg.args ?? [],
+					'onExit': function () {
+						game = null;
+						notify('stopped', pid);
+					},
+				};
+				game = new window.Engine(gameConfig);
+				game.init('godot.editor').then(function () {
+					requestAnimationFrame(function () {
+						game.start().then(function () {
+							notify('started', pid);
+						});
+					});
+				});
+			} else if (cmd == 'stop') {
+				if (!game) {
+					return;
+				}
+				game.requestQuit();
+				game = null;
+				window.onmessage = null;
+			} else if (cmd == 'debug') {
+				if (!debug_port) {
+					return;
+				}
+				debug_port.postMessage(msg);
+			} else if (cmd == 'focus') {
+				canvas.focus();
+			} else {
+				console.error('Invalid event', event);
+			}
+		}
+		const loadPromise = new Promise((accept, reject) => {
+			const s = document.createElement('script');
+			s.src = 'godot.editor.js';
+			s.onload = () => {
+				accept();
+			};
+			document.body.appendChild(s);
+		});
+		window.onmessage = (event) => {
+			loadPromise.then(() => {
+				handleMessage(event);
+			});
+		};
+	};
+	function replaceIframe(from) {
+		const iframe = document.createElement('iframe');
+		iframe.id = from.id;
+		iframe.className = from.className;
+		iframe.tabIndex = from.tabIndex;
+		from.parentNode.replaceChild(iframe, from);
+		const style = iframe.contentDocument.createElement('style');
+		style.innerHTML = document.getElementById('web-editor-style').innerHTML;
+		iframe.contentDocument.body.appendChild(style);
+		const canvas = iframe.contentDocument.createElement('canvas');
+		canvas.id = 'game-canvas';
+		iframe.contentDocument.body.appendChild(canvas);
+		// Add load/start script
+		const source = `const start = ${iframeScript.toString()}; start();`;
+		const script = iframe.contentDocument.createElement('script');
+		script.type = 'application/javascript';
+		script.appendChild(iframe.contentDocument.createTextNode(source));
+		iframe.contentDocument.body.appendChild(script);
+		return iframe;
+	}
+	gameIframe.contentWindow.postMessage({ cmd: 'stop' });
+	gameIframe = replaceIframe(gameIframe);
+	window.onmessage = null;
+
+	setGameTabEnabled(false);
+	if (editor) {
+		showTab('editor');
 	}
 }
 
@@ -563,7 +656,6 @@ function startEditor(zip) {
 	const persistentPaths = ['/home/web_user'];
 
 	let editorCanvas = document.getElementById('editor-canvas');
-	let gameCanvas = document.getElementById('game-canvas');
 	const statusProgress = document.getElementById('status-progress');
 	const statusProgressInner = document.getElementById('status-progress-inner');
 	const statusIndeterminate = document.getElementById('status-indeterminate');
@@ -662,24 +754,11 @@ function startEditor(zip) {
 		});
 	};
 
-	const gameConfig = {
-		'persistentPaths': persistentPaths,
-		'unloadAfterInit': false,
-		'canvas': gameCanvas,
-		'canvasResizePolicy': 1,
-		'debugPort': null,
-		'onExit': function () {
-			gameCanvas = replaceCanvas(gameCanvas);
-			setGameTabEnabled(false);
-			showTab('editor');
-			game = null;
-		},
-	};
-
 	let OnEditorExit = function () {
 		showTab('loader');
 		setLoaderEnabled(true);
 	};
+
 	function Execute(args) {
 		const is_editor = args.filter(function (v) {
 			return v === '--editor' || v === '-e';
@@ -690,23 +769,29 @@ function startEditor(zip) {
 		const is_game = !is_editor && !is_project_manager;
 
 		if (is_game) {
-			if (game) {
-				console.error('A game is already running. Close it first');
-				return;
-			}
+			closeGame();
 			setGameTabEnabled(true);
 			const channel = new MessageChannel();
-			gameConfig['debugPort'] = channel.port1;
-			game = new Engine(gameConfig);
+			channel.port1.onmessage = (event) => {
+				gameIframe.contentWindow.postMessage({ cmd: 'debug', msg: event.data });
+			};
+			window.onmessage = (event) => {
+				const cmd = event.data.cmd || '';
+				const msg = event.data.msg || '';
+				if (cmd == 'started') {
+					editor.addDebuggerSession(channel.port2);
+					gameIframe.focus();
+				} else if (cmd == 'stopped') {
+					setGameTabEnabled(false);
+					showTab('editor');
+				} else if (cmd == 'debug') {
+					channel.port1.postMessage(msg);
+				} else {
+					console.error('Invalid event', event);
+				}
+			};
+			gameIframe.contentWindow.postMessage({ cmd: 'start', msg: { args, persistentPaths } });
 			showTab('game');
-			game.init().then(function () {
-				requestAnimationFrame(function () {
-					game.start({ 'args': args, 'canvas': gameCanvas }).then(function () {
-						editor.addDebuggerSession(channel.port2);
-						gameCanvas.focus();
-					});
-				});
-			});
 		} else { // New editor instances will be run in the same canvas. We want to wait for it to exit.
 			OnEditorExit = function (code) {
 				setLoaderEnabled(true);

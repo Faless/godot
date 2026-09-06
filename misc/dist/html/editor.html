@@ -573,7 +573,7 @@ function replaceIframe(from) {
 					game = null;
 					notify('stopped', pid);
 				};
-				game = new window.Engine(gameConfig);
+				game = new Engine(gameConfig);
 				game.init('godot.editor').then(function () {
 					requestAnimationFrame(function () {
 						game.start().then(function () {

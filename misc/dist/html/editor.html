@@ -588,7 +588,6 @@ function replaceIframe(from) {
 				}
 				game.requestQuit();
 				game = null;
-				window.onmessage = null;
 			} else if (cmd == 'debug') {
 				if (!debug_port) {
 					return;
@@ -634,19 +633,34 @@ function replaceIframe(from) {
 	return iframe;
 }
 
-function closeGame() {
-	gameIframe.contentWindow.postMessage({ cmd: 'stop' });
-	gameIframe = replaceIframe(gameIframe);
-	window.onmessage = null;
+let gameQuitting = false;
 
+function terminateGame() {
+	gameQuitting = false;
+	gameIframe = replaceIframe(gameIframe);
+	setGameTabEnabled(false);
+	showTab('editor');
+	window.onmessage = null;
 	setGameTabEnabled(false);
 	if (editor) {
 		showTab('editor');
 	}
 }
 
+function closeGame() { // eslint-disable-line no-unused-vars
+	if (!window.onmessage) {
+		return;
+	}
+	if (gameQuitting) { // Force quit.
+		terminateGame();
+	} else {
+		gameIframe.contentWindow.postMessage({ cmd: 'stop' });
+		gameQuitting = true;
+	}
+}
+
 function closeEditor() { // eslint-disable-line no-unused-vars
-	closeGame();
+	terminateGame();
 	if (editor) {
 		editor.requestQuit();
 	}
@@ -770,7 +784,7 @@ function startEditor(zip) {
 		const is_game = !is_editor && !is_project_manager;
 
 		if (is_game) {
-			closeGame();
+			terminateGame();
 			setGameTabEnabled(true);
 			const channel = new MessageChannel();
 			channel.port1.onmessage = (event) => {
@@ -783,8 +797,7 @@ function startEditor(zip) {
 					editor.addDebuggerSession(channel.port2);
 					gameIframe.focus();
 				} else if (cmd == 'stopped') {
-					setGameTabEnabled(false);
-					showTab('editor');
+					terminateGame();
 				} else if (cmd == 'debug') {
 					channel.port1.postMessage(msg);
 				} else {

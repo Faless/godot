@@ -165,6 +165,11 @@ const InternalConfig = function (initConfig) { // eslint-disable-line no-unused-
 		 */
 		onExecute: null,
 		/**
+		 * @ignore
+		 * @type {?function(number)}
+		 */
+		onMoveToForeground: null,
+		/**
 		 * A callback function for being notified when the Godot instance quits.
 		 *
 		 * **Note**: This function will not be called if the engine crashes or become unresponsive.
@@ -281,6 +286,7 @@ const InternalConfig = function (initConfig) { // eslint-disable-line no-unused-
 		this.godotPoolSize = parse('godotPoolSize', this.godotPoolSize);
 		this.args = parse('args', this.args);
 		this.onExecute = parse('onExecute', this.onExecute);
+		this.onMoveToForeground = parse('onMoveToForeground', this.onMoveToForeground);
 		this.onExit = parse('onExit', this.onExit);
 	};
 
@@ -375,6 +381,7 @@ const InternalConfig = function (initConfig) { // eslint-disable-line no-unused-
 			'focusCanvas': this.focusCanvas,
 			'debugPort': this.debugPort,
 			'onExecute': this.onExecute,
+			'onMoveToForeground': this.onMoveToForeground,
 			'onExit': function (p_code) {
 				cleanup(); // We always need to call the cleanup callback to free memory.
 				if (typeof (onExit) === 'function') {

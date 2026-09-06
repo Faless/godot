@@ -626,6 +626,15 @@ const GodotDisplay = {
 		}
 	},
 
+	godot_js_display_move_to_foreground__proxy: 'sync',
+	godot_js_display_move_to_foreground__sig: 'vii',
+	godot_js_display_move_to_foreground: function (p_id) {
+		if (!GodotConfig.on_move_to_foreground) {
+			return;
+		}
+		GodotConfig.on_move_to_foreground(p_id);
+	},
+
 	/*
 	 * Cursor
 	 */

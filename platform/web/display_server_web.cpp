@@ -1447,7 +1447,7 @@ void DisplayServerWeb::window_request_attention(DisplayServerEnums::WindowID p_w
 }
 
 void DisplayServerWeb::window_move_to_foreground(DisplayServerEnums::WindowID p_window) {
-	// Not supported.
+	godot_js_display_move_to_foreground(p_window);
 }
 
 bool DisplayServerWeb::window_is_focused(DisplayServerEnums::WindowID p_window) const {

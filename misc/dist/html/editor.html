@@ -566,17 +566,12 @@ function replaceIframe(from) {
 					throw new Error('No enough message ports received, cannot start.');
 				}
 				iframe_port = event.ports[0];
-				const gameConfig = {
-					'debugPort': event.ports[1],
-					'persistentPaths': msg.persistentPaths ?? [],
-					'unloadAfterInit': true,
-					'canvasResizePolicy': 2,
-					'canvas': canvas,
-					'args': msg.args ?? [],
-					'onExit': function () {
-						game = null;
-						notify('stopped', pid);
-					},
+				const gameConfig = msg;
+				gameConfig['debug_port'] = event.ports[1];
+				gameConfig['canvas'] = canvas;
+				gameConfig['onExit'] = () => {
+					game = null;
+					notify('stopped', pid);
 				};
 				game = new window.Engine(gameConfig);
 				game.init('godot.editor').then(function () {
@@ -796,7 +791,13 @@ function startEditor(zip) {
 					console.error('Invalid event', event);
 				}
 			};
-			gameIframe.contentWindow.postMessage({ cmd: 'start', msg: { args, persistentPaths } }, gameIframe.contentWindow.origin, [
+			const gameConfig = {
+				'persistentPaths': persistentPaths,
+				'unloadAfterInit': true,
+				'canvasResizePolicy': 2,
+				'args': args,
+			};
+			gameIframe.contentWindow.postMessage({ cmd: 'start', msg: gameConfig }, gameIframe.contentWindow.origin, [
 				iframeChannel.port2,
 				gameChannel.port2,
 			]);

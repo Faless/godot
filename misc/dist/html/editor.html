@@ -540,7 +540,7 @@ function setGameTabEnabled(enabled) {
 	setButtonEnabled('btn-close-game', enabled);
 }
 
-function closeGame() {
+function replaceIframe(from) {
 	// IMPORTANT!!! This function will run in the iframe document, not in the current context.
 	const iframeScript = function () {
 		const pid = Math.round(Math.random() * (1 << 30));
@@ -614,26 +614,27 @@ function closeGame() {
 			});
 		};
 	};
-	function replaceIframe(from) {
-		const iframe = document.createElement('iframe');
-		iframe.id = from.id;
-		iframe.className = from.className;
-		iframe.tabIndex = from.tabIndex;
-		from.parentNode.replaceChild(iframe, from);
-		const style = iframe.contentDocument.createElement('style');
-		style.innerHTML = document.getElementById('web-editor-style').innerHTML;
-		iframe.contentDocument.body.appendChild(style);
-		const canvas = iframe.contentDocument.createElement('canvas');
-		canvas.id = 'game-canvas';
-		iframe.contentDocument.body.appendChild(canvas);
-		// Add load/start script
-		const source = `const start = ${iframeScript.toString()}; start();`;
-		const script = iframe.contentDocument.createElement('script');
-		script.type = 'application/javascript';
-		script.appendChild(iframe.contentDocument.createTextNode(source));
-		iframe.contentDocument.body.appendChild(script);
-		return iframe;
-	}
+	const iframe = document.createElement('iframe');
+	iframe.id = from.id;
+	iframe.className = from.className;
+	iframe.tabIndex = from.tabIndex;
+	from.parentNode.replaceChild(iframe, from);
+	const style = iframe.contentDocument.createElement('style');
+	style.innerHTML = document.getElementById('web-editor-style').innerHTML;
+	iframe.contentDocument.body.appendChild(style);
+	const canvas = iframe.contentDocument.createElement('canvas');
+	canvas.id = 'game-canvas';
+	iframe.contentDocument.body.appendChild(canvas);
+	// Add load/start script
+	const source = `const start = ${iframeScript.toString()}; start();`;
+	const script = iframe.contentDocument.createElement('script');
+	script.type = 'application/javascript';
+	script.appendChild(iframe.contentDocument.createTextNode(source));
+	iframe.contentDocument.body.appendChild(script);
+	return iframe;
+}
+
+function closeGame() {
 	gameIframe.contentWindow.postMessage({ cmd: 'stop' });
 	gameIframe = replaceIframe(gameIframe);
 	window.onmessage = null;

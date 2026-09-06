@@ -140,9 +140,11 @@ a:active {
 }
 
 /* Don't show distracting focus outlines for the main tabs' contents. */
-#tab-editor canvas:focus,
-#tab-game iframe:focus,
+#tab-editor canvas:focus-visible,
+#tab-game iframe:focus-visible,
+#game-canvas:focus-visible,
 .godot {
+	outline: none;
 	color: #d0d0d0;
 	background-color: #1b1b1b;
 	background-image: linear-gradient(to bottom, #403e48, #35333c);
@@ -568,7 +570,7 @@ function replaceIframe(from) {
 					'debugPort': event.ports[1],
 					'persistentPaths': msg.persistentPaths ?? [],
 					'unloadAfterInit': true,
-					'canvasResizePolicy': 1,
+					'canvasResizePolicy': 2,
 					'canvas': canvas,
 					'args': msg.args ?? [],
 					'onExit': function () {

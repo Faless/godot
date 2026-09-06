@@ -546,10 +546,13 @@ function replaceIframe(from) {
 		const pid = Math.round(Math.random() * (1 << 30));
 		const canvas = document.getElementById('game-canvas');
 		let game = null;
-		let debug_port = null;
+		let iframe_port = null;
 		function handleMessage(event) {
 			function notify(cmd, msg) {
-				window.parent.postMessage({ cmd, msg });
+				if (!iframe_port) {
+					return;
+				}
+				iframe_port.postMessage({ cmd, msg });
 			}
 			const cmd = event.data.cmd || '';
 			const msg = event.data.msg || '';
@@ -557,13 +560,12 @@ function replaceIframe(from) {
 				if (game) {
 					throw new Error('An instance is already running.');
 				}
-				const channel = new MessageChannel();
-				debug_port = channel.port2;
-				debug_port.onmessage = (evt) => {
-					notify('debug', evt.data);
-				};
+				if (event.ports.length != 2) {
+					throw new Error('No enough message ports received, cannot start.');
+				}
+				iframe_port = event.ports[0];
 				const gameConfig = {
-					'debugPort': channel.port1,
+					'debugPort': event.ports[1],
 					'persistentPaths': msg.persistentPaths ?? [],
 					'unloadAfterInit': true,
 					'canvasResizePolicy': 1,
@@ -588,11 +590,6 @@ function replaceIframe(from) {
 				}
 				game.requestQuit();
 				game = null;
-			} else if (cmd == 'debug') {
-				if (!debug_port) {
-					return;
-				}
-				debug_port.postMessage(msg);
 			} else if (cmd == 'focus') {
 				canvas.focus();
 			} else {
@@ -633,14 +630,11 @@ function replaceIframe(from) {
 	return iframe;
 }
 
-let gameQuitting = false;
+let gameActive = false;
 
 function terminateGame() {
-	gameQuitting = false;
+	gameActive = false;
 	gameIframe = replaceIframe(gameIframe);
-	setGameTabEnabled(false);
-	showTab('editor');
-	window.onmessage = null;
 	setGameTabEnabled(false);
 	if (editor) {
 		showTab('editor');
@@ -648,14 +642,12 @@ function terminateGame() {
 }
 
 function closeGame() { // eslint-disable-line no-unused-vars
-	if (!window.onmessage) {
-		return;
-	}
-	if (gameQuitting) { // Force quit.
+	if (!gameActive) { // Force iframe reset.
 		terminateGame();
+		setGameTabEnabled(false);
 	} else {
 		gameIframe.contentWindow.postMessage({ cmd: 'stop' });
-		gameQuitting = true;
+		gameActive = false;
 	}
 }
 
@@ -786,25 +778,26 @@ function startEditor(zip) {
 		if (is_game) {
 			terminateGame();
 			setGameTabEnabled(true);
-			const channel = new MessageChannel();
-			channel.port1.onmessage = (event) => {
-				gameIframe.contentWindow.postMessage({ cmd: 'debug', msg: event.data });
-			};
-			window.onmessage = (event) => {
+			const gameChannel = new MessageChannel();
+			const iframeChannel = new MessageChannel();
+			iframeChannel.port1.onmessage = (event) => {
 				const cmd = event.data.cmd || '';
-				const msg = event.data.msg || '';
 				if (cmd == 'started') {
-					editor.addDebuggerSession(channel.port2);
+					gameActive = true;
+					editor.addDebuggerSession(gameChannel.port1);
 					gameIframe.focus();
 				} else if (cmd == 'stopped') {
 					terminateGame();
-				} else if (cmd == 'debug') {
-					channel.port1.postMessage(msg);
+					setGameTabEnabled(false);
+					showTab('editor');
 				} else {
 					console.error('Invalid event', event);
 				}
 			};
-			gameIframe.contentWindow.postMessage({ cmd: 'start', msg: { args, persistentPaths } });
+			gameIframe.contentWindow.postMessage({ cmd: 'start', msg: { args, persistentPaths } }, gameIframe.contentWindow.origin, [
+				iframeChannel.port2,
+				gameChannel.port2,
+			]);
 			showTab('game');
 		} else { // New editor instances will be run in the same canvas. We want to wait for it to exit.
 			OnEditorExit = function (code) {

@@ -73,6 +73,14 @@ body {
 	overflow: hidden;
 }
 
+iframe {
+	margin: 0;
+	border: none;
+	padding: 0;
+	background-color: #262626;
+	overflow: hidden;
+}
+
 h2 {
 	font-size: 21px;
 }
@@ -133,16 +141,8 @@ a:active {
 	/* Make the background span the entire page height. */
 	min-height: 100vh;
 }
-#tab-editor iframe,
-#tab-game iframe {
-	width: 100vw;
-	height: 100vh;
-}
 
 /* Don't show distracting focus outlines for the main tabs' contents. */
-#tab-editor iframe:focus-visible,
-#tab-game iframe:focus-visible,
-#godot-canvas:focus-visible,
 .godot {
 	outline: none;
 	color: #d0d0d0;
@@ -150,6 +150,14 @@ a:active {
 	background-image: linear-gradient(to bottom, #403e48, #35333c);
 	border: 1px solid #484848;
 	box-shadow: 0 0 1px 1px #141414;
+}
+
+#tab-editor iframe:focus-visible,
+#tab-game iframe:focus-visible,
+#godot-canvas:focus-visible {
+	outline: none;
+	border: none;
+	box-shadow: none;
 }
 
 .btn {
@@ -372,10 +380,10 @@ a:active {
 				</div>
 			</div>
 			<div id="tab-editor" style="display: none;">
-				<iframe id="editor-iframe" class="godot" tabindex="1"></iframe>
+				<iframe id="editor-iframe" tabindex="1"></iframe>
 			</div>
 			<div id="tab-game" style="display: none;">
-				<iframe id="game-iframe" class="godot" tabindex="2"></iframe>
+				<iframe id="game-iframe" tabindex="2"></iframe>
 			</div>
 			<div id="tab-status" style="display: none;">
 				<div id="status-progress" style="display: none;" oncontextmenu="event.preventDefault();">
@@ -616,6 +624,8 @@ function replaceIframe(from) {
 	iframe.id = from.id;
 	iframe.className = from.className;
 	iframe.tabIndex = from.tabIndex;
+	iframe.style.width = from.style.width;
+	iframe.style.height = from.style.height;
 	from.parentNode.replaceChild(iframe, from);
 	const style = iframe.contentDocument.createElement('style');
 	style.innerHTML = document.getElementById('web-editor-style').innerHTML;
@@ -692,6 +702,25 @@ function startEditor(zip) {
 		requestAnimationFrame(animate);
 	}
 	requestAnimationFrame(animate);
+
+	const headerDiv = document.getElementById('tabs-buttons');
+	let lastWidth = 0;
+	let lastHeight = 0;
+	function adjustIframeDimensions() {
+		const headerHeight = headerDiv.offsetHeight + 1;
+		const width = window.innerWidth;
+		const height = window.innerHeight - headerHeight;
+		if (lastWidth !== width || lastHeight !== height) {
+			gameIframe.style.width = `${width}px`;
+			gameIframe.style.height = `${height}px`;
+			editorIframe.style.width = `${width}px`;
+			editorIframe.style.height = `${height}px`;
+			lastWidth = width;
+			lastHeight = height;
+		}
+	}
+	animationCallbacks.push(adjustIframeDimensions);
+	adjustIframeDimensions();
 
 	function animateStatusIndeterminate(ms) {
 		const i = Math.floor((ms / INDETERMINATE_STATUS_STEP_MS) % 8);

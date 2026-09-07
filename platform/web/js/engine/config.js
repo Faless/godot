@@ -151,6 +151,13 @@ const InternalConfig = function (initConfig) { // eslint-disable-line no-unused-
 		 */
 		debugPort: null,
 		/**
+		 * The Process ID assigned to this instance (useful for debugging).
+		 * @memberof EngineConfig
+		 * @default
+		 * @type {number}
+		 */
+		pid: 0,
+		/**
 		 * A callback function for handling Godot's ``OS.execute`` calls.
 		 *
 		 * This is for example used in the Web Editor template to switch between project manager and editor, and for running the game.
@@ -164,6 +171,11 @@ const InternalConfig = function (initConfig) { // eslint-disable-line no-unused-
 		 * @type {?function(string, Array.<string>)}
 		 */
 		onExecute: null,
+		/**
+		 * @ignore
+		 * @type {?function(number)}
+		 */
+		onTerminatePID: null,
 		/**
 		 * @ignore
 		 * @type {?function(number)}
@@ -264,7 +276,6 @@ const InternalConfig = function (initConfig) { // eslint-disable-line no-unused-
 		}
 		// Module config
 		this.unloadAfterInit = parse('unloadAfterInit', this.unloadAfterInit);
-		this.debugPort = parse('debugPort', this.debugPort);
 		this.onPrintError = parse('onPrintError', this.onPrintError);
 		this.onPrint = parse('onPrint', this.onPrint);
 		this.onProgress = parse('onProgress', this.onProgress);
@@ -284,9 +295,12 @@ const InternalConfig = function (initConfig) { // eslint-disable-line no-unused-
 		this.fileSizes = parse('fileSizes', this.fileSizes);
 		this.emscriptenPoolSize = parse('emscriptenPoolSize', this.emscriptenPoolSize);
 		this.godotPoolSize = parse('godotPoolSize', this.godotPoolSize);
+		this.debugPort = parse('debugPort', this.debugPort);
+		this.pid = parse('pid', this.pid);
 		this.args = parse('args', this.args);
 		this.onExecute = parse('onExecute', this.onExecute);
 		this.onMoveToForeground = parse('onMoveToForeground', this.onMoveToForeground);
+		this.onTerminatePID = parse('onTerminatePID', this.onTerminatePID);
 		this.onExit = parse('onExit', this.onExit);
 	};
 

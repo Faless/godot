@@ -65,7 +65,9 @@ const GodotConfig = {
 		debugPort: null,
 		on_execute: null,
 		on_move_to_foreground: null,
+		on_terminate_pid: null,
 		on_exit: null,
+		pid: 0,
 
 		init_config: function (p_opts) {
 			GodotConfig.canvas_resize_policy = p_opts['canvasResizePolicy'];
@@ -75,8 +77,10 @@ const GodotConfig = {
 			GodotConfig.persistent_drops = !!p_opts['persistentDrops'];
 			GodotConfig.godot_pool_size = p_opts['godotPoolSize'];
 			GodotConfig.debug_port = p_opts['debugPort'];
+			GodotConfig.pid = p_opts['pid'];
 			GodotConfig.on_execute = p_opts['onExecute'];
 			GodotConfig.on_move_to_foreground = p_opts['onMoveToForeground'];
+			GodotConfig.on_terminate_pid = p_opts['onTerminatePID'];
 			GodotConfig.on_exit = p_opts['onExit'];
 			if (p_opts['focusCanvas']) {
 				GodotConfig.canvas.focus();
@@ -95,6 +99,12 @@ const GodotConfig = {
 			GodotConfig.on_execute = null;
 			GodotConfig.on_exit = null;
 		},
+	},
+
+	godot_js_config_pid_get__proxy: 'sync',
+	godot_js_config_pid_get__sig: 'i',
+	godot_js_config_pid_get: function () {
+		return GodotConfig.pid;
 	},
 
 	godot_js_config_canvas_id_get__proxy: 'sync',
@@ -336,6 +346,15 @@ const GodotOS = {
 			return 0;
 		}
 		return 1;
+	},
+
+	godot_js_os_kill__proxy: 'sync',
+	godot_js_os_kill__sig: 'vi',
+	godot_js_os_kill: function (p_pid) {
+		if (!GodotConfig.on_terminate_pid) {
+			return;
+		}
+		GodotConfig.on_terminate_pid(p_pid);
 	},
 
 	godot_js_os_shell_open__proxy: 'sync',

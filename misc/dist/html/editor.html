@@ -568,18 +568,23 @@ function replaceIframe(from) {
 					throw new Error('Not enough message ports received, cannot start.');
 				}
 				iframe_port = event.ports[0];
-				const config = msg;
-				config['debug_port'] = event.ports[1] ?? null;
-				config['canvas'] = canvas;
-				config['onProgress'] = (current, total) => {
-					notify('progress', [current, total]);
-				};
-				config['onExecute'] = (args) => {
-					notify('execute', args);
-				};
-				config['onExit'] = () => {
-					engine = null;
-					notify('stopped', pid);
+				const config = {
+					...msg,
+					'debugPort': event.ports[1] ?? null,
+					'canvas': canvas,
+					'onProgress': (current, total) => {
+						notify('progress', [current, total]);
+					},
+					'onExecute': (args) => {
+						notify('execute', args);
+					},
+					'onMoveToForeground': (id) => {
+						notify('foreground', pid);
+					},
+					'onExit': () => {
+						engine = null;
+						notify('stopped', pid);
+					},
 				};
 				engine = new Engine(config);
 				engine.init('godot.editor').then(function () {
@@ -787,6 +792,8 @@ function startEditor(zip) {
 				terminateGame();
 				setGameTabEnabled(false);
 				showTab('editor');
+			} else if (cmd == 'foreground') {
+				showTab('game');
 			} else if (cmd == 'progress' || cmd == 'execute') {
 				// Not implemented.
 			} else {
@@ -824,6 +831,8 @@ function startEditor(zip) {
 				if (OnEditorExit) {
 					OnEditorExit();
 				}
+			} else if (cmd == 'foreground') {
+				showTab('editor');
 			} else if (cmd == 'progress') {
 				const [current, total] = event.data.msg;
 				if (total > 0) {

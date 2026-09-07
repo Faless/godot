@@ -569,6 +569,12 @@ function replaceIframe(from) {
 				const gameConfig = msg;
 				gameConfig['debug_port'] = event.ports[1];
 				gameConfig['canvas'] = canvas;
+				gameConfig['onProgress'] = (current, total) => {
+					notify('progress', [current, total]);
+				};
+				gameConfig['onExecute'] = (path, args) => {
+					notify('execute', [path, args]);
+				};
 				gameConfig['onExit'] = () => {
 					game = null;
 					notify('stopped', pid);
@@ -763,6 +769,40 @@ function startEditor(zip) {
 		setLoaderEnabled(true);
 	};
 
+	function runGame(args) {
+		terminateGame();
+		setGameTabEnabled(true);
+		const gameChannel = new MessageChannel();
+		const iframeChannel = new MessageChannel();
+		iframeChannel.port1.onmessage = (event) => {
+			const cmd = event.data.cmd || '';
+			if (cmd == 'started') {
+				gameActive = true;
+				editor.addDebuggerSession(gameChannel.port1);
+				gameIframe.focus();
+			} else if (cmd == 'stopped') {
+				terminateGame();
+				setGameTabEnabled(false);
+				showTab('editor');
+			} else if (cmd == 'progess' || cmd == 'execute') {
+				// Not implemented.
+			} else {
+				console.error('Invalid event', event);
+			}
+		};
+		const gameConfig = {
+			'persistentPaths': persistentPaths,
+			'unloadAfterInit': true,
+			'canvasResizePolicy': 2,
+			'args': args,
+		};
+		gameIframe.contentWindow.postMessage({ cmd: 'start', msg: gameConfig }, gameIframe.contentWindow.origin, [
+			iframeChannel.port2,
+			gameChannel.port2,
+		]);
+		showTab('game');
+	}
+
 	function Execute(args) {
 		const is_editor = args.filter(function (v) {
 			return v === '--editor' || v === '-e';
@@ -773,35 +813,7 @@ function startEditor(zip) {
 		const is_game = !is_editor && !is_project_manager;
 
 		if (is_game) {
-			terminateGame();
-			setGameTabEnabled(true);
-			const gameChannel = new MessageChannel();
-			const iframeChannel = new MessageChannel();
-			iframeChannel.port1.onmessage = (event) => {
-				const cmd = event.data.cmd || '';
-				if (cmd == 'started') {
-					gameActive = true;
-					editor.addDebuggerSession(gameChannel.port1);
-					gameIframe.focus();
-				} else if (cmd == 'stopped') {
-					terminateGame();
-					setGameTabEnabled(false);
-					showTab('editor');
-				} else {
-					console.error('Invalid event', event);
-				}
-			};
-			const gameConfig = {
-				'persistentPaths': persistentPaths,
-				'unloadAfterInit': true,
-				'canvasResizePolicy': 2,
-				'args': args,
-			};
-			gameIframe.contentWindow.postMessage({ cmd: 'start', msg: gameConfig }, gameIframe.contentWindow.origin, [
-				iframeChannel.port2,
-				gameChannel.port2,
-			]);
-			showTab('game');
+			runGame(args);
 		} else { // New editor instances will be run in the same canvas. We want to wait for it to exit.
 			OnEditorExit = function (code) {
 				setLoaderEnabled(true);

@@ -97,6 +97,7 @@ extern void godot_js_display_alert(const char *p_text);
 extern int godot_js_display_touchscreen_is_available();
 extern int godot_js_display_is_swap_ok_cancel();
 extern void godot_js_display_setup_canvas(int p_width, int p_height, int p_fullscreen, int p_hidpi);
+extern void godot_js_display_move_to_foreground(int p_id);
 
 // Display canvas
 extern void godot_js_display_canvas_focus();

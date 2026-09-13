@@ -42,6 +42,9 @@ const EngineIFrame = (function () {
 					'onTerminatePID': (p_pid) => {
 						notify('terminate', p_pid);
 					},
+					'onMoveToForeground': () => {
+						notify('foreground');
+					},
 					'onExit': () => {
 						engine = null;
 						notify('stopped');

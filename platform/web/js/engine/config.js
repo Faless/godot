@@ -185,6 +185,19 @@ const InternalConfig = function (initConfig) { // eslint-disable-line no-unused-
 		 */
 		onTerminatePID: null,
 		/**
+		 * A callback function for handling Godot's ``DisplayServer.window_move_to_foreground`` calls.
+		 *
+		 * This is for example used in the Web Editor template to switch focus between the editor and running instance.
+		 *
+		 * @callback EngineConfig.onMoveToForeground
+		 * @param {number} id The Window ID to bring to foreground.
+		 */
+		/**
+		 * @ignore
+		 * @type {?function(number)}
+		 */
+		onMoveToForeground: null,
+		/**
 		 * A callback function for being notified when the Godot instance quits.
 		 *
 		 * **Note**: This function will not be called if the engine crashes or become unresponsive.
@@ -303,6 +316,7 @@ const InternalConfig = function (initConfig) { // eslint-disable-line no-unused-
 		this.args = parse('args', this.args);
 		this.debugPort = parse('debugPort', this.debugPort);
 		this.onExecute = parse('onExecute', this.onExecute);
+		this.onMoveToForeground = parse('onMoveToForeground', this.onMoveToForeground);
 		this.onTerminatePID = parse('onTerminatePID', this.onTerminatePID);
 		this.onExit = parse('onExit', this.onExit);
 	};
@@ -400,6 +414,7 @@ const InternalConfig = function (initConfig) { // eslint-disable-line no-unused-
 			'debugPort': this.debugPort,
 			'onExecute': this.onExecute,
 			'onTerminatePID': this.onTerminatePID,
+			'onMoveToForeground': this.onMoveToForeground,
 			'onExit': function (p_code) {
 				cleanup(); // We always need to call the cleanup callback to free memory.
 				if (typeof (onExit) === 'function') {

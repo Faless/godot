@@ -715,6 +715,8 @@ function startEditor() {
 				gameState.reset();
 				setGameTabEnabled(false);
 				showTab('editor');
+			} else if (cmd == 'foreground') {
+				showTab('game');
 			} else if (cmd == 'execute' || cmd == 'terminate') {
 				// Not implemented.
 			} else {
@@ -754,6 +756,8 @@ function startEditor() {
 			} else if (cmd == 'progress') {
 				const [current, total] = event.data.msg;
 				updateProgress(current, total);
+			} else if (cmd == 'foreground') {
+				showTab('editor');
 			} else if (cmd == 'execute') {
 				const [newPid, path, args] = event.data.msg; // eslint-disable-line no-unused-vars
 				if (!Array.isArray(args)) {

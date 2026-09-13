@@ -64,6 +64,7 @@ const GodotConfig = {
 		godot_pool_size: 4,
 		debug_port: null,
 		on_execute: null,
+		on_move_to_foreground: null,
 		on_terminate_pid: null,
 		on_exit: null,
 		pid: 0,
@@ -78,6 +79,7 @@ const GodotConfig = {
 			GodotConfig.debug_port = p_opts['debugPort'];
 			GodotConfig.pid = p_opts['pid'];
 			GodotConfig.on_execute = p_opts['onExecute'];
+			GodotConfig.on_move_to_foreground = p_opts['onMoveToForeground'];
 			GodotConfig.on_terminate_pid = p_opts['onTerminatePID'];
 			GodotConfig.on_exit = p_opts['onExit'];
 			if (p_opts['focusCanvas']) {

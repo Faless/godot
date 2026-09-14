@@ -370,6 +370,11 @@ a:active {
 					___GODOT_VERSION___ - <a href="/releases/">Change version</a>
 					<br>
 					<br>
+					<label>
+						<input id="tab-loader-autostart-check" type="checkbox">
+						Autostart
+					</label>
+					<br>
 					<button id="btn-start-editor" class="btn" style="margin-top: 2rem; margin-bottom: 3rem; font-weight: 700">Start Godot Editor</button>
 					<br>
 					<button class="btn" onclick="clearPersistence()" style="margin-bottom: 1.5rem">Clear Persistent Data</button>
@@ -868,6 +873,24 @@ const LoadStatus = (function () {
 	buttons.gameShow.onclick = () => showTab('game');
 	buttons.gameClose.onclick = () => closeGame(false);
 	buttons.gameClose.ondblclick = () => closeGame(true);
+
+	// Autostart option
+	const autostart = document.getElementById('tab-loader-autostart-check');
+	try {
+		autostart.checked = localStorage.getItem('autostart') === 'true';
+	} catch (e) {
+		console.log(e);
+	}
+	autostart.onchange = function () {
+		try {
+			localStorage.setItem('autostart', autostart.checked);
+		} catch (e) {
+			console.error(e);
+		}
+	};
+	if (autostart.checked) {
+		buttons.start.click();
+	}
 })();
 		</script>
 	</body>

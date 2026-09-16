@@ -1644,6 +1644,9 @@ ProjectManager::ProjectManager() {
 	EditorHelpHighlighter::create_singleton();
 #endif
 
+#ifdef WEB_ENABLED
+	godot_js_editor_drop_enable(true);
+#endif
 	SceneTree::get_singleton()->get_root()->connect("files_dropped", callable_mp(this, &ProjectManager::_files_dropped));
 
 	// Initialize UI.

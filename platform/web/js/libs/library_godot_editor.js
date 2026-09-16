@@ -28,6 +28,110 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
+const GodotEditorDragDrop = {
+	// We replace the original add_entry from GodotInputDragDrop with a custom one.
+	// This allows us to filter files we care about (zip at root, directories containing a project file).
+	$GodotEditorDragDrop__postset: [
+		'GodotEditorDragDrop.create_drop = GodotInputDragDrop.create_drop;',
+		'GodotInputDragDrop.create_drop = GodotEditorDragDrop.create_editor_drop;',
+		'GodotOS.atexit(GodotEditorDragDrop.cleanup);',
+	].join(''),
+	$GodotEditorDragDrop__deps: ['$GodotInputDragDrop'],
+	$GodotEditorDragDrop: {
+		SKIP_DIRS: ['.git', '.godot'],
+		enabled: false,
+		create_drop: null,
+
+		cleanup: function (resolve, reject) {
+			GodotEditorDragDrop.enabled = false;
+			resolve();
+		},
+
+		create_editor_drop: function () {
+			const base = GodotEditorDragDrop.create_drop();
+			const drop = {
+				base,
+				...base,
+			};
+			drop.add_entry = function (entry, path) {
+				if (!GodotEditorDragDrop.enabled) {
+					base.add_entry(entry, path);
+					return;
+				}
+				if (entry.isDirectory) {
+					drop.check_editor_dir(entry, path);
+				} else if (entry.isFile) {
+					// Can only drop ZIP files at top level.
+					if (!entry.name.endsWith('.zip')) {
+						return;
+					}
+					base.add_file(entry, path);
+				} else {
+					GodotRuntime.error('Unrecognized entry...', entry);
+				}
+			};
+			drop.add_editor_entry = function (entry, path) {
+				if (entry.isDirectory && GodotEditorDragDrop.SKIP_DIRS.includes(entry.name)) {
+					return; // Skip .git, .godot, etc.
+				}
+				base.add_entry(entry, path);
+			};
+			drop.check_editor_dir = function (entry, path) {
+				const next = `${path}/${entry.name}`;
+				drop.pending.push(() => new Promise(function (resolve, reject) {
+					const reader = entry.createReader();
+					reader.readEntries(function (entries) {
+						// Check if this is a project dir
+						let project = false;
+						for (let i = 0; i < entries.length; i++) {
+							if (entries[i].name !== 'project.godot') {
+								continue;
+							}
+							// Add potentially ignored dirs.
+							const paths = next.split('/');
+							const dirs = [];
+							while (paths.length > 3) {
+								const dir = paths.join('/');
+								paths.pop();
+								if (drop.dirs.includes(dir) || dirs.includes(dir)) {
+									continue;
+								}
+								dirs.push(dir);
+							}
+							dirs.reverse();
+							while (dirs.length) {
+								drop.dirs.push(dirs.pop());
+							}
+							project = true;
+							break;
+						}
+						for (let i = 0; i < entries.length; i++) {
+							if (project) {
+								// Process this folder recursively.
+								drop.add_editor_entry(entries[i], next);
+							} else if (entries[i].isDirectory) {
+								// Check for project folders recursively.
+								drop.check_editor_dir(entries[i], next);
+							}
+						}
+						resolve();
+					});
+				}));
+			};
+			return drop;
+		},
+	},
+
+	godot_js_editor_drop_enable__proxy: 'sync',
+	godot_js_editor_drop_enable__sig: 'vi',
+	godot_js_editor_drop_enable: function (p_enabled) {
+		GodotEditorDragDrop.enabled = p_enabled;
+	},
+};
+
+autoAddDeps(GodotEditorDragDrop, '$GodotEditorDragDrop');
+mergeInto(LibraryManager.library, GodotEditorDragDrop);
+
 const GodotEditorInstall = {
 	$GodotEditorInstall__deps: ['$FS', '$GodotFS'],
 	$GodotEditorInstall: {

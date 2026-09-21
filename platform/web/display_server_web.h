@@ -295,6 +295,15 @@ public:
 	virtual bool get_swap_cancel_ok() override;
 	virtual void swap_buffers() override;
 
+#ifdef TOOLS_ENABLED
+	virtual Error embed_process(DisplayServerEnums::WindowID p_window, ProcessID p_pid, const Rect2i &p_rect, bool p_visible, bool p_grab_focus) override;
+	virtual int64_t window_get_native_handle(DisplayServerEnums::HandleType p_handle_type, DisplayServerEnums::WindowID p_window) const override;
+	virtual Error request_close_embedded_process(ProcessID p_pid) override;
+	virtual Error remove_embedded_process(ProcessID p_pid) override;
+	virtual ProcessID get_focused_process_id() override;
+	virtual BitField<MouseButtonMask> mouse_get_button_state() const override;
+#endif
+
 	static void register_web_driver();
 	DisplayServerWeb(const String &p_rendering_driver, DisplayServerEnums::WindowMode p_window_mode, DisplayServerEnums::VSyncMode p_vsync_mode, uint32_t p_flags, const Point2i *p_position, const Size2i &p_resolution, int p_screen, DisplayServerEnums::Context p_context, int64_t p_parent_window, Error &r_error);
 	~DisplayServerWeb();

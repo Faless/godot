@@ -167,6 +167,11 @@ const InternalConfig = function (initConfig) { // eslint-disable-line no-unused-
 		 */
 		onExecute: null,
 		/**
+		 * @ignore
+		 * @type {?function(number, number, number, number, number, number, boolean, boolean):?number}
+		 */
+		onEmbed: null,
+		/**
 		 * A callback function for handling Godot's ``OS.kill`` calls.
 		 *
 		 * This is for example used in the Web Editor template to forcefully terminate a running game instance.
@@ -296,6 +301,7 @@ const InternalConfig = function (initConfig) { // eslint-disable-line no-unused-
 		this.args = parse('args', this.args);
 		this.debugPort = parse('debugPort', this.debugPort);
 		this.onExecute = parse('onExecute', this.onExecute);
+		this.onEmbed = parse('onEmbed', this.onEmbed);
 		this.onTerminatePID = parse('onTerminatePID', this.onTerminatePID);
 		this.onExit = parse('onExit', this.onExit);
 	};
@@ -391,6 +397,7 @@ const InternalConfig = function (initConfig) { // eslint-disable-line no-unused-
 			'focusCanvas': this.focusCanvas,
 			'debugPort': this.debugPort,
 			'onExecute': this.onExecute,
+			'onEmbed': this.onEmbed,
 			'onTerminatePID': this.onTerminatePID,
 			'onExit': function (p_code) {
 				cleanup(); // We always need to call the cleanup callback to free memory.

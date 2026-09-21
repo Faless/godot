@@ -60,6 +60,12 @@
 #define DOM_BUTTON_XBUTTON1 3
 #define DOM_BUTTON_XBUTTON2 4
 
+#ifdef TOOLS_ENABLED
+extern "C" {
+int godot_js_editor_embed_process(int p_window, int p_pid, int p_x, int p_y, int p_width, int p_height, bool p_visible, bool p_grab_focus);
+}
+#endif
+
 DisplayServerWeb *DisplayServerWeb::get_singleton() {
 	return static_cast<DisplayServerWeb *>(DisplayServer::get_singleton());
 }
@@ -1236,6 +1242,10 @@ bool DisplayServerWeb::has_feature(DisplayServerEnums::Feature p_feature) const 
 			return godot_js_display_vk_available() != 0;
 		case DisplayServerEnums::FEATURE_TEXT_TO_SPEECH:
 			return godot_js_display_tts_available() != 0;
+#ifdef TOOLS_ENABLED
+		case DisplayServerEnums::FEATURE_WINDOW_EMBEDDING:
+			return true;
+#endif
 		default:
 			return false;
 	}
@@ -1520,3 +1530,29 @@ void DisplayServerWeb::swap_buffers() {
 	}
 #endif
 }
+
+#ifdef TOOLS_ENABLED
+Error DisplayServerWeb::embed_process(DisplayServerEnums::WindowID p_window, ProcessID p_pid, const Rect2i &p_rect, bool p_visible, bool p_grab_focus) {
+	return godot_js_editor_embed_process(p_window, p_pid, p_rect.position.x, p_rect.position.y, p_rect.size.x, p_rect.size.y, p_visible, p_grab_focus) ? FAILED : OK;
+}
+
+int64_t DisplayServerWeb::window_get_native_handle(DisplayServerEnums::HandleType p_handle_type, DisplayServerEnums::WindowID p_window) const {
+	return 1;
+}
+
+Error DisplayServerWeb::request_close_embedded_process(ProcessID p_pid) {
+	return OS_Web::get_singleton()->kill(p_pid);
+}
+
+Error DisplayServerWeb::remove_embedded_process(ProcessID p_pid) {
+	return OK; // TODO
+}
+
+ProcessID DisplayServerWeb::get_focused_process_id() {
+	return OS_Web::get_singleton()->get_process_id(); // TODO
+}
+
+BitField<MouseButtonMask> DisplayServerWeb::mouse_get_button_state() const {
+	return MouseButtonMask::NONE; // TODO
+}
+#endif

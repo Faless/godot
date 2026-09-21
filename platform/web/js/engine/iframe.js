@@ -40,6 +40,9 @@ const EngineIFrame = (function () {
 						notify('execute', [newPid, path, args]);
 						return newPid;
 					},
+					'onEmbed': (wid, epid, x, y, w, h, visible, focus) => {
+						notify('embed', [wid, epid, x, y, w, h, visible, focus]);
+					},
 					'onTerminatePID': (p_pid) => {
 						notify('terminate', p_pid);
 					},

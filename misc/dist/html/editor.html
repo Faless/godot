@@ -164,6 +164,10 @@ a:active {
 	align-items: center;
 }
 
+#game-iframe {
+	position: absolute;
+}
+
 #tab-editor iframe:focus-visible,
 #tab-game iframe:focus-visible,
 #godot-canvas:focus-visible {
@@ -378,10 +382,8 @@ a:active {
 				</div>
 			</div>
 			<div id="tab-editor" style="display: none;">
-				<iframe id="editor-iframe" tabindex="1"></iframe>
-			</div>
-			<div id="tab-game" style="display: none;">
-				<iframe id="game-iframe" tabindex="2"></iframe>
+				<iframe id="editor-iframe" tabindex="1" style="display: none;"></iframe>
+				<iframe id="game-iframe" tabindex="2" style="display: none;"></iframe>
 			</div>
 			<div id="tab-status" style="display: none;">
 				<div id="status-progress" style="display: none;" oncontextmenu="event.preventDefault();">
@@ -638,6 +640,7 @@ function LoadStatus(document) {
 			loadStatus = new LoadStatus(iframe.contentDocument);
 		};
 		const state = new EngineIFrame('godot.editor', document.getElementById(`${name}-iframe`), iframeOnload);
+		state.embedding = [];
 		state.progress = [0, 0];
 		state.active = false;
 		state.updateStatus = function () {
@@ -648,9 +651,16 @@ function LoadStatus(document) {
 		};
 		const reset = state.reset;
 		state.reset = function () {
+			state.embedding = [];
 			state.progress = [0, 0];
 			state.active = false;
+			state.iframe.style.display = 'none';
 			return reset.apply(state);
+		};
+		const start = state.start;
+		state.start = function () {
+			state.iframe.style.display = '';
+			return start.apply(state, arguments);
 		};
 		state.animate = function (time) {
 			if (loadStatus) {
@@ -666,16 +676,28 @@ function LoadStatus(document) {
 	const headerDiv = document.getElementById('tabs-buttons');
 	let lastWidth = 0;
 	let lastHeight = 0;
-	const instances = [editorState, gameState];
+	let lastEmbedding = [];
 	function adjustIframeDimensions(time) {
 		const headerHeight = headerDiv.offsetHeight + 1;
 		const width = window.innerWidth;
 		const height = window.innerHeight - headerHeight;
-		if (lastWidth !== width || lastHeight !== height) {
-			instances.forEach((e) => {
-				e.iframe.style.width = `${width}px`;
-				e.iframe.style.height = `${height}px`;
-			});
+		if (lastWidth !== width || lastHeight !== height || lastEmbedding != gameState.embedding) {
+			editorState.iframe.style.width = `${width}px`;
+			editorState.iframe.style.height = `${height}px`;
+			if (gameState.embedding.length) {
+				const left = gameState.embedding[2];
+				const top = gameState.embedding[3] + headerHeight;
+				gameState.iframe.style.left = `${left}px`;
+				gameState.iframe.style.top = `${top}px`;
+				gameState.iframe.style.width = `${gameState.embedding[4]}px`;
+				gameState.iframe.style.height = `${gameState.embedding[5]}px`;
+			} else {
+				gameState.iframe.style.top = `${headerHeight}px`;
+				gameState.iframe.style.left = '0px';
+				gameState.iframe.style.width = `${width}px`;
+				gameState.iframe.style.height = `${height}px`;
+			}
+			lastEmbedding = gameState.embedding;
 			lastWidth = width;
 			lastHeight = height;
 		}
@@ -686,17 +708,12 @@ function LoadStatus(document) {
 	requestAnimationFrame(adjustIframeDimensions);
 
 	// Tabs
-	const tabs = [
-		document.getElementById('tab-loader'),
-		document.getElementById('tab-editor'),
-		document.getElementById('tab-game'),
-	];
-	const loaderTitle = document.title;
+	const loaderTab = document.getElementById('tab-loader');
+	const editorTab = document.getElementById('tab-editor');
 	function showTab(name) {
-		tabs.forEach(function (elem) {
-			elem.style.display = elem.id === `tab-${name}` ? 'block' : 'none';
-		});
 		if (name === 'editor' || name === 'game') {
+			editorTab.style.display = 'block';
+			loaderTab.style.display = 'none';
 			const instance = name === 'game' ? gameState : editorState;
 			const title = instance.iframe.contentDocument.title;
 			if (title) {
@@ -704,7 +721,8 @@ function LoadStatus(document) {
 			}
 			instance.focus();
 		} else {
-			document.title = loaderTitle;
+			editorTab.style.display = 'none';
+			loaderTab.style.display = 'block';
 		}
 	}
 	function setButtonEnabled(id, enabled) {
@@ -808,6 +826,8 @@ function LoadStatus(document) {
 						runEditor(args);
 					};
 				}
+			} else if (cmd == 'embed') {
+				gameState.embedding = event.data.msg;
 			} else if (cmd == 'terminate') {
 				if (gameState.pid !== event.data.msg) {
 					return;

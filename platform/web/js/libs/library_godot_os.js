@@ -65,6 +65,7 @@ const GodotConfig = {
 		on_execute: null,
 		on_terminate_pid: null,
 		on_exit: null,
+		on_embed: null,
 		pid: 0,
 
 		init_config: function (p_opts) {
@@ -77,6 +78,7 @@ const GodotConfig = {
 			GodotConfig.pid = p_opts['pid'];
 			GodotConfig.on_execute = p_opts['onExecute'];
 			GodotConfig.on_terminate_pid = p_opts['onTerminatePID'];
+			GodotConfig.on_embed = p_opts['onEmbed'];
 			GodotConfig.on_exit = p_opts['onExit'];
 			if (p_opts['focusCanvas']) {
 				GodotConfig.canvas.focus();
@@ -94,6 +96,7 @@ const GodotConfig = {
 			GodotConfig.virtual_keyboard = false;
 			GodotConfig.debug_port = null;
 			GodotConfig.on_execute = null;
+			GodotConfig.on_embed = null;
 			GodotConfig.on_exit = null;
 		},
 	},

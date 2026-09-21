@@ -919,6 +919,9 @@ void GameView::_update_speed_state_size() {
 }
 
 GameView::EmbedAvailability GameView::_get_embed_available() {
+#ifdef WEB_ENABLED
+	return EMBED_AVAILABLE;
+#endif
 	if (!DisplayServer::get_singleton()->has_feature(DisplayServerEnums::FEATURE_WINDOW_EMBEDDING)) {
 		return EMBED_NOT_AVAILABLE_FEATURE_NOT_SUPPORTED;
 	}

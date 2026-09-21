@@ -32,7 +32,7 @@ const GodotEditorDebugger = {
 	$GodotEditorDebugger__postset: [
 		'Module["add_debugger_session"] = GodotEditorDebugger.addSession;',
 	].join(''),
-	$GodotEditorDebugger__deps: ['$GodotDebugger', '$GodotRuntime', '$IDHandler'],
+	$GodotEditorDebugger__deps: ['$GodotDebugger', '$GodotRuntime', '$IDHandler', '$GodotConfig'],
 	$GodotEditorDebugger: {
 		session_callback: null,
 		addSession: function (port) {
@@ -58,6 +58,12 @@ const GodotEditorDebugger = {
 	godot_js_editor_debugger_active__sig: 'i',
 	godot_js_editor_debugger_active: function () {
 		return GodotEditorDebugger.session_callback ? 1 : 0;
+	},
+
+	godot_js_editor_embed_process__proxy: 'sync',
+	godot_js_editor_embed_process__sig: 'iiiiiiiii',
+	godot_js_editor_embed_process: function (p_window, p_pid, p_x, p_y, p_w, p_h, p_visible, p_grab_focus) {
+		return GodotConfig.on_embed ? GodotConfig.on_embed(p_window, p_pid, p_x, p_y, p_w, p_h) : -1;
 	},
 };
 

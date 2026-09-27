@@ -48,7 +48,7 @@ sys_env.AddJSLibraries([
     "js/libs/library_godot_debugger.js",
 ])
 sys_env.AddJSExterns([
-    "js/libs/library_godot_webgl2.externs.js",
+    "js/libs/core.externs.js",
 ])
 
 sys_env.AddJSPost([

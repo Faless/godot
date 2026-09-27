@@ -199,6 +199,8 @@ def configure(env: "SConsEnvironment"):
     if env["use_closure_compiler"]:
         # For emscripten support code.
         env.Append(LINKFLAGS=["--closure", "1"])
+        if env["warnings"] != "none":
+            env.Append(LINKFLAGS=["-Wclosure"])
         # Register builder for our Engine files
         jscc = env.Builder(generator=run_closure_compiler, suffix=".cc.js", src_suffix=".js")
         env.Append(BUILDERS={"BuildJS": jscc})

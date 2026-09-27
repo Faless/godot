@@ -78,7 +78,7 @@ XRSession.prototype.frameRate;
 XRSession.prototype.supportedFrameRates;
 
 /**
- * @type {Array<string>}
+ * @type {!Array<string>}
  */
 XRSession.prototype.enabledFeatures;
 
@@ -131,6 +131,14 @@ XRSession.prototype.onsqueezeend;
  * @type {?function (Event)}
  */
 XRSession.prototype.onvisibilitychange;
+
+/**
+ * @param {string} event
+ * @param {function(Event?): (boolean|void)} method
+ * @param {boolean=} useCapture
+ * @return {void}
+ */
+XRSession.prototype.addEventListener = function (event, method, useCapture) {};
 
 /**
  * @param {XRRenderStateInit} state
@@ -405,7 +413,7 @@ XRWebGLLayerInit.prototype.framebufferScaleFactor;
  * @constructor
  *
  * @param {XRSession} session
- * @param {WebGLRenderContext|WebGL2RenderingContext} ctx
+ * @param {WebGLRenderingContext|WebGL2RenderingContext} ctx
  * @param {?XRWebGLLayerInit} options
  */
 function XRWebGLLayer(session, ctx, options) {}
@@ -459,6 +467,7 @@ WebGLRenderingContextBase.prototype.makeXRCompatible = function () {};
 
 /**
  * @constructor
+ * @extends {Event}
  */
 function XRInputSourcesChangeEvent() {};
 
@@ -474,6 +483,7 @@ XRInputSourcesChangeEvent.prototype.removed;
 
 /**
  * @constructor
+ * @extends {Event}
  */
 function XRInputSourceEvent() {};
 
@@ -1070,7 +1080,7 @@ XRCubeLayerInit.prototype.orientation;
  * @constructor XRWebGLBinding
  *
  * @param {XRSession} session
- * @param {WebGLRenderContext|WebGL2RenderingContext} context
+ * @param {WebGLRenderingContext|WebGL2RenderingContext} context
  */
 function XRWebGLBinding(session, context) {}
 

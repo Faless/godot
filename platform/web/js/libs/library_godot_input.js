@@ -146,7 +146,7 @@ const GodotIME = {
 			GodotEventListeners.add(ime, 'keyup', key_event_cb.bind(null, 0), false);
 
 			ime.onblur = function () {
-				this.style.display = 'none';
+				ime.style.display = 'none';
 				GodotConfig.canvas.focus();
 				GodotIME.active = false;
 			};

@@ -423,13 +423,7 @@ const GodotEventListeners = {
 			if (GodotEventListeners.has(target, event, method, capture)) {
 				return;
 			}
-			function Handler(p_target, p_event, p_method, p_capture) {
-				this.target = p_target;
-				this.event = p_event;
-				this.method = p_method;
-				this.capture = p_capture;
-			}
-			GodotEventListeners.handlers.push(new Handler(target, event, method, capture));
+			GodotEventListeners.handlers.push({ target, event, method, capture });
 			target.addEventListener(event, method, capture);
 		},
 

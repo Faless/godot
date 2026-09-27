@@ -14,3 +14,11 @@ function OCULUS_multiview() {}
  * @return {void}
  */
 OCULUS_multiview.prototype.framebufferTextureMultisampleMultiviewOVR = function(target, attachment, texture, level, samples, baseViewIndex, numViews) {};
+
+/**
+ * @param {string} event
+ * @param {function(Event?): (boolean|void)} method
+ * @param {boolean=} useCapture
+ * @return {void}
+ */
+SpeechSynthesisUtterance.prototype.addEventListener = function(event, method, useCapture) {};

@@ -100,9 +100,9 @@ const GodotWebXR = {
 			const gl = GodotWebXR.gl;
 
 			if (GodotWebXR.disable_webxr_layers) {
-				layer = new XRWebGLLayer(GodotWebXR.session, gl, {
+				layer = new XRWebGLLayer(GodotWebXR.session, gl, /** @type {XRWebGLLayerInit} */ ({
 					antialias: false,
-				});
+				}));
 				GodotWebXR.session.updateRenderState({ baseLayer: layer });
 			} else {
 				if (!GodotWebXR.gl_binding || !GodotWebXR.gl_binding.createProjectionLayer) {
@@ -469,12 +469,12 @@ const GodotWebXR = {
 
 		let disable_webxr_layers = !!p_disable_webxr_layers || typeof XRWebGLBinding === 'undefined';
 
-		const session_init = {};
+		const session_init = /** @type {XRSessionInit} */ ({});
 		if (required_features.length > 0) {
-			session_init['requiredFeatures'] = required_features;
+			session_init.requiredFeatures = required_features;
 		}
 		if (optional_features.length > 0) {
-			session_init['optionalFeatures'] = optional_features;
+			session_init.optionalFeatures = optional_features;
 		}
 
 		navigator.xr.requestSession(session_mode, session_init).then(function (session) {
@@ -485,8 +485,8 @@ const GodotWebXR = {
 			});
 
 			session.addEventListener('inputsourceschange', function (evt) {
-				evt.added.forEach(GodotWebXR.addInputSource);
-				evt.removed.forEach(GodotWebXR.removeInputSource);
+				/** @type {XRInputSourcesChangeEvent} */ (evt).added.forEach(GodotWebXR.addInputSource);
+				/** @type {XRInputSourcesChangeEvent} */ (evt).removed.forEach(GodotWebXR.removeInputSource);
 			});
 
 			['selectstart', 'selectend', 'squeezestart', 'squeezeend'].forEach((input_event, index) => {
@@ -495,7 +495,7 @@ const GodotWebXR = {
 					// grab the frame from the event in order to get poses for
 					// the input sources.
 					GodotWebXR.frame = evt.frame;
-					oninputevent(index, GodotWebXR.getInputSourceId(evt.inputSource));
+					oninputevent(index, GodotWebXR.getInputSourceId(/** @type {XRInputSourceEvent} */ (evt).inputSource));
 					GodotWebXR.frame = null;
 				});
 			});

@@ -36,32 +36,34 @@ const GodotJSWrapper = {
 		proxies: null,
 		cb_ret: null,
 
-		MyProxy: function (val) {
-			const id = IDHandler.add(this);
+		make_proxy: function (val) {
+			const proxy = {};
+			const id = IDHandler.add(proxy);
 			GodotJSWrapper.proxies.set(val, id);
 			let refs = 1;
-			this.ref = function () {
+			proxy.ref = function () {
 				refs++;
 			};
-			this.unref = function () {
+			proxy.unref = function () {
 				refs--;
 				if (refs === 0) {
 					IDHandler.remove(id);
 					GodotJSWrapper.proxies.delete(val);
 				}
 			};
-			this.get_val = function () {
+			proxy.get_val = function () {
 				return val;
 			};
-			this.get_id = function () {
+			proxy.get_id = function () {
 				return id;
 			};
+			return proxy;
 		},
 
 		get_proxied: function (val) {
 			const id = GodotJSWrapper.proxies.get(val);
 			if (id === undefined) {
-				const proxy = new GodotJSWrapper.MyProxy(val);
+				const proxy = GodotJSWrapper.make_proxy(val);
 				return proxy.get_id();
 			}
 			IDHandler.get(id).ref();
@@ -228,7 +230,7 @@ const GodotJSWrapper = {
 			// This is safe! JavaScript is single threaded (and using it in threads is not a good idea anyway).
 			GodotJSWrapper.cb_ret = null;
 			const args = Array.from(arguments);
-			const argsProxy = new GodotJSWrapper.MyProxy(args);
+			const argsProxy = GodotJSWrapper.make_proxy(args);
 			func(p_ref, argsProxy.get_id(), args.length);
 			argsProxy.unref();
 			const ret = GodotJSWrapper.cb_ret;

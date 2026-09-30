@@ -3378,6 +3378,8 @@ void EditorFileSystem::reimport_files(const Vector<String> &p_files) {
 			}
 
 		} else {
+			OS::get_singleton()->yield();
+
 			ep->step(reimport_files[i].path.get_file(), i, false);
 			_reimport_file(reimport_files[i].path);
 

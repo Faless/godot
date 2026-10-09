@@ -285,7 +285,7 @@ const GodotOS = {
 	godot_js_os_set_main_loop__proxy: 'sync',
 	godot_js_os_set_main_loop__sig: 'viii',
 	godot_js_os_set_main_loop: function (p_callback, p_fps, p_simulate) {
-		const cb = GodotRuntime.get_func(p_callback);
+		const cb = WebAssembly.promising(GodotRuntime.get_func(p_callback));
 		let pending = 0;
 		let error = null;
 		async function loop() {
